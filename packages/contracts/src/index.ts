@@ -1,3 +1,5 @@
+export type * from "./client-state.js";
+export { emptyAgentHubClientState } from "./client-state.js";
 export type * from "./domain.js";
 export type * from "./events.js";
 export {
@@ -18,4 +20,3 @@ export {
   validateProviderRuntimeEvent,
 } from "./validation.js";
 export type { ValidationResult } from "./validation.js";
-

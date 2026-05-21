@@ -85,10 +85,10 @@
 ## 11. Desktop And Web Clients
 
 - [x] 11.1 Implement Electron desktop shell that hosts shared React UI and starts Desktop Runtime
-- [ ] 11.2 Implement Web app that uses the same shared React UI and connects to Supabase plus control plane API
-- [ ] 11.3 Implement authentication flows for Desktop and Web
-- [ ] 11.4 Implement workspace selection, agent management, conversation creation, and group chat flows
-- [ ] 11.5 Implement end-to-end Desktop/Web flow for Orchestrator plan approval, worker execution, permission request, and diff display
+- [x] 11.2 Implement Web app that uses the same shared React UI and connects to Supabase plus control plane API
+- [x] 11.3 Implement authentication flows for Desktop and Web
+- [x] 11.4 Implement workspace selection, agent management, conversation creation, and group chat flows
+- [x] 11.5 Implement end-to-end Desktop/Web flow for Orchestrator plan approval, worker execution, permission request, and diff display
 
 ## 12. iOS Client
 
