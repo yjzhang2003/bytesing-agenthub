@@ -6,8 +6,11 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      "**/dist/**",
       "build/**",
+      "**/build/**",
       "coverage/**",
+      "**/coverage/**",
       "node_modules/**",
       "tmp/**",
       "openspec/**",
@@ -28,4 +31,3 @@ export default tseslint.config(
     },
   },
 );
-
