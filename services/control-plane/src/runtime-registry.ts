@@ -1,12 +1,28 @@
-import type { Id, RuntimeDevice, Run, RunStatus } from "@agenthub/contracts";
+import type {
+  Agent,
+  AgentHubProviderMode,
+  Id,
+  Message,
+  ProviderRuntimeEvent,
+  RuntimeCommand,
+  RuntimeDevice,
+  Run,
+  RunStatus,
+  WorkbenchSnapshot,
+  Workspace,
+  WorkspaceMetadata,
+} from "@agenthub/contracts";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { AgentHubEvent } from "@agenthub/contracts";
 import { ControlPlaneEventBus } from "./events.js";
 
 export interface RegisterRuntimeDeviceInput {
+  readonly id?: Id;
   readonly displayName: string;
   readonly platform: RuntimeDevice["platform"];
   readonly appVersion: string;
   readonly capabilities: readonly string[];
+  readonly workspace?: WorkspaceMetadata;
 }
 
 export interface WorkspaceBinding {
@@ -20,6 +36,7 @@ export interface CreateRunInput {
   readonly workspaceId: Id;
   readonly conversationId: Id;
   readonly agentId: Id;
+  readonly prompt?: string;
   readonly planId?: Id | null;
 }
 
@@ -29,7 +46,10 @@ export class ControlPlaneRegistry {
   readonly #offlineTimeoutMs: number;
   readonly #devices = new Map<Id, RuntimeDevice>();
   readonly #workspaceBindings = new Map<Id, WorkspaceBinding>();
+  readonly #workspaceMetadata = new Map<Id, WorkspaceMetadata>();
   readonly #runs = new Map<Id, Run>();
+  readonly #messages = new Map<Id, Message>();
+  readonly #commands = new Map<Id, RuntimeCommand[]>();
 
   constructor(options: {
     readonly events?: ControlPlaneEventBus;
@@ -51,7 +71,7 @@ export class ControlPlaneRegistry {
     );
     const now = this.#now().toISOString();
     const device: RuntimeDevice = {
-      id: existing?.id ?? crypto.randomUUID(),
+      id: input.id ?? existing?.id ?? crypto.randomUUID(),
       ownerUserId,
       displayName: input.displayName,
       platform: input.platform,
@@ -64,6 +84,15 @@ export class ControlPlaneRegistry {
     };
 
     this.#devices.set(device.id, device);
+    if (input.workspace) {
+      this.#workspaceMetadata.set(input.workspace.workspaceId, input.workspace);
+      this.bindWorkspace({
+        workspaceId: input.workspace.workspaceId,
+        ownerUserId,
+        runtimeDeviceId: device.id,
+        localPath: input.workspace.localPathLabel,
+      });
+    }
     this.#events.publish(this.#deviceStatusEvent(device));
     return device;
   }
@@ -74,6 +103,18 @@ export class ControlPlaneRegistry {
       ...device,
       status: "online" as const,
       lastHeartbeatAt: this.#now().toISOString(),
+      updatedAt: this.#now().toISOString(),
+    };
+    this.#devices.set(updated.id, updated);
+    this.#events.publish(this.#deviceStatusEvent(updated));
+    return updated;
+  }
+
+  markRuntimeOffline(ownerUserId: Id, runtimeDeviceId: Id): RuntimeDevice {
+    const device = this.#requireOwnedDevice(ownerUserId, runtimeDeviceId);
+    const updated = {
+      ...device,
+      status: "offline" as const,
       updatedAt: this.#now().toISOString(),
     };
     this.#devices.set(updated.id, updated);
@@ -105,7 +146,11 @@ export class ControlPlaneRegistry {
     return binding;
   }
 
-  createRun(ownerUserId: Id, input: CreateRunInput): Run {
+  createRun(
+    ownerUserId: Id,
+    input: CreateRunInput,
+    providerMode: AgentHubProviderMode = "smoke",
+  ): Run {
     const binding = this.#workspaceBindings.get(input.workspaceId);
     if (!binding || binding.ownerUserId !== ownerUserId) {
       throw new Error("Workspace is not bound to this user runtime");
@@ -133,6 +178,22 @@ export class ControlPlaneRegistry {
     };
     this.#runs.set(run.id, run);
     this.#publishRunStatus(run, "agent.run.status_changed");
+    this.#enqueueCommand(binding.runtimeDeviceId, {
+      id: crypto.randomUUID(),
+      type: "run.start",
+      runtimeDeviceId: binding.runtimeDeviceId,
+      createdAt: now,
+      payload: {
+        runId: run.id,
+        workspaceId: run.workspaceId,
+        conversationId: run.conversationId,
+        agentId: run.agentId,
+        workspacePath: binding.localPath,
+        prompt: input.prompt ?? "Run AgentHub local smoke task",
+        systemPrompt: this.#agentSystemPrompt(input.agentId),
+        providerMode,
+      },
+    });
     return run;
   }
 
@@ -154,11 +215,129 @@ export class ControlPlaneRegistry {
   }
 
   cancelRun(ownerUserId: Id, runId: Id): Run {
-    return this.updateRunStatus(ownerUserId, runId, "cancelling");
+    const run = this.updateRunStatus(ownerUserId, runId, "cancelling");
+    const binding = this.#workspaceBindings.get(run.workspaceId);
+    if (binding) {
+      this.#enqueueCommand(binding.runtimeDeviceId, {
+        id: crypto.randomUUID(),
+        type: "run.cancel",
+        runtimeDeviceId: binding.runtimeDeviceId,
+        createdAt: this.#now().toISOString(),
+        payload: { runId },
+      });
+    }
+    return run;
   }
 
   getRun(ownerUserId: Id, runId: Id): Run {
     return this.#requireOwnedRun(ownerUserId, runId);
+  }
+
+  takeRuntimeCommands(ownerUserId: Id, runtimeDeviceId: Id): readonly RuntimeCommand[] {
+    this.#requireOwnedDevice(ownerUserId, runtimeDeviceId);
+    const commands = this.#commands.get(runtimeDeviceId) ?? [];
+    this.#commands.set(runtimeDeviceId, []);
+    return commands;
+  }
+
+  recordProviderRuntimeEvent(ownerUserId: Id, event: ProviderRuntimeEvent): void {
+    const run = this.#requireOwnedRun(ownerUserId, event.runId);
+    if (event.type === "run.status") {
+      this.updateRunStatus(ownerUserId, event.runId, event.status, event.message);
+      return;
+    }
+
+    if (event.type === "message.delta") {
+      const now = this.#now().toISOString();
+      const message: Message = {
+        id: crypto.randomUUID(),
+        ownerUserId,
+        conversationId: run.conversationId,
+        authorKind: "agent",
+        authorId: event.agentId,
+        parts: [{ type: "markdown", text: event.delta, runId: event.runId }],
+        replyToMessageId: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.#messages.set(message.id, message);
+      this.#events.publish({
+        id: crypto.randomUUID(),
+        type: "agent.run.message_delta",
+        ownerUserId,
+        workspaceId: run.workspaceId,
+        conversationId: run.conversationId,
+        runId: run.id,
+        occurredAt: now,
+        payload: {
+          agentId: event.agentId,
+          delta: event.delta,
+        },
+      });
+    }
+  }
+
+  latestRuntimeStatus(ownerUserId: Id): {
+    readonly online: boolean;
+    readonly deviceId: Id | null;
+    readonly lastHeartbeatAt: string | null;
+    readonly capabilities: readonly string[];
+  } {
+    const devices = [...this.#devices.values()].filter((device) => device.ownerUserId === ownerUserId);
+    const latest = devices.at(-1);
+    return {
+      online: latest?.status === "online" || latest?.status === "active-running",
+      deviceId: latest?.id ?? null,
+      lastHeartbeatAt: latest?.lastHeartbeatAt ?? null,
+      capabilities: latest?.capabilities ?? [],
+    };
+  }
+
+  createWorkbenchSnapshot(ownerUserId: Id): WorkbenchSnapshot {
+    const now = this.#now().toISOString();
+    const metadata =
+      this.#workspaceMetadata.get(agentHubLocalDefaults.workspaceId) ??
+      this.#workspaceMetadata.values().next().value ??
+      null;
+    const runtimeDeviceId = this.#devices.values().next().value?.id ?? null;
+    const workspace: Workspace = {
+      id: metadata?.workspaceId ?? agentHubLocalDefaults.workspaceId,
+      ownerUserId,
+      name: metadata?.displayName ?? "AgentHub local workspace",
+      runtimeKind: "local",
+      runtimeDeviceId,
+      localPath: null,
+      repoUrl: null,
+      defaultBranch: metadata?.gitBranch ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    return {
+      authenticated: true,
+      userId: ownerUserId,
+      activeWorkspaceId: workspace.id,
+      activeConversationId: agentHubLocalDefaults.conversationId,
+      workspaces: [workspace],
+      runtimeDevices: [...this.#devices.values()].filter((device) => device.ownerUserId === ownerUserId),
+      workspaceMetadata: metadata,
+      conversations: [
+        {
+          id: agentHubLocalDefaults.conversationId,
+          ownerUserId,
+          workspaceId: workspace.id,
+          kind: "group",
+          title: "AgentHub local runnable demo",
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      agents: this.#defaultAgents(ownerUserId, workspace.id, now),
+      runs: [...this.#runs.values()].filter((run) => run.ownerUserId === ownerUserId),
+      messages: [...this.#messages.values()].filter((message) => message.ownerUserId === ownerUserId),
+      availableActions: runtimeDeviceId ? ["run.start"] : [],
+    };
   }
 
   #requireOwnedDevice(ownerUserId: Id, runtimeDeviceId: Id): RuntimeDevice {
@@ -210,5 +389,47 @@ export class ControlPlaneRegistry {
       occurredAt: this.#now().toISOString(),
       payload,
     });
+  }
+
+  #enqueueCommand(runtimeDeviceId: Id, command: RuntimeCommand): void {
+    const current = this.#commands.get(runtimeDeviceId) ?? [];
+    this.#commands.set(runtimeDeviceId, [...current, command]);
+  }
+
+  #defaultAgents(ownerUserId: Id, workspaceId: Id, now: string): readonly Agent[] {
+    return [
+      {
+        id: agentHubLocalDefaults.orchestratorAgentId,
+        ownerUserId,
+        providerId: "provider_local",
+        workspaceId,
+        displayName: "Orchestrator",
+        role: "orchestrator",
+        systemPrompt: "Coordinate local AgentHub work through Plan Mode.",
+        capabilityTags: ["planning", "coordination"],
+        policy: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: agentHubLocalDefaults.implementerAgentId,
+        ownerUserId,
+        providerId: "provider_local",
+        workspaceId,
+        displayName: "Implementer",
+        role: "worker",
+        systemPrompt: "Implement local AgentHub tasks through the configured provider.",
+        capabilityTags: ["code", "local-runtime"],
+        policy: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+  }
+
+  #agentSystemPrompt(agentId: Id): string {
+    return agentId === agentHubLocalDefaults.orchestratorAgentId
+      ? "You are the AgentHub Orchestrator."
+      : "You are the AgentHub Implementer.";
   }
 }

@@ -1,6 +1,8 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { verifySupabaseJwt } from "../src/auth.js";
+import { createControlPlaneServer } from "../src/http.js";
 import { ControlPlaneRegistry } from "../src/runtime-registry.js";
 
 function signTestJwt(userId: string, secret = "test-secret"): string {
@@ -103,5 +105,128 @@ describe("control plane registry", () => {
     expect(run.status).toBe("queued");
     expect(cancelled.status).toBe("cancelling");
   });
+
+  it("records provider output into the workbench snapshot", () => {
+    const registry = new ControlPlaneRegistry();
+    const device = registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:smoke"],
+      workspace: {
+        workspaceId: "workspace_1",
+        displayName: "Project",
+        localPathLabel: "/tmp/project",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+        providerCapabilities: ["provider:smoke"],
+      },
+    });
+    const run = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: agentHubLocalDefaults.conversationId,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      prompt: "hello",
+    });
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toHaveLength(1);
+
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "message.delta",
+      runId: run.id,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      delta: "done",
+    });
+
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    expect(snapshot.messages[0]?.parts[0]?.text).toBe("done");
+  });
 });
 
+describe("control plane HTTP local mode", () => {
+  it("serves health, registration, snapshot, commands, and runtime events", async () => {
+    const registry = new ControlPlaneRegistry();
+    const server = createControlPlaneServer({
+      authMode: "local-demo",
+      jwtSecret: "dev",
+      localAuthToken: "local-token",
+      localUserId: "user_local_demo",
+      registry,
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected TCP server address");
+    }
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const headers = {
+      authorization: "Bearer local-token",
+      "content-type": "application/json",
+    };
+
+    try {
+      const health = await fetch(`${baseUrl}/health`);
+      expect(health.ok).toBe(true);
+      expect(await health.json()).toMatchObject({ service: "@agenthub/control-plane" });
+
+      const registration = await fetch(`${baseUrl}/runtime/register`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          deviceId: "runtime_local_demo",
+          displayName: "AgentHub Desktop Runtime",
+          platform: "macos",
+          appVersion: "0.1.0",
+          capabilities: ["provider:smoke"],
+          workspace: {
+            workspaceId: "workspace_local_demo",
+            displayName: "AgentHub",
+            localPathLabel: "/tmp/agenthub",
+            gitBranch: "main",
+            gitBaseCommit: "abc123",
+            dirty: false,
+            providerCapabilities: ["provider:smoke"],
+          },
+        }),
+      });
+      expect(registration.ok).toBe(true);
+
+      const snapshot = await fetch(`${baseUrl}/workbench/snapshot`, { headers });
+      const snapshotBody = await snapshot.json();
+      expect(snapshotBody.runtimeDevices[0].status).toBe("online");
+
+      const runResponse = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: snapshotBody.activeWorkspaceId,
+          conversationId: snapshotBody.activeConversationId,
+          agentId: snapshotBody.agents[1].id,
+          prompt: "smoke",
+        }),
+      });
+      const runBody = await runResponse.json();
+      expect(runBody.run.status).toBe("queued");
+
+      const commands = await fetch(`${baseUrl}/runtime/commands?deviceId=runtime_local_demo`, {
+        headers,
+      });
+      expect((await commands.json()).commands[0].type).toBe("run.start");
+
+      const eventResponse = await fetch(`${baseUrl}/runtime/events`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          type: "run.status",
+          runId: runBody.run.id,
+          agentId: snapshotBody.agents[1].id,
+          status: "completed",
+        }),
+      });
+      expect(eventResponse.status).toBe(202);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});

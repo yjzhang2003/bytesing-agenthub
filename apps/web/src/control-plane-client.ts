@@ -1,3 +1,11 @@
+import {
+  agentHubApiPaths,
+  agentHubLocalDefaults,
+  type AgentHubEvent,
+  type CreateLocalRunRequest,
+  type WorkbenchSnapshot,
+} from "@agenthub/contracts";
+
 export interface WebControlPlaneClientOptions {
   readonly baseUrl: string;
   readonly accessToken: string;
@@ -16,17 +24,41 @@ export class WebControlPlaneClient {
     readonly workspaceId: string;
     readonly conversationId: string;
     readonly agentId: string;
+    readonly prompt: string;
     readonly planId?: string | null;
   }) {
-    return this.#post("/runs", input);
+    return this.#post(agentHubApiPaths.runs, input satisfies CreateLocalRunRequest);
   }
 
   async cancelRun(runId: string) {
     return this.#post(`/runs/${runId}/cancel`, {});
   }
 
-  openEvents(): EventSource {
-    return new EventSource(`${this.#baseUrl}/events`);
+  async getSnapshot(): Promise<WorkbenchSnapshot> {
+    return this.#get(agentHubApiPaths.workbenchSnapshot);
+  }
+
+  openEvents(onEvent: (event: AgentHubEvent) => void): EventSource {
+    const stream = new EventSource(`${this.#baseUrl}${agentHubApiPaths.events}`);
+    stream.onmessage = (event) => {
+      if (event.data) {
+        onEvent(JSON.parse(event.data) as AgentHubEvent);
+      }
+    };
+    return stream;
+  }
+
+  async #get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.#baseUrl}${path}`, {
+      headers: {
+        authorization: `Bearer ${this.#accessToken}`,
+      },
+      method: "GET",
+    });
+    if (!response.ok) {
+      throw new Error(`Control plane request failed: ${response.status}`);
+    }
+    return (await response.json()) as T;
   }
 
   async #post(path: string, body: unknown): Promise<unknown> {
@@ -45,3 +77,13 @@ export class WebControlPlaneClient {
   }
 }
 
+export function createDefaultWebControlPlaneClient(
+  env: ImportMetaEnv = import.meta.env,
+): WebControlPlaneClient {
+  return new WebControlPlaneClient({
+    accessToken: env.VITE_AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
+    baseUrl:
+      env.VITE_CONTROL_PLANE_URL ??
+      `http://127.0.0.1:${agentHubLocalDefaults.controlPlanePort}`,
+  });
+}

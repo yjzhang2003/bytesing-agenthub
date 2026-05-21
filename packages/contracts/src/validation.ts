@@ -1,8 +1,14 @@
 import type { z } from "zod";
 import {
+  createLocalRunRequestSchema,
   diffMetadataSchema,
   orchestratorDispatchPlanSchema,
   providerRuntimeEventSchema,
+  runtimeHeartbeatPayloadSchema,
+  runtimeRegistrationPayloadSchema,
+  serviceHealthSchema,
+  workbenchSnapshotSchema,
+  workspaceMetadataSchema,
 } from "./schemas.js";
 
 export interface ValidationResult<T> {
@@ -44,10 +50,45 @@ export function validateDiffMetadata(
   return parseWithSchema(diffMetadataSchema, value);
 }
 
+export function validateServiceHealth(
+  value: unknown,
+): ValidationResult<z.infer<typeof serviceHealthSchema>> {
+  return parseWithSchema(serviceHealthSchema, value);
+}
+
+export function validateRuntimeRegistrationPayload(
+  value: unknown,
+): ValidationResult<z.infer<typeof runtimeRegistrationPayloadSchema>> {
+  return parseWithSchema(runtimeRegistrationPayloadSchema, value);
+}
+
+export function validateRuntimeHeartbeatPayload(
+  value: unknown,
+): ValidationResult<z.infer<typeof runtimeHeartbeatPayloadSchema>> {
+  return parseWithSchema(runtimeHeartbeatPayloadSchema, value);
+}
+
+export function validateWorkspaceMetadata(
+  value: unknown,
+): ValidationResult<z.infer<typeof workspaceMetadataSchema>> {
+  return parseWithSchema(workspaceMetadataSchema, value);
+}
+
+export function validateWorkbenchSnapshot(
+  value: unknown,
+): ValidationResult<z.infer<typeof workbenchSnapshotSchema>> {
+  return parseWithSchema(workbenchSnapshotSchema, value);
+}
+
+export function validateCreateLocalRunRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof createLocalRunRequestSchema>> {
+  return parseWithSchema(createLocalRunRequestSchema, value);
+}
+
 export function isDiffMetadataStale(
   storedFingerprint: string,
   currentFingerprint: string,
 ): boolean {
   return storedFingerprint !== currentFingerprint;
 }
-

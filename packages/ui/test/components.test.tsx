@@ -39,6 +39,14 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("Context Inspector");
   });
 
+  it("renders Control Plane offline state", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench error="Control plane request failed" loading={false} />,
+    );
+    expect(html).toContain("Control Plane offline");
+    expect(html).toContain("Retry");
+  });
+
   it("maps viewport widths to responsive workbench layout modes", () => {
     expect(workbenchLayoutForWidth(1440)).toBe("wide");
     expect(workbenchLayoutForWidth(1024)).toBe("standard");

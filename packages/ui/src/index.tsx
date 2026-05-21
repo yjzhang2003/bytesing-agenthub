@@ -1,9 +1,11 @@
 import type {
   DiffFileSummary,
+  Message,
   PermissionRisk,
   PermissionStatus,
   PlanStatus,
   RuntimeDeviceStatus,
+  WorkbenchSnapshot,
 } from "@agenthub/contracts";
 import React from "react";
 
@@ -71,16 +73,38 @@ export function ConversationList(props: {
 export function AgentMentionComposer(props: {
   readonly targets: readonly string[];
   readonly selectedTarget: string;
+  readonly disabled?: boolean;
+  readonly onSend?: (message: string) => void;
 }): React.ReactElement {
+  const [message, setMessage] = React.useState("");
   return (
-    <form aria-label="Message composer" className="agenthub-composer">
+    <form
+      aria-label="Message composer"
+      className="agenthub-composer"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!message.trim() || props.disabled) {
+          return;
+        }
+        props.onSend?.(message.trim());
+        setMessage("");
+      }}
+    >
       <select aria-label="Agent target" defaultValue={props.selectedTarget}>
         {props.targets.map((target) => (
           <option key={target}>{target}</option>
         ))}
       </select>
-      <textarea aria-label="Message" placeholder="Message an agent..." />
-      <button type="submit">Send</button>
+      <textarea
+        aria-label="Message"
+        disabled={props.disabled}
+        onChange={(event) => setMessage(event.currentTarget.value)}
+        placeholder={props.disabled ? "Runtime offline" : "Message an agent..."}
+        value={message}
+      />
+      <button disabled={props.disabled} type="submit">
+        Send
+      </button>
     </form>
   );
 }
@@ -163,57 +187,104 @@ export function DiffCard(props: {
 export function WorkspaceStatusSurface(props: {
   readonly workspaceName: string;
   readonly runtimeStatus: RuntimeDeviceStatus;
+  readonly runtimeLabel?: string;
 }): React.ReactElement {
   return (
     <section aria-label="Workspace status">
       <strong>{props.workspaceName}</strong>
-      <RuntimeStatusBadge status={props.runtimeStatus} />
+      <RuntimeStatusBadge
+        status={props.runtimeStatus}
+        {...(props.runtimeLabel ? { label: props.runtimeLabel } : {})}
+      />
     </section>
   );
 }
 
-export function AgentHubWorkbench(): React.ReactElement {
+function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot): readonly React.ReactNode[] {
+  const messageItems = snapshot.messages.map((message: Message) => (
+    <article className="agenthub-message" key={message.id}>
+      <strong>{message.authorKind}</strong>
+      {message.parts.map((part, index) => (
+        <p key={index}>{part.text ?? part.type}</p>
+      ))}
+    </article>
+  ));
+
+  if (messageItems.length > 0) {
+    return messageItems;
+  }
+
+  return [
+    <article className="agenthub-message" key="empty">
+      <strong>System</strong>
+      <p>Local Control Plane connected. Start a run to verify Runtime events.</p>
+    </article>,
+  ];
+}
+
+export function AgentHubWorkbench(props: {
+  readonly snapshot?: WorkbenchSnapshot;
+  readonly loading?: boolean;
+  readonly error?: string | null;
+  readonly onRetry?: () => void;
+  readonly onSend?: (message: string) => void;
+}): React.ReactElement {
+  const snapshot = props.snapshot;
+  const workspace = snapshot?.workspaces[0];
+  const runtime = snapshot?.runtimeDevices[0];
+  const runtimeStatus = runtime?.status ?? "offline";
+  const runtimeOnline = runtimeStatus === "online" || runtimeStatus === "active-running";
+
+  if (props.loading) {
+    return <main className="agenthub-workbench">Loading AgentHub...</main>;
+  }
+
+  if (props.error) {
+    return (
+      <main className="agenthub-workbench">
+        <section aria-label="Connection error">
+          <strong>Control Plane offline</strong>
+          <p>{props.error}</p>
+          <button onClick={props.onRetry} type="button">
+            Retry
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="agenthub-workbench">
       <aside>
-        <WorkspaceStatusSurface workspaceName="AgentHub" runtimeStatus="online" />
+        <WorkspaceStatusSurface
+          runtimeStatus={runtimeStatus}
+          workspaceName={workspace?.name ?? "AgentHub"}
+          {...(runtime?.displayName ? { runtimeLabel: runtime.displayName } : {})}
+        />
         <ConversationList
-          conversations={[
-            {
-              id: "conversation_1",
-              title: "AgentHub demo group chat",
-              participants: ["Orchestrator", "Implementer", "Reviewer"],
-              pendingPermissions: 1,
-              active: true,
-            },
-          ]}
+          conversations={(snapshot?.conversations ?? []).map((conversation) => ({
+            id: conversation.id,
+            title: conversation.title,
+            participants: snapshot?.agents.map((agent) => agent.displayName) ?? [],
+            pendingPermissions: 0,
+            active: conversation.id === snapshot?.activeConversationId,
+          }))}
         />
       </aside>
       <section>
-        <ChatTimeline
-          items={[
-            <PlanCard
-              agents={["Orchestrator", "Implementer", "Reviewer"]}
-              key="plan"
-              status="draft"
-              title="Implement AgentHub foundation"
-            />,
-            <PermissionCard
-              key="permission"
-              risk="high"
-              status="pending"
-              summary="Run pnpm check"
-            />,
-            <DiffCard
-              files={[{ path: "src/index.ts", status: "modified", insertions: 10, deletions: 2 }]}
-              key="diff"
-              state="available"
-            />,
-          ]}
+        <ChatTimeline items={snapshot ? timelineItemsFromSnapshot(snapshot) : []} />
+        <AgentMentionComposer
+          disabled={!runtimeOnline}
+          selectedTarget="@Implementer"
+          targets={(snapshot?.agents ?? []).map((agent) => `@${agent.displayName}`)}
+          {...(props.onSend ? { onSend: props.onSend } : {})}
         />
-        <AgentMentionComposer selectedTarget="@Orchestrator" targets={["@Orchestrator", "@Implementer"]} />
       </section>
-      <aside aria-label="Context Inspector">Context Inspector</aside>
+      <aside aria-label="Context Inspector">
+        <strong>Context Inspector</strong>
+        <p>{runtimeOnline ? "Runtime online" : "Runtime offline"}</p>
+        <p>{snapshot?.workspaceMetadata?.localPathLabel ?? "No workspace metadata"}</p>
+      </aside>
     </main>
   );
 }

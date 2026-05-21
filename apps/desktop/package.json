@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "pnpm build && electron dist/apps/desktop/src/main.js",
+    "check:electron": "tsx src/check-electron.ts",
+    "dev": "pnpm check:electron && pnpm build && AGENTHUB_ELECTRON_ENTRY=1 electron dist/apps/desktop/src/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

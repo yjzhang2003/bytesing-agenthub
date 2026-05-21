@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   isDiffMetadataStale,
+  validateRuntimeRegistrationPayload,
+  validateServiceHealth,
+  validateWorkbenchSnapshot,
+  validateWorkspaceMetadata,
   validateDiffMetadata,
   validateOrchestratorDispatchPlan,
   validateProviderRuntimeEvent,
@@ -55,5 +59,101 @@ describe("contract validation", () => {
 
     expect(result.ok).toBe(true);
   });
-});
 
+  it("accepts local runnable health and runtime payloads", () => {
+    const now = "2026-05-21T00:00:00.000Z";
+    expect(
+      validateServiceHealth({
+        ok: true,
+        service: "@agenthub/control-plane",
+        version: "0.1.0",
+        mode: "local-demo",
+        timestamp: now,
+        runtime: {
+          online: true,
+          deviceId: "runtime_local_demo",
+          lastHeartbeatAt: now,
+          capabilities: ["provider:smoke"],
+        },
+      }).ok,
+    ).toBe(true);
+
+    const workspace = {
+      workspaceId: "workspace_local_demo",
+      displayName: "AgentHub",
+      localPathLabel: "/Users/example/agenthub",
+      gitBranch: "main",
+      gitBaseCommit: "abc123",
+      dirty: false,
+      providerCapabilities: ["provider:smoke"],
+    };
+    expect(validateWorkspaceMetadata(workspace).ok).toBe(true);
+    expect(
+      validateRuntimeRegistrationPayload({
+        deviceId: "runtime_local_demo",
+        displayName: "AgentHub Desktop Runtime",
+        platform: "macos",
+        appVersion: "0.1.0",
+        capabilities: ["provider:smoke"],
+        workspace,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("accepts a control-plane backed workbench snapshot", () => {
+    const now = "2026-05-21T00:00:00.000Z";
+    const result = validateWorkbenchSnapshot({
+      authenticated: true,
+      userId: "user_local_demo",
+      activeWorkspaceId: "workspace_local_demo",
+      activeConversationId: "conversation_local_demo",
+      workspaces: [
+        {
+          id: "workspace_local_demo",
+          ownerUserId: "user_local_demo",
+          name: "AgentHub",
+          runtimeKind: "local",
+          runtimeDeviceId: "runtime_local_demo",
+          localPath: null,
+          repoUrl: null,
+          defaultBranch: "main",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      runtimeDevices: [
+        {
+          id: "runtime_local_demo",
+          ownerUserId: "user_local_demo",
+          displayName: "AgentHub Desktop Runtime",
+          platform: "macos",
+          appVersion: "0.1.0",
+          status: "online",
+          capabilities: ["provider:smoke"],
+          lastHeartbeatAt: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      workspaceMetadata: null,
+      conversations: [
+        {
+          id: "conversation_local_demo",
+          ownerUserId: "user_local_demo",
+          workspaceId: "workspace_local_demo",
+          kind: "group",
+          title: "AgentHub local demo",
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      agents: [],
+      runs: [],
+      messages: [],
+      availableActions: ["run.start"],
+    });
+
+    expect(result.ok).toBe(true);
+  });
+});

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
+    "dev": "AGENTHUB_CONTROL_PLANE_ENTRY=1 tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,4 +16,3 @@
     "typescript": "^5.9.3"
   }
 }
-

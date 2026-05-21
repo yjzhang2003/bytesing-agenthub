@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { createDemoWorkspaceFlow } from "../src/app-state.js";
+import { createDefaultWebControlPlaneClient } from "../src/control-plane-client.js";
 import { readWebSupabaseConfig } from "../src/supabase.js";
 
 describe("web app state", () => {
@@ -23,5 +25,13 @@ describe("web app state", () => {
       url: "https://example.supabase.co",
     });
   });
-});
 
+  it("creates a default Control Plane client from Vite env shape", () => {
+    const client = createDefaultWebControlPlaneClient({
+      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:4310",
+      VITE_AGENTHUB_LOCAL_AUTH_TOKEN: agentHubLocalDefaults.authToken,
+    } as ImportMetaEnv);
+
+    expect(client).toBeTruthy();
+  });
+});

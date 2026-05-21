@@ -1,4 +1,8 @@
-import type { ProviderRuntimeEvent } from "@agenthub/contracts";
+import type {
+  ProviderRuntimeEvent,
+  RuntimeCommand,
+  RuntimeRegistrationPayload,
+} from "@agenthub/contracts";
 import { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
 import { readWorkspaceGitMetadata, type WorkspaceGitMetadata } from "./git.js";
 import type { AgentRunHandle, AgentRunRequest, ProviderAdapter } from "./provider-adapter.js";
@@ -42,15 +46,22 @@ export class DesktopRuntime {
     readonly platform: "macos" | "windows" | "linux" | "cloud";
     readonly appVersion: string;
     readonly capabilities: readonly string[];
+    readonly workspace: RuntimeRegistrationPayload["workspace"];
+    readonly deviceId?: string;
   }) {
     return this.#client.registerDevice({
       displayName: this.#config.deviceName,
       ...input,
+      ...(input.deviceId ? { deviceId: input.deviceId } : {}),
     });
   }
 
   async sendHeartbeat(runtimeDeviceId: string) {
     return this.#client.sendHeartbeat(runtimeDeviceId);
+  }
+
+  async markOffline(runtimeDeviceId: string) {
+    return this.#client.markOffline(runtimeDeviceId);
   }
 
   async registerLocalWorkspace(input: {
@@ -93,5 +104,35 @@ export class DesktopRuntime {
     const stream = this.#client.openEventStream();
     stream.onmessage = onEvent;
     return stream;
+  }
+
+  async pollCommands(runtimeDeviceId: string): Promise<readonly RuntimeCommand[]> {
+    return this.#client.pollCommands(runtimeDeviceId);
+  }
+
+  async publishProviderEvent(event: ProviderRuntimeEvent): Promise<void> {
+    await this.#client.publishProviderEvent(event);
+  }
+
+  async handleCommand(command: RuntimeCommand): Promise<void> {
+    if (command.type === "run.cancel") {
+      await this.cancelRun(command.payload.runId);
+      return;
+    }
+    const payload = command.payload;
+    await this.startProviderRun(
+      payload.providerMode,
+      {
+        runId: payload.runId,
+        agentId: payload.agentId,
+        workspacePath: payload.workspacePath,
+        prompt: payload.prompt,
+        systemPrompt: payload.systemPrompt,
+        conversationContext: [],
+      },
+      (event) => {
+        void this.publishProviderEvent(event);
+      },
+    );
   }
 }

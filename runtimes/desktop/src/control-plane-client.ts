@@ -1,11 +1,13 @@
-import type { RuntimeDevice } from "@agenthub/contracts";
+import {
+  agentHubApiPaths,
+  type ProviderRuntimeEvent,
+  type RuntimeCommand,
+  type RuntimeDevice,
+  type RuntimeHeartbeatPayload,
+  type RuntimeRegistrationPayload,
+} from "@agenthub/contracts";
 
-export interface RuntimeRegistrationInput {
-  readonly displayName: string;
-  readonly platform: RuntimeDevice["platform"];
-  readonly appVersion: string;
-  readonly capabilities: readonly string[];
-}
+export type RuntimeRegistrationInput = RuntimeRegistrationPayload;
 
 export class DesktopRuntimeControlPlaneClient {
   readonly #baseUrl: string;
@@ -17,19 +19,54 @@ export class DesktopRuntimeControlPlaneClient {
   }
 
   async registerDevice(input: RuntimeRegistrationInput): Promise<RuntimeDevice> {
-    const response = await this.#post<{ readonly device: RuntimeDevice }>("/runtime/register", input);
+    const response = await this.#post<{ readonly device: RuntimeDevice }>(
+      agentHubApiPaths.runtimeRegister,
+      input,
+    );
     return response.device;
   }
 
   async sendHeartbeat(runtimeDeviceId: string): Promise<RuntimeDevice> {
-    const response = await this.#post<{ readonly device: RuntimeDevice }>("/runtime/heartbeat", {
+    const response = await this.#post<{ readonly device: RuntimeDevice }>(agentHubApiPaths.runtimeHeartbeat, {
       runtimeDeviceId,
-    });
+    } satisfies RuntimeHeartbeatPayload);
     return response.device;
   }
 
+  async markOffline(runtimeDeviceId: string): Promise<RuntimeDevice> {
+    const response = await this.#post<{ readonly device: RuntimeDevice }>(agentHubApiPaths.runtimeOffline, {
+      runtimeDeviceId,
+    } satisfies RuntimeHeartbeatPayload);
+    return response.device;
+  }
+
+  async pollCommands(runtimeDeviceId: string): Promise<readonly RuntimeCommand[]> {
+    const response = await this.#get<{ readonly commands: readonly RuntimeCommand[] }>(
+      `${agentHubApiPaths.runtimeCommands}?deviceId=${encodeURIComponent(runtimeDeviceId)}`,
+    );
+    return response.commands;
+  }
+
+  async publishProviderEvent(event: ProviderRuntimeEvent): Promise<void> {
+    await this.#post<{ readonly ok: true }>(agentHubApiPaths.runtimeEvents, event);
+  }
+
   openEventStream(): EventSource {
-    return new EventSource(`${this.#baseUrl}/events`);
+    return new EventSource(`${this.#baseUrl}${agentHubApiPaths.events}`);
+  }
+
+  async #get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.#baseUrl}${path}`, {
+      headers: {
+        authorization: `Bearer ${this.#authToken}`,
+      },
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Control plane request failed: ${response.status}`);
+    }
+    return (await response.json()) as T;
   }
 
   async #post<T>(path: string, body: unknown): Promise<T> {
@@ -48,4 +85,3 @@ export class DesktopRuntimeControlPlaneClient {
     return (await response.json()) as T;
   }
 }
-

@@ -7,6 +7,12 @@ export type { DesktopShellConfig } from "./shell-config.js";
 export async function createAgentHubWindow(
   config: DesktopShellConfig = defaultDesktopShellConfig,
 ): Promise<BrowserWindow> {
+  if (!config.controlPlaneUrl) {
+    throw new Error("AGENTHUB_CONTROL_PLANE_URL is required");
+  }
+  if (!config.webUrl) {
+    throw new Error("AGENTHUB_WEB_URL is required");
+  }
   const window = new BrowserWindow({
     height: 900,
     title: "AgentHub",
