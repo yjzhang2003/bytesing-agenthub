@@ -1,0 +1,47 @@
+## ADDED Requirements
+
+### Requirement: Desktop Web three-column workbench
+Desktop and Web clients SHALL use a three-column workbench layout by default.
+
+#### Scenario: User opens a conversation on desktop width
+- **WHEN** the viewport has desktop-width space
+- **THEN** the client displays workspace navigation on the left, conversation timeline in the center, and Context Inspector on the right
+
+### Requirement: Left navigation content
+The left navigation SHALL contain workspace switching, runtime status, conversation list, agent list entry point, run history entry point, and settings entry point.
+
+#### Scenario: User scans the left navigation
+- **WHEN** the user views the left navigation
+- **THEN** the user can identify the active workspace, runtime availability, recent conversations, and where to manage agents or runs
+
+### Requirement: Conversation timeline
+The conversation timeline SHALL display user messages, agent messages, Orchestrator messages, run events, compact plan cards, compact permission cards, and compact artifact cards in chronological context.
+
+#### Scenario: Multi-agent task runs
+- **WHEN** Orchestrator dispatches tasks to worker agents
+- **THEN** the timeline shows the plan summary, each agent's visible progress, relevant run events, artifacts, and final summary in order
+
+### Requirement: Agent mention composer
+The composer SHALL support addressing specific agents and Orchestrator through mentions or equivalent explicit target selection.
+
+#### Scenario: User targets Orchestrator
+- **WHEN** the user mentions Orchestrator or selects coordinated execution
+- **THEN** the composer makes it clear the message will start Plan Mode instead of direct worker-agent chat
+
+#### Scenario: User targets a worker agent
+- **WHEN** the user mentions a non-Orchestrator agent
+- **THEN** the composer makes it clear the message will route to that agent without implicit Orchestrator dispatch
+
+### Requirement: Context Inspector
+The workbench SHALL use the right Context Inspector as the default detail surface for selected plans, permissions, diffs, artifacts, and runtime details.
+
+#### Scenario: User selects a plan card
+- **WHEN** the user selects a plan card in the timeline
+- **THEN** the Context Inspector displays the full plan, plan state, assigned agents, risk notes, and available actions
+
+### Requirement: Responsive workbench behavior
+The workbench SHALL degrade predictably when horizontal space is limited.
+
+#### Scenario: Viewport becomes narrow
+- **WHEN** Desktop or Web horizontal space cannot support three columns
+- **THEN** the Context Inspector collapses into a drawer or detail route before the conversation timeline becomes unusable
