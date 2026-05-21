@@ -39,7 +39,9 @@ export class WebControlPlaneClient {
   }
 
   openEvents(onEvent: (event: AgentHubEvent) => void): EventSource {
-    const stream = new EventSource(`${this.#baseUrl}${agentHubApiPaths.events}`);
+    const stream = new EventSource(
+      `${this.#baseUrl}${agentHubApiPaths.events}?access_token=${encodeURIComponent(this.#accessToken)}`,
+    );
     stream.onmessage = (event) => {
       if (event.data) {
         onEvent(JSON.parse(event.data) as AgentHubEvent);

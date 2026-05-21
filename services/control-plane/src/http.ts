@@ -41,8 +41,17 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
   response.end(JSON.stringify(body));
 }
 
-function authenticate(request: IncomingMessage, options: ControlPlaneServerOptions): AuthContext {
-  const token = parseBearerToken(request.headers.authorization);
+function authenticate(
+  request: IncomingMessage,
+  options: ControlPlaneServerOptions,
+  url?: URL,
+): AuthContext {
+  const token = request.headers.authorization
+    ? parseBearerToken(request.headers.authorization)
+    : (url?.searchParams.get("access_token") ?? "");
+  if (!token) {
+    throw new Error("Missing bearer token");
+  }
   if ((options.authMode ?? "supabase") === "local-demo") {
     const expected = options.localAuthToken ?? agentHubLocalDefaults.authToken;
     if (token !== expected) {
@@ -85,7 +94,7 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
-      const auth = authenticate(request, options);
+      const auth = authenticate(request, options, url);
 
       if (request.method === "GET" && url.pathname === agentHubApiPaths.events) {
         response.writeHead(200, {
