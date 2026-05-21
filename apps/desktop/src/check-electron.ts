@@ -4,11 +4,11 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 
 try {
-  const electronPath = require.resolve("electron");
   const electronPackagePath = require.resolve("electron/package.json");
   const electronPackage = require(electronPackagePath) as { readonly version: string };
+  const electronPath = require("electron") as string;
   if (!existsSync(electronPath)) {
-    throw new Error("Electron module resolved but binary entry is missing");
+    throw new Error(`Electron module resolved but binary is missing at ${electronPath}`);
   }
   console.log(`[desktop] Electron ${electronPackage.version} is available`);
 } catch (error) {

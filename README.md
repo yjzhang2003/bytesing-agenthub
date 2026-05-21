@@ -31,5 +31,28 @@ pnpm install
 pnpm check
 ```
 
-See `docs/development/local-setup.md` for environment and process topology.
+Local runnable topology:
 
+```bash
+cp .env.example .env.local
+pnpm dev:control-plane
+pnpm dev:runtime
+pnpm dev:web
+pnpm dev:desktop
+```
+
+Default local service URLs:
+
+- Control Plane: `http://127.0.0.1:4310`
+- Web: `http://127.0.0.1:5173`
+- Desktop: Electron shell loading the configured Web URL
+
+Smoke verification:
+
+```bash
+pnpm smoke:local
+```
+
+The smoke path uses `AGENTHUB_AUTH_MODE=local-demo` and `AGENTHUB_PROVIDER_MODE=smoke`, so it does not require hosted Supabase credentials or a real Claude Code CLI. Set `AGENTHUB_PROVIDER_MODE=claude-code` and `AGENTHUB_CLAUDE_CODE_BIN=claude` when you want the Desktop Runtime to execute through Claude Code.
+
+See `docs/development/local-setup.md` for environment, Electron recovery, and process topology.

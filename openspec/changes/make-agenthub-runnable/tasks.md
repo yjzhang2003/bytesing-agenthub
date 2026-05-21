@@ -3,7 +3,7 @@
 - [x] 1.1 Add shared schemas and types for local development mode, service health, runtime registration, runtime heartbeat, workspace metadata, workbench snapshot, and normalized run events.
 - [x] 1.2 Add shared constants for default local ports, endpoint paths, service names, and development user/device identifiers.
 - [x] 1.3 Add contract validators and unit tests for health responses, runtime registration payloads, workspace metadata, and workbench snapshots.
-- [ ] 1.4 Add local environment template documentation covering Control Plane URL, Web URL, auth mode, workspace path, provider mode, and Electron setup.
+- [x] 1.4 Add local environment template documentation covering Control Plane URL, Web URL, auth mode, workspace path, provider mode, and Electron setup.
 
 ## 2. Control Plane Runtime API
 
@@ -47,10 +47,10 @@
 
 ## 6. Documentation And Acceptance
 
-- [ ] 6.1 Update root README with runnable local commands, service URLs, expected startup order, and troubleshooting links.
-- [ ] 6.2 Update `docs/development/local-setup.md` with environment setup, Electron install recovery, local/demo auth behavior, and smoke verification.
-- [ ] 6.3 Document known limitations: iOS not part of this runnable change, cloud execution out of scope, Supabase hosted auth optional, and Claude Code real execution optional for first smoke path.
-- [ ] 6.4 Verify Web dev server starts and returns HTTP 200.
-- [ ] 6.5 Verify Desktop TypeScript build passes and Desktop launch path reaches the workbench when Electron is available.
-- [ ] 6.6 Verify Control Plane and Desktop Runtime can run together and show runtime online in Web/Desktop state.
-- [ ] 6.7 Commit the completed runnable-change implementation after verification checkpoints.
+- [x] 6.1 Update root README with runnable local commands, service URLs, expected startup order, and troubleshooting links.
+- [x] 6.2 Update `docs/development/local-setup.md` with environment setup, Electron install recovery, local/demo auth behavior, and smoke verification.
+- [x] 6.3 Document known limitations: iOS not part of this runnable change, cloud execution out of scope, Supabase hosted auth optional, and Claude Code real execution optional for first smoke path.
+- [x] 6.4 Verify Web dev server starts and returns HTTP 200.
+- [x] 6.5 Verify Desktop TypeScript build passes and Desktop launch path reaches the workbench when Electron is available.
+- [x] 6.6 Verify Control Plane and Desktop Runtime can run together and show runtime online in Web/Desktop state.
+- [x] 6.7 Commit the completed runnable-change implementation after verification checkpoints.
