@@ -7,6 +7,7 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "commitlint": "node scripts/validate-commit-msg.mjs",
     "dev": "pnpm --filter @agenthub/web dev",
     "dev:control-plane": "pnpm --filter @agenthub/control-plane dev",
     "dev:desktop": "pnpm --filter @agenthub/desktop dev",
@@ -14,6 +15,7 @@
     "dev:web": "pnpm --filter @agenthub/web dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "prepare": "git config core.hooksPath .githooks",
     "lint": "eslint .",
     "smoke:local": "node scripts/smoke-local.mjs",
     "test": "vitest run",
