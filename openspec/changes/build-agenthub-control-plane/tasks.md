@@ -92,17 +92,17 @@
 
 ## 12. iOS Client
 
-- [ ] 12.1 Create SwiftUI app using the shared API and event schema contracts
-- [ ] 12.2 Implement authentication, workspace list, runtime status, conversation list, and chat timeline
-- [ ] 12.3 Implement Plan Card, Permission Card, and Diff Card equivalents in native SwiftUI
-- [ ] 12.4 Implement run cancellation and permission decision actions routed through the control plane
-- [ ] 12.5 Validate iOS behavior when Desktop Runtime is offline, online, and actively running a task
+- [x] 12.1 Create SwiftUI app using the shared API and event schema contracts
+- [x] 12.2 Implement authentication, workspace list, runtime status, conversation list, and chat timeline
+- [x] 12.3 Implement Plan Card, Permission Card, and Diff Card equivalents in native SwiftUI
+- [x] 12.4 Implement run cancellation and permission decision actions routed through the control plane
+- [x] 12.5 Validate iOS behavior when Desktop Runtime is offline, online, and actively running a task
 
 ## 13. Verification And Demo
 
-- [ ] 13.1 Add integration test covering login, runtime registration, workspace binding, and conversation synchronization
-- [ ] 13.2 Add integration test covering Orchestrator Plan Mode and worker dispatch
-- [ ] 13.3 Add integration test covering permission request, allow once, file modification, and audit log persistence
-- [ ] 13.4 Add integration test covering diff summary persistence and on-demand full diff retrieval
-- [ ] 13.5 Prepare demo script for the full MVP loop across Desktop, Web, and iOS
-- [ ] 13.6 Document P2 boundaries for GitHub integration, cloud runtime, deployment, team workspaces, and web preview artifacts
+- [x] 13.1 Add integration test covering login, runtime registration, workspace binding, and conversation synchronization
+- [x] 13.2 Add integration test covering Orchestrator Plan Mode and worker dispatch
+- [x] 13.3 Add integration test covering permission request, allow once, file modification, and audit log persistence
+- [x] 13.4 Add integration test covering diff summary persistence and on-demand full diff retrieval
+- [x] 13.5 Prepare demo script for the full MVP loop across Desktop, Web, and iOS
+- [x] 13.6 Document P2 boundaries for GitHub integration, cloud runtime, deployment, team workspaces, and web preview artifacts
