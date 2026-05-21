@@ -46,7 +46,7 @@ describe("DesktopRuntime", () => {
     const runtime = new DesktopRuntime(
       {
         authToken: "token",
-        controlPlaneUrl: "http://localhost:4310",
+        controlPlaneUrl: "http://localhost:5310",
         deviceName: "MacBook Pro",
         heartbeatSeconds: 15,
       },
@@ -76,7 +76,7 @@ describe("DesktopRuntime", () => {
 
   it("reads local config and creates registration metadata", async () => {
     const config = readDesktopRuntimeConfig({
-      AGENTHUB_CONTROL_PLANE_URL: "http://127.0.0.1:4310",
+      AGENTHUB_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
       AGENTHUB_PROVIDER_MODE: "smoke",
       AGENTHUB_WORKSPACE_PATH: process.cwd(),
       AGENTHUB_WORKSPACE_NAME: "AgentHub",

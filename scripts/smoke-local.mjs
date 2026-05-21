@@ -3,7 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 const root = new URL("..", import.meta.url);
 const authToken = process.env.AGENTHUB_LOCAL_AUTH_TOKEN ?? "agenthub-local-demo-token";
-const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:4310";
+const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:5310";
 
 const processes = [];
 

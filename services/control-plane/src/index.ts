@@ -18,7 +18,7 @@ export type {
 
 export const controlPlaneService = {
   name: "@agenthub/control-plane",
-  port: Number.parseInt(process.env.CONTROL_PLANE_PORT ?? "4310", 10),
+  port: Number.parseInt(process.env.CONTROL_PLANE_PORT ?? "5310", 10),
 };
 
 import { createControlPlaneServer } from "./http.js";

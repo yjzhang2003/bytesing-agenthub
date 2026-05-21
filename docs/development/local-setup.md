@@ -35,7 +35,7 @@ pnpm smoke:local
 
 Expected local URLs:
 
-- Control Plane: `http://127.0.0.1:4310`
+- Control Plane: `http://127.0.0.1:5310`
 - Web: `http://127.0.0.1:5173`
 - Desktop: Electron shell loading `AGENTHUB_WEB_URL`
 
@@ -56,7 +56,7 @@ Local/demo mode:
 
 - `AGENTHUB_AUTH_MODE=local-demo`
 - `AGENTHUB_LOCAL_AUTH_TOKEN=agenthub-local-demo-token`
-- `AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:4310`
+- `AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:5310`
 - `AGENTHUB_PROVIDER_MODE=smoke`
 - `AGENTHUB_WORKSPACE_PATH=/absolute/path/to/agenthub`
 - `AGENTHUB_WORKSPACE_NAME=AgentHub`
@@ -73,6 +73,12 @@ Control plane:
 - `CONTROL_PLANE_PORT`
 - `CONTROL_PLANE_PUBLIC_URL`
 - `CONTROL_PLANE_WS_URL`
+
+If the default `5310` port is already in use, run local verification with a matched URL and port override:
+
+```bash
+AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:5311 CONTROL_PLANE_PORT=5311 pnpm smoke:local
+```
 
 Desktop Runtime:
 

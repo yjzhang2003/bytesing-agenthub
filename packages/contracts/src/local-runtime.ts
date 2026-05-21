@@ -101,7 +101,7 @@ export type RuntimeCommand =
 
 export const agentHubLocalDefaults = {
   authToken: "agenthub-local-demo-token",
-  controlPlanePort: 4310,
+  controlPlanePort: 5310,
   desktopWebUrl: "http://127.0.0.1:5173",
   runtimeDeviceId: "runtime_local_demo",
   runtimeDeviceName: "AgentHub Desktop Runtime",

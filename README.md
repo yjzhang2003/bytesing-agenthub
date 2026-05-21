@@ -43,7 +43,7 @@ pnpm dev:desktop
 
 Default local service URLs:
 
-- Control Plane: `http://127.0.0.1:4310`
+- Control Plane: `http://127.0.0.1:5310`
 - Web: `http://127.0.0.1:5173`
 - Desktop: Electron shell loading the configured Web URL
 

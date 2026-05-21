@@ -28,7 +28,7 @@ describe("web app state", () => {
 
   it("creates a default Control Plane client from Vite env shape", () => {
     const client = createDefaultWebControlPlaneClient({
-      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:4310",
+      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
       VITE_AGENTHUB_LOCAL_AUTH_TOKEN: agentHubLocalDefaults.authToken,
     } as ImportMetaEnv);
 

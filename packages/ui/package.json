@@ -9,6 +9,10 @@
   },
   "dependencies": {
     "@agenthub/contracts": "workspace:*",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "lucide-react": "^1.16.0",
     "react": "^19.2.3"
   },
   "devDependencies": {
