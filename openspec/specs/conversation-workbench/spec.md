@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the Desktop and Web conversation workbench structure, runtime-backed snapshot behavior, timeline composition, composer targeting, and Context Inspector interaction model.
+
+## Requirements
 
 ### Requirement: Desktop Web three-column workbench
 Desktop and Web clients SHALL use a three-column workbench layout by default.
@@ -67,3 +70,25 @@ Desktop and Web workbenches SHALL reflect runtime online, offline, and heartbeat
 #### Scenario: Runtime goes offline
 - **WHEN** Control Plane publishes a runtime offline event
 - **THEN** Web and Desktop disable run-start actions that require that runtime and show the offline state in the workbench
+
+### Requirement: Runtime-aware workbench actions
+Desktop and Web workbenches SHALL clearly distinguish actions that remain available offline from actions that require an online Desktop Runtime.
+
+#### Scenario: Runtime is offline
+- **WHEN** the active conversation can normally start local execution but the Desktop Runtime is offline
+- **THEN** the composer and execution controls are disabled with an explanation while conversation history, run history, and available metadata remain viewable
+
+#### Scenario: Runtime returns online
+- **WHEN** Control Plane publishes or snapshots an online runtime state
+- **THEN** runtime-dependent actions become available without requiring the user to reload the app
+
+### Requirement: Inspector-linked timeline selection
+Desktop and Web workbenches SHALL link selected timeline items to Context Inspector detail modes.
+
+#### Scenario: User selects a timeline item with detail
+- **WHEN** the user selects a plan, permission, diff, artifact, run, or runtime-related item
+- **THEN** the workbench records the selected item and renders the corresponding detail in the Context Inspector
+
+#### Scenario: Selected detail becomes unavailable
+- **WHEN** the selected item is no longer available in the latest snapshot
+- **THEN** the workbench returns the Context Inspector to an empty or unavailable state without crashing
