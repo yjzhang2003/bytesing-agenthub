@@ -2,10 +2,12 @@ import type {
   Agent,
   Artifact,
   DiffFileSummary,
+  MemoryHealth,
   PermissionRequest,
   PermissionRisk,
   PermissionStatus,
   PlanStatus,
+  ProviderHealth,
   Run,
   RuntimeDeviceStatus,
 } from "@agenthub/contracts";
@@ -68,6 +70,10 @@ export interface RuntimeSummaryViewModel {
   readonly capabilities: readonly string[];
   readonly explanation: string;
   readonly canExecute: boolean;
+  readonly providerHealth: ProviderHealth | null;
+  readonly memoryHealth: MemoryHealth | null;
+  readonly providerStatusLabel: string;
+  readonly memoryStatusLabel: string;
 }
 
 export interface AgentTargetViewModel {
@@ -86,6 +92,47 @@ export interface ComposerTargetState {
   readonly disabled: boolean;
   readonly disabledReason: string | null;
   readonly targets: readonly AgentTargetViewModel[];
+}
+
+export interface AgentPageAgentViewModel {
+  readonly id: string;
+  readonly label: string;
+  readonly role: Agent["role"];
+  readonly providerLabel: string;
+  readonly systemPrompt: string;
+  readonly capabilityTags: readonly string[];
+  readonly policyJson: string;
+  readonly memoryNamespace: string;
+  readonly defaultAgent: boolean;
+}
+
+export interface AgentsPageViewModel {
+  readonly agents: readonly AgentPageAgentViewModel[];
+  readonly selectedAgentId: string | null;
+}
+
+export interface ProviderConnectionViewModel {
+  readonly id: string;
+  readonly label: string;
+  readonly status: string;
+  readonly statusTone: "connected" | "warning" | "disabled";
+  readonly providerMode: string;
+  readonly binaryPathLabel: string;
+  readonly checkedAt: string;
+  readonly failureReason: string | null;
+  readonly comingSoon: boolean;
+}
+
+export interface ConnectionsPageViewModel {
+  readonly providers: readonly ProviderConnectionViewModel[];
+  readonly memory: {
+    readonly enabled: boolean;
+    readonly status: string;
+    readonly url: string;
+    readonly viewerUrl: string;
+    readonly checkedAt: string;
+    readonly failureReason: string | null;
+  };
 }
 
 export interface PlanViewModel {
@@ -165,6 +212,8 @@ export interface TimelineItemViewModel {
 export interface WorkbenchViewModel {
   readonly workspace: WorkspaceNavigationViewModel;
   readonly runtime: RuntimeSummaryViewModel;
+  readonly agentsPage: AgentsPageViewModel;
+  readonly connections: ConnectionsPageViewModel;
   readonly timeline: readonly TimelineItemViewModel[];
   readonly composer: ComposerTargetState;
   readonly inspector: {

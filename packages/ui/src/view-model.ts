@@ -9,6 +9,7 @@ import type {
   WorkbenchSnapshot,
   Workspace,
 } from "@agenthub/contracts";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { OrchestratorDispatchPlan } from "@agenthub/contracts";
 import type {
   ArtifactViewModel,
@@ -185,9 +186,14 @@ function navigationFromSnapshot(
   };
 }
 
-function runtimeFromSnapshot(runtime: RuntimeDevice | undefined): RuntimeSummaryViewModel {
+function runtimeFromSnapshot(
+  runtime: RuntimeDevice | undefined,
+  snapshot: WorkbenchSnapshot | undefined,
+): RuntimeSummaryViewModel {
   const status = runtime?.status ?? "offline";
   const canExecute = status === "online" || status === "active-running";
+  const providerHealth = snapshot?.providerHealth ?? null;
+  const memoryHealth = snapshot?.memoryHealth ?? null;
   return {
     appVersion: runtime?.appVersion ?? "Unavailable",
     capabilities: runtime?.capabilities ?? [],
@@ -198,7 +204,15 @@ function runtimeFromSnapshot(runtime: RuntimeDevice | undefined): RuntimeSummary
     id: runtime?.id ?? null,
     label: runtime?.displayName ?? "No Desktop Runtime",
     lastHeartbeatLabel: shortDate(runtime?.lastHeartbeatAt ?? null),
+    memoryHealth,
+    memoryStatusLabel: memoryHealth
+      ? `Memory ${memoryHealth.status}`
+      : "Memory unknown",
     platform: runtime?.platform ?? "unknown",
+    providerHealth,
+    providerStatusLabel: providerHealth
+      ? `${providerHealth.providerMode === "claude-code" ? "Claude Code" : "Smoke provider"} ${providerHealth.status}`
+      : "Provider unknown",
     status,
   };
 }
@@ -230,6 +244,74 @@ function composerFromSnapshot(
     selectedRole: selected.role,
     selectedTarget: selected.target,
     targets,
+  };
+}
+
+function isDefaultAgent(agent: Agent): boolean {
+  return (
+    agent.id === agentHubLocalDefaults.orchestratorAgentId ||
+    agent.id === agentHubLocalDefaults.implementerAgentId ||
+    agent.displayName === "Orchestrator" ||
+    agent.displayName === "Implementer"
+  );
+}
+
+function agentsPageFromSnapshot(snapshot: WorkbenchSnapshot | undefined): WorkbenchViewModel["agentsPage"] {
+  const workspaceId = snapshot?.activeWorkspaceId ?? "workspace_unavailable";
+  return {
+    agents: (snapshot?.agents ?? []).map((agent) => ({
+      capabilityTags: agent.capabilityTags,
+      defaultAgent: isDefaultAgent(agent),
+      id: agent.id,
+      label: agent.displayName,
+      memoryNamespace: `agenthub:${snapshot?.userId ?? "user_unavailable"}:${workspaceId}:${agent.id}`,
+      policyJson: JSON.stringify(agent.policy, null, 2),
+      providerLabel: "Claude Code",
+      role: agent.role,
+      systemPrompt: agent.systemPrompt,
+    })),
+    selectedAgentId: snapshot?.agents[0]?.id ?? null,
+  };
+}
+
+function connectionsFromSnapshot(
+  runtimeSummary: RuntimeSummaryViewModel,
+): WorkbenchViewModel["connections"] {
+  const providerHealth = runtimeSummary.providerHealth;
+  const memoryHealth = runtimeSummary.memoryHealth;
+  return {
+    memory: {
+      checkedAt: memoryHealth?.checkedAt ?? "Unavailable",
+      enabled: memoryHealth?.enabled ?? false,
+      failureReason: memoryHealth?.failureReason ?? null,
+      status: memoryHealth?.status ?? "unknown",
+      url: memoryHealth?.url ?? "Unavailable",
+      viewerUrl: memoryHealth?.viewerUrl ?? "Unavailable",
+    },
+    providers: [
+      {
+        binaryPathLabel: providerHealth?.binaryPathLabel ?? "Unavailable",
+        checkedAt: providerHealth?.checkedAt ?? "Unavailable",
+        comingSoon: false,
+        failureReason: providerHealth?.failureReason ?? null,
+        id: "claude-code",
+        label: "Claude Code",
+        providerMode: providerHealth?.providerMode ?? "claude-code",
+        status: providerHealth?.status ?? "unknown",
+        statusTone: providerHealth?.status === "connected" ? "connected" : "warning",
+      },
+      {
+        binaryPathLabel: "Not configured",
+        checkedAt: "Unavailable",
+        comingSoon: true,
+        failureReason: null,
+        id: "codex",
+        label: "Codex",
+        providerMode: "codex",
+        status: "Coming soon",
+        statusTone: "disabled",
+      },
+    ],
   };
 }
 
@@ -290,9 +372,11 @@ export function createWorkbenchViewModel(
 ): WorkbenchViewModel {
   const workspace = firstWorkspace(snapshot);
   const runtime = firstRuntime(snapshot, workspace);
-  const runtimeSummary = runtimeFromSnapshot(runtime);
+  const runtimeSummary = runtimeFromSnapshot(runtime, snapshot);
   const navigation = navigationFromSnapshot(snapshot, workspace, runtime);
   const composer = composerFromSnapshot(snapshot, runtimeSummary);
+  const agentsPage = agentsPageFromSnapshot(snapshot);
+  const connections = connectionsFromSnapshot(runtimeSummary);
   const plan = options.activePlan
     ? {
         agents: options.activePlan.steps.map((step) => agentName(step.assignedAgentId, snapshot?.agents ?? [])),
@@ -390,7 +474,9 @@ export function createWorkbenchViewModel(
 
   return {
     activeConversationTitle: activeConversationTitle(snapshot),
+    agentsPage,
     composer,
+    connections,
     inspector: {
       artifacts,
       diff: options.activeDiff ?? null,

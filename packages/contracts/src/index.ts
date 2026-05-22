@@ -5,10 +5,14 @@ export type * from "./events.js";
 export type * from "./local-runtime.js";
 export { agentHubApiPaths, agentHubLocalDefaults } from "./local-runtime.js";
 export {
+  agentMemoryConfigSchema,
+  createAgentRequestSchema,
   createLocalRunRequestSchema,
   diffMetadataSchema,
   dispatchPlanStepSchema,
+  memoryHealthSchema,
   orchestratorDispatchPlanSchema,
+  providerHealthSchema,
   providerRuntimeEventSchema,
   runtimeCommandSchema,
   runtimeHeartbeatPayloadSchema,
@@ -16,21 +20,29 @@ export {
   serviceHealthSchema,
   workbenchSnapshotSchema,
   workspaceMetadataSchema,
+  updateAgentRequestSchema,
 } from "./schemas.js";
 export type {
+  CreateAgentRequestPayload,
   DiffMetadataPayload,
+  MemoryHealthPayload,
   OrchestratorDispatchPlan,
+  ProviderHealthPayload,
   ProviderRuntimeEvent,
   RuntimeCommandPayload,
   RuntimeRegistrationPayloadData,
   ServiceHealthPayload,
+  UpdateAgentRequestPayload,
   WorkbenchSnapshotPayload,
 } from "./schemas.js";
 export {
   isDiffMetadataStale,
+  validateCreateAgentRequest,
   validateCreateLocalRunRequest,
   validateDiffMetadata,
   validateOrchestratorDispatchPlan,
+  validateMemoryHealth,
+  validateProviderHealth,
   validateProviderRuntimeEvent,
   validateRuntimeCommand,
   validateRuntimeHeartbeatPayload,
@@ -38,5 +50,6 @@ export {
   validateServiceHealth,
   validateWorkbenchSnapshot,
   validateWorkspaceMetadata,
+  validateUpdateAgentRequest,
 } from "./validation.js";
 export type { ValidationResult } from "./validation.js";

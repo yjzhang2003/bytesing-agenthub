@@ -18,6 +18,8 @@
     "prepare": "git config core.hooksPath .githooks",
     "lint": "eslint .",
     "smoke:local": "node scripts/smoke-local.mjs",
+    "smoke:claude-code:fake": "node scripts/smoke-claude-code-fake.mjs",
+    "smoke:memory": "node scripts/smoke-memory.mjs",
     "test": "vitest run",
     "typecheck": "pnpm -r --if-present typecheck"
   },

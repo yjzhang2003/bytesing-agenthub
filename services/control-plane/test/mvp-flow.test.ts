@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { DiffArtifactService, PermissionService } from "../src/index.js";
 import { CollaborationService } from "../src/collaboration.js";
 import { ControlPlaneRegistry } from "../src/runtime-registry.js";
@@ -19,7 +20,7 @@ describe("MVP integration flow", () => {
       workspaceId: "workspace_1",
     });
     const run = registry.createRun("user_1", {
-      agentId: "agent_1",
+      agentId: agentHubLocalDefaults.implementerAgentId,
       conversationId: "conversation_1",
       workspaceId: "workspace_1",
     });
@@ -120,4 +121,3 @@ describe("MVP integration flow", () => {
     expect(result.content).toBe("diff --git");
   });
 });
-

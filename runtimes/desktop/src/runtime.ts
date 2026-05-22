@@ -3,6 +3,7 @@ import type {
   RuntimeCommand,
   RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
+import type { AgentMemoryRuntimeClient } from "./agent-memory-client.js";
 import { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
 import { readWorkspaceGitMetadata, type WorkspaceGitMetadata } from "./git.js";
 import type { AgentRunHandle, AgentRunRequest, ProviderAdapter } from "./provider-adapter.js";
@@ -26,13 +27,19 @@ export class DesktopRuntime {
   readonly #client: DesktopRuntimeControlPlaneClient;
   readonly #adapters = new Map<string, ProviderAdapter>();
   readonly #activeRuns = new Map<string, AgentRunHandle>();
+  readonly #memoryClient: AgentMemoryRuntimeClient | null;
 
-  constructor(config: DesktopRuntimeConfig, adapters: readonly ProviderAdapter[]) {
+  constructor(
+    config: DesktopRuntimeConfig,
+    adapters: readonly ProviderAdapter[],
+    options: { readonly memoryClient?: AgentMemoryRuntimeClient | null } = {},
+  ) {
     this.#config = config;
     this.#client = new DesktopRuntimeControlPlaneClient({
       authToken: config.authToken,
       baseUrl: config.controlPlaneUrl,
     });
+    this.#memoryClient = options.memoryClient ?? null;
     for (const adapter of adapters) {
       this.#adapters.set(adapter.kind, adapter);
     }
@@ -136,6 +143,33 @@ export class DesktopRuntime {
       return;
     }
     const payload = command.payload;
+    const memory = payload.memory;
+    const observationPromises: Promise<unknown>[] = [];
+    let systemPrompt = payload.systemPrompt;
+    if (memory?.enabled && this.#memoryClient) {
+      const context = await this.#memoryClient
+        .fetchContext({ namespace: memory.namespace, query: payload.prompt })
+        .catch(() => "");
+      if (context.trim()) {
+        systemPrompt = `${systemPrompt}\n\nLong-term memory:\n${context.trim()}`;
+      }
+      observationPromises.push(
+        this.#memoryClient
+          .observe({
+            namespace: memory.namespace,
+            text: payload.prompt,
+            sourceType: "user.prompt",
+            metadata: {
+              workspaceId: payload.workspaceId,
+              conversationId: payload.conversationId,
+              runId: payload.runId,
+              agentId: payload.agentId,
+            },
+          })
+          .catch(() => undefined),
+      );
+    }
+
     await this.startProviderRun(
       payload.providerMode,
       {
@@ -143,12 +177,30 @@ export class DesktopRuntime {
         agentId: payload.agentId,
         workspacePath: payload.workspacePath,
         prompt: payload.prompt,
-        systemPrompt: payload.systemPrompt,
+        systemPrompt,
         conversationContext: [],
       },
       (event) => {
+        if (event.type === "message.delta" && memory?.enabled && this.#memoryClient) {
+          observationPromises.push(
+            this.#memoryClient
+              .observe({
+                namespace: memory.namespace,
+                text: event.delta,
+                sourceType: "agent.output",
+                metadata: {
+                  workspaceId: payload.workspaceId,
+                  conversationId: payload.conversationId,
+                  runId: payload.runId,
+                  agentId: payload.agentId,
+                },
+              })
+              .catch(() => undefined),
+          );
+        }
         void eventPublisher.publishProviderEvent(event);
       },
     );
+    await Promise.all(observationPromises);
   }
 }

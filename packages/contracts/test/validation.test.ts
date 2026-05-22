@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentHubApiPaths,
   isDiffMetadataStale,
   validateCreateLocalRunRequest,
+  validateCreateAgentRequest,
   validateRuntimeRegistrationPayload,
   validateServiceHealth,
   validateWorkbenchSnapshot,
   validateWorkspaceMetadata,
   validateDiffMetadata,
+  validateMemoryHealth,
   validateOrchestratorDispatchPlan,
+  validateProviderHealth,
   validateProviderRuntimeEvent,
   validateRuntimeCommand,
+  validateUpdateAgentRequest,
 } from "../src/index.js";
 import {
   claudeCodeRunStartCommandFixture,
@@ -131,6 +136,58 @@ describe("contract validation", () => {
     ).toBe(true);
   });
 
+  it("accepts provider and memory health contracts", () => {
+    const now = "2026-05-22T00:00:00.000Z";
+
+    expect(
+      validateProviderHealth({
+        providerMode: "claude-code",
+        status: "connected",
+        binaryPathLabel: "/usr/local/bin/claude",
+        checkedAt: now,
+        failureReason: null,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateMemoryHealth({
+        enabled: true,
+        status: "connected",
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt: now,
+        failureReason: null,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("accepts create and update agent role contracts", () => {
+    expect(
+      validateCreateAgentRequest({
+        workspaceId: "workspace_local_demo",
+        displayName: "Researcher",
+        role: "worker",
+        systemPrompt: "You are a careful research assistant.",
+        capabilityTags: ["research", "analysis"],
+        policy: { network: "allowed" },
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateUpdateAgentRequest({
+        displayName: "Senior Researcher",
+        systemPrompt: "You are a senior research assistant.",
+        capabilityTags: ["research"],
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("exposes local agent, provider status, and memory status API paths", () => {
+    expect(agentHubApiPaths.agents).toBe("/agents");
+    expect(agentHubApiPaths.runtimeProviderStatus).toBe("/runtime/provider-status");
+    expect(agentHubApiPaths.memoryStatus).toBe("/memory/status");
+  });
+
   it("accepts a control-plane backed workbench snapshot", () => {
     const now = "2026-05-21T00:00:00.000Z";
     const result = validateWorkbenchSnapshot({
@@ -167,6 +224,21 @@ describe("contract validation", () => {
         },
       ],
       workspaceMetadata: null,
+      providerHealth: {
+        providerMode: "claude-code",
+        status: "missing",
+        binaryPathLabel: "claude",
+        checkedAt: now,
+        failureReason: "Claude Code binary was not found",
+      },
+      memoryHealth: {
+        enabled: false,
+        status: "disabled",
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt: now,
+        failureReason: null,
+      },
       conversations: [
         {
           id: "conversation_local_demo",

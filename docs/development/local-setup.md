@@ -41,6 +41,13 @@ Or run the automated local smoke verification:
 pnpm smoke:local
 ```
 
+Additional local smoke checks:
+
+```bash
+pnpm smoke:claude-code:fake
+pnpm smoke:memory
+```
+
 Expected local URLs:
 
 - Control Plane: `http://127.0.0.1:5310`
@@ -102,7 +109,17 @@ Claude Code provider mode:
 - `AGENTHUB_PROVIDER_MODE=claude-code`
 - `AGENTHUB_CLAUDE_CODE_BIN=claude` or an absolute path to the authenticated Claude Code CLI
 
-When these are set on the Desktop Runtime process, new Control Plane run commands are executed by the Claude Code provider adapter. Do not set `AGENTHUB_PROVIDER_MODE=claude-code` until the CLI is installed and authenticated on the same machine as the Desktop Runtime.
+When these are set on the Desktop Runtime process, new Control Plane run commands are executed by the Claude Code provider adapter. Desktop Runtime preflights the binary and reports provider health in the workbench snapshot, `/runtime/provider-status`, and settings UI. Do not set `AGENTHUB_PROVIDER_MODE=claude-code` until the CLI is installed and authenticated on the same machine as the Desktop Runtime.
+
+Long-term memory with `rohitg00/agentmemory`:
+
+- `AGENTMEMORY_ENABLED=true`
+- `AGENTMEMORY_URL=http://127.0.0.1:3111`
+- `AGENTMEMORY_VIEWER_URL=http://127.0.0.1:3113`
+- `AGENTMEMORY_TIMEOUT_MS=1000`
+- `AGENTMEMORY_SECRET` when your local agentmemory server requires a bearer token
+
+When enabled, Desktop Runtime checks `/agentmemory/health`, fetches role-scoped context from `/agentmemory/context`, and writes non-blocking observations to `/agentmemory/observe`. Memory namespaces are isolated per user, workspace, and agent role using `agenthub:{userId}:{workspaceId}:{agentId}`. If agentmemory is unavailable, runs continue without memory context and the workbench shows memory as unavailable.
 
 Web/Desktop clients:
 
@@ -130,6 +147,8 @@ pnpm --filter @agenthub/desktop rebuild electron
 ## Smoke Verification
 
 `pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode, waits for health and runtime registration, creates a minimal run, verifies command delivery through the Desktop Runtime, waits for smoke provider output to appear in the workbench snapshot, verifies the run reaches `completed`, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.
+
+`pnpm smoke:claude-code:fake` creates a temporary fake `claude` binary, verifies provider preflight, and completes a Claude Code-mode run without requiring a real Claude Code install. `pnpm smoke:memory` starts a stub agentmemory HTTP server and verifies health, role-scoped context lookup, and user/agent observation writes.
 
 Failure recovery:
 

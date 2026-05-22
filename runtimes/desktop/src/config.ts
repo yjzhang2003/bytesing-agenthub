@@ -1,6 +1,8 @@
 import {
   agentHubLocalDefaults,
   type AgentHubProviderMode,
+  type MemoryHealth,
+  type ProviderHealth,
   type RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
 import { readWorkspaceGitMetadata } from "./git.js";
@@ -14,6 +16,14 @@ export interface DesktopRuntimeProcessConfig {
   readonly heartbeatSeconds: number;
   readonly pollSeconds: number;
   readonly providerMode: AgentHubProviderMode;
+  readonly claudeCodeBin: string;
+  readonly agentMemory: {
+    readonly enabled: boolean;
+    readonly url: string;
+    readonly viewerUrl: string;
+    readonly timeoutMs: number;
+    readonly secret?: string;
+  };
   readonly workspacePath: string;
   readonly workspaceName: string;
 }
@@ -32,6 +42,14 @@ export function readDesktopRuntimeConfig(
     heartbeatSeconds: Number.parseInt(env.AGENTHUB_RUNTIME_HEARTBEAT_SECONDS ?? "15", 10),
     pollSeconds: Number.parseInt(env.AGENTHUB_RUNTIME_POLL_SECONDS ?? "2", 10),
     providerMode: env.AGENTHUB_PROVIDER_MODE === "claude-code" ? "claude-code" : "smoke",
+    claudeCodeBin: env.AGENTHUB_CLAUDE_CODE_BIN ?? "claude",
+    agentMemory: {
+      enabled: env.AGENTMEMORY_ENABLED === "1" || env.AGENTMEMORY_ENABLED === "true",
+      url: env.AGENTMEMORY_URL ?? "http://127.0.0.1:3111",
+      viewerUrl: env.AGENTMEMORY_VIEWER_URL ?? "http://127.0.0.1:3113",
+      timeoutMs: Number.parseInt(env.AGENTMEMORY_TIMEOUT_MS ?? "1000", 10),
+      ...(env.AGENTMEMORY_SECRET ? { secret: env.AGENTMEMORY_SECRET } : {}),
+    },
     workspacePath: env.AGENTHUB_WORKSPACE_PATH ?? process.cwd(),
     workspaceName: env.AGENTHUB_WORKSPACE_NAME ?? "AgentHub",
   };
@@ -39,6 +57,10 @@ export function readDesktopRuntimeConfig(
 
 export async function createRuntimeRegistrationPayload(
   config: DesktopRuntimeProcessConfig,
+  health: {
+    readonly providerHealth?: ProviderHealth;
+    readonly memoryHealth?: MemoryHealth;
+  } = {},
 ): Promise<RuntimeRegistrationPayload> {
   const git = await readWorkspaceGitMetadata(config.workspacePath);
   const providerCapabilities =
@@ -52,6 +74,8 @@ export async function createRuntimeRegistrationPayload(
     platform: process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : "linux",
     appVersion: config.appVersion,
     capabilities: providerCapabilities,
+    ...(health.providerHealth ? { providerHealth: health.providerHealth } : {}),
+    ...(health.memoryHealth ? { memoryHealth: health.memoryHealth } : {}),
     workspace: {
       workspaceId: agentHubLocalDefaults.workspaceId,
       displayName: config.workspaceName,

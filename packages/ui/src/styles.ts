@@ -71,6 +71,7 @@ body { overflow: hidden; }
 }
 .agenthub-motion-left-panel,
 .agenthub-motion-right-panel {
+  position: relative;
   min-height: 0;
   overflow: hidden;
 }
@@ -91,6 +92,9 @@ body { overflow: hidden; }
   border-right: 1px solid var(--agenthub-border);
   min-height: 0;
   overflow: hidden;
+}
+.agenthub-left-nav[data-compact="true"] {
+  grid-template-columns: 58px;
 }
 .agenthub-left-rail {
   min-width: 0;
@@ -167,7 +171,7 @@ body { overflow: hidden; }
   margin: 4px 0;
 }
 .agenthub-scroll-root { min-height: 0; flex: 1 1 auto; overflow: hidden; }
-.agenthub-chat-list-panel > .agenthub-scroll-root { padding: 8px 7px 14px; }
+.agenthub-chat-list-panel > .agenthub-scroll-root { padding: 0 0 14px; }
 .agenthub-scroll-viewport { width: 100%; height: 100%; }
 .agenthub-scrollbar { width: 8px; padding: 2px; }
 .agenthub-scroll-thumb { border-radius: 999px; background: var(--agenthub-border-strong); }
@@ -187,8 +191,7 @@ body { overflow: hidden; }
     background-color var(--agenthub-motion-fast),
     border-color var(--agenthub-motion-fast),
     color var(--agenthub-motion-fast),
-    opacity var(--agenthub-motion-fast),
-    transform var(--agenthub-motion-fast);
+    opacity var(--agenthub-motion-fast);
 }
 .agenthub-hover-control:hover:not(:disabled),
 .agenthub-hover-control:focus-visible,
@@ -197,8 +200,7 @@ body { overflow: hidden; }
   border-color: var(--agenthub-border-strong);
   background: var(--agenthub-surface-hover);
 }
-.agenthub-hover-control:hover:not(:disabled) { transform: translateY(-1px); }
-.agenthub-hover-control:focus-visible, select:focus-visible, textarea:focus-visible {
+.agenthub-hover-control:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 1px solid var(--agenthub-accent);
   outline-offset: 2px;
 }
@@ -271,10 +273,11 @@ body { overflow: hidden; }
   padding: 12px 7px;
   display: flex;
   align-items: center;
+  gap: 7px;
   border-bottom: 1px solid var(--agenthub-border);
 }
 .agenthub-chat-list-header .agenthub-conversation-search {
-  width: 100%;
+  flex: 1 1 auto;
 }
 .agenthub-conversation-search:focus-within {
   border-color: var(--agenthub-border-strong);
@@ -303,8 +306,8 @@ body { overflow: hidden; }
 .agenthub-nav-row small, .agenthub-row-meta { justify-self: end; color: var(--agenthub-text-muted); }
 .agenthub-conversation-list {
   display: grid;
-  gap: 4px;
-  padding-top: 4px;
+  gap: 0;
+  padding-top: 0;
 }
 .agenthub-conversation-row {
   position: relative;
@@ -313,31 +316,19 @@ body { overflow: hidden; }
     "title status"
     "participants status";
   align-items: start;
-  min-height: 50px;
-  padding: 6px 9px 6px 12px;
+  min-height: 64px;
+  padding: 10px 14px;
   border-color: transparent;
-  border-radius: 6px;
+  border-radius: 0;
   gap: 2px 10px;
   line-height: 1.25;
   transition:
-    background-color var(--agenthub-motion-fast),
-    transform var(--agenthub-motion-fast);
+    background-color var(--agenthub-motion-fast);
 }
-.agenthub-conversation-row:hover:not(:disabled) { transform: translateX(2px); }
 .agenthub-conversation-row:hover:not(:disabled),
 .agenthub-conversation-row[aria-current="page"] {
   border-color: transparent;
-  background: color-mix(in srgb, var(--agenthub-surface-hover) 58%, transparent);
-}
-.agenthub-conversation-row[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 999px;
-  background: var(--agenthub-border-strong);
+  background: var(--agenthub-surface-hover);
 }
 .agenthub-conversation-row .agenthub-row-main { grid-area: title; }
 .agenthub-conversation-row small {
@@ -557,7 +548,12 @@ body { overflow: hidden; }
 }
 .agenthub-mode-label { color: var(--agenthub-text-secondary); font-size: 11px; }
 .agenthub-warning { color: var(--agenthub-warning); }
-.agenthub-center[data-view="settings"] { grid-template-rows: 64px minmax(0, 1fr); }
+.agenthub-center[data-view="settings"],
+.agenthub-center[data-view="agents"],
+.agenthub-center[data-view="connections"] { grid-template-rows: 64px minmax(0, 1fr); }
+.agenthub-center[data-view="connections"] .agenthub-settings-panel {
+  width: min(100%, 1120px);
+}
 .agenthub-settings-page {
   min-width: 0;
   min-height: 0;
@@ -592,6 +588,284 @@ body { overflow: hidden; }
   font-weight: 650;
 }
 .agenthub-settings-panel > header p { margin: 2px 0 0; }
+.agenthub-agents-page {
+  min-width: 0;
+  min-height: 0;
+  background: var(--agenthub-bg);
+  overflow: hidden;
+}
+.agenthub-agent-directory-sidebar {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 64px minmax(0, 1fr);
+  border-right: 1px solid var(--agenthub-border);
+  background: var(--agenthub-surface);
+}
+.agenthub-resize-handle {
+  touch-action: none;
+}
+.agenthub-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 1px;
+  cursor: col-resize;
+}
+.agenthub-directory-resize-handle {
+  min-width: 6px;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+}
+.agenthub-panel-resize-handle::after,
+.agenthub-directory-resize-handle::after {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 100%;
+  margin: 0 auto;
+  background: var(--agenthub-border);
+}
+.agenthub-panel-resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: 0 -3px;
+}
+.agenthub-panel-resize-handle:hover::after,
+.agenthub-panel-resize-handle:focus-visible::after,
+.agenthub-directory-resize-handle:hover::after,
+.agenthub-directory-resize-handle:focus-visible::after {
+  background: var(--agenthub-border-strong);
+}
+.agenthub-agent-directory-header {
+  min-width: 0;
+  min-height: 64px;
+  padding: 12px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--agenthub-border);
+}
+.agenthub-agent-directory-header .agenthub-conversation-search {
+  flex: 1 1 auto;
+}
+.agenthub-agent-directory-list {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 0;
+  padding: 0;
+}
+.agenthub-agent-directory-group {
+  padding: 7px 18px;
+  color: var(--agenthub-text-muted);
+  font-weight: 650;
+  text-transform: uppercase;
+}
+.agenthub-agent-contact-row {
+  width: 100%;
+  min-height: 64px;
+  padding: 9px 14px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+}
+.agenthub-agent-contact-row[aria-pressed="true"] {
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-agent-avatar,
+.agenthub-agent-profile-avatar {
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--agenthub-radius);
+  background: color-mix(in srgb, var(--agenthub-accent) 12%, var(--agenthub-surface-hover));
+  color: var(--agenthub-text);
+  font-weight: 750;
+}
+.agenthub-agent-avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 12px;
+}
+.agenthub-agent-contact-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.agenthub-agent-contact-copy .agenthub-row-main {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenthub-agent-detail {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 44px min(8vw, 92px) 36px;
+  display: grid;
+  align-content: start;
+  gap: 24px;
+}
+.agenthub-agent-profile {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--agenthub-border);
+}
+.agenthub-agent-profile-avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 24px;
+}
+.agenthub-agent-profile-avatar .agenthub-icon {
+  width: 24px;
+  height: 24px;
+}
+.agenthub-agent-profile-copy {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.agenthub-agent-profile-copy strong {
+  font-size: 24px;
+  line-height: 1.2;
+}
+.agenthub-agent-profile-copy p {
+  margin: 0;
+}
+.agenthub-agent-profile-actions {
+  align-self: start;
+}
+.agenthub-agents-layout,
+.agenthub-connections-layout {
+  display: grid;
+  grid-template-columns: var(--agenthub-directory-column) 6px minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
+}
+.agenthub-agent-list,
+.agenthub-provider-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.agenthub-agent-row,
+.agenthub-provider-row {
+  min-width: 0;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  align-items: start;
+  border-color: var(--agenthub-border);
+}
+.agenthub-provider-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.agenthub-agent-row .agenthub-timeline-line,
+.agenthub-provider-row .agenthub-timeline-line {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenthub-agent-default {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: var(--agenthub-text-muted);
+  font-size: 11px;
+}
+.agenthub-agent-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.agenthub-agent-editor label,
+.agenthub-role-form label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: var(--agenthub-text-secondary);
+  font-size: 11px;
+}
+.agenthub-agent-editor input,
+.agenthub-agent-editor select,
+.agenthub-agent-editor textarea,
+.agenthub-role-form input,
+.agenthub-role-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  font: inherit;
+  padding: 8px 10px;
+}
+.agenthub-agent-editor [aria-invalid="true"] {
+  border-color: var(--agenthub-danger);
+}
+.agenthub-form-error {
+  color: var(--agenthub-danger);
+  font-size: 11px;
+}
+.agenthub-agent-editor textarea,
+.agenthub-role-form textarea {
+  resize: vertical;
+  font-family: var(--agenthub-font);
+}
+.agenthub-agent-editor-wide {
+  grid-column: 1 / -1;
+}
+.agenthub-connections-panel {
+  width: min(100%, 960px);
+}
+.agenthub-provider-row[data-tone="disabled"] {
+  opacity: .68;
+}
+@media (max-width: 860px) {
+  .agenthub-agents-page,
+  .agenthub-agents-layout,
+  .agenthub-connections-layout,
+  .agenthub-agent-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-directory-resize-handle {
+    display: none;
+  }
+  .agenthub-agent-directory-sidebar {
+    min-height: 280px;
+  }
+  .agenthub-agent-detail {
+    padding: 24px 18px 32px;
+  }
+  .agenthub-agent-profile {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .agenthub-agent-profile-avatar {
+    width: 58px;
+    height: 58px;
+    font-size: 16px;
+  }
+  .agenthub-agent-profile-actions {
+    grid-column: 1 / -1;
+  }
+}
 .agenthub-inspector-body {
   padding: 16px;
   display: grid;
@@ -688,12 +962,40 @@ body { overflow: hidden; }
   padding: 14px 16px;
   border-bottom: 1px solid var(--agenthub-border);
 }
-.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr) 0px; }
-.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="false"] { grid-template-columns: 0px minmax(0, 1fr) var(--agenthub-right-column); }
+.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="true"] { grid-template-columns: 58px minmax(0, 1fr) 0px; }
+.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="false"] { grid-template-columns: 58px minmax(0, 1fr) var(--agenthub-right-column); }
 .agenthub-workbench[data-left-collapsed="false"][data-right-collapsed="true"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr) 0px; }
+.agenthub-workbench[data-center-view="agents"] {
+  grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-center-view="agents"][data-left-collapsed="true"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-center-view="connections"],
+.agenthub-workbench[data-center-view="settings"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-center-view="connections"][data-left-collapsed="true"],
+.agenthub-workbench[data-center-view="settings"][data-left-collapsed="true"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
 .agenthub-sidebar-toggle { align-self: end; }
 .agenthub-workbench[data-layout="standard"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr); }
-.agenthub-workbench[data-layout="standard"][data-left-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr); }
+.agenthub-workbench[data-layout="standard"][data-left-collapsed="true"] { grid-template-columns: 58px minmax(0, 1fr); }
+.agenthub-workbench[data-layout="standard"][data-center-view="agents"] {
+  grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-layout="standard"][data-center-view="agents"][data-left-collapsed="true"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-layout="standard"][data-center-view="connections"],
+.agenthub-workbench[data-layout="standard"][data-center-view="settings"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-layout="standard"][data-center-view="connections"][data-left-collapsed="true"],
+.agenthub-workbench[data-layout="standard"][data-center-view="settings"][data-left-collapsed="true"] {
+  grid-template-columns: 58px minmax(0, 1fr) 0px;
+}
 .agenthub-workbench[data-layout="narrow"], .agenthub-workbench[data-layout="mobile-web"] { grid-template-columns: minmax(0, 1fr); }
 .agenthub-workbench[data-layout="narrow"] .agenthub-mobile-panel-actions,
 .agenthub-workbench[data-layout="mobile-web"] .agenthub-mobile-panel-actions { display: inline-flex; }

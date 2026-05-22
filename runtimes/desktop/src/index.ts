@@ -1,9 +1,16 @@
 export { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
+export { AgentMemoryClient } from "./agent-memory-client.js";
+export type {
+  AgentMemoryContextInput,
+  AgentMemoryObservationInput,
+  AgentMemoryRuntimeClient,
+} from "./agent-memory-client.js";
 export type { RuntimeRegistrationInput } from "./control-plane-client.js";
 export {
   createRuntimeRegistrationPayload,
   readDesktopRuntimeConfig,
 } from "./config.js";
+export { checkClaudeCodeProviderHealth } from "./provider-health.js";
 export { ClaudeCodeProviderAdapter } from "./claude-code-provider-adapter.js";
 export type { DesktopRuntimeProcessConfig } from "./config.js";
 export { readDiffSummary, readWorkspaceGitMetadata } from "./git.js";
@@ -27,7 +34,16 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
   const { readDesktopRuntimeConfig, createRuntimeRegistrationPayload } = await import("./config.js");
   const { SmokeProviderAdapter } = await import("./smoke-provider-adapter.js");
   const { ClaudeCodeProviderAdapter } = await import("./claude-code-provider-adapter.js");
+  const { checkClaudeCodeProviderHealth } = await import("./provider-health.js");
+  const { AgentMemoryClient } = await import("./agent-memory-client.js");
   const config = readDesktopRuntimeConfig();
+  const memoryClient = new AgentMemoryClient({
+    enabled: config.agentMemory.enabled,
+    baseUrl: config.agentMemory.url,
+    viewerUrl: config.agentMemory.viewerUrl,
+    timeoutMs: config.agentMemory.timeoutMs,
+    ...(config.agentMemory.secret ? { secret: config.agentMemory.secret } : {}),
+  });
   const runtime = new DesktopRuntime(
     {
       authToken: config.authToken,
@@ -38,11 +54,19 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
     [
       new SmokeProviderAdapter(),
       new ClaudeCodeProviderAdapter({
-        binaryPath: process.env.AGENTHUB_CLAUDE_CODE_BIN ?? "claude",
+        binaryPath: config.claudeCodeBin,
       }),
     ],
+    { memoryClient },
   );
-  const registration = await createRuntimeRegistrationPayload(config);
+  const [providerHealth, memoryHealth] = await Promise.all([
+    checkClaudeCodeProviderHealth({
+      providerMode: config.providerMode,
+      binaryPath: config.claudeCodeBin,
+    }),
+    memoryClient.checkHealth(),
+  ]);
+  const registration = await createRuntimeRegistrationPayload(config, { providerHealth, memoryHealth });
   const device = await runtime.registerDevice(registration);
   console.log(`[desktop-runtime] registered ${device.id} workspace=${registration.workspace.displayName}`);
 

@@ -1,7 +1,8 @@
 import * as ScrollArea from "@radix-ui/react-scroll-area";
-import { Bot, ClipboardCheck, PanelLeftClose, Play, Search, Settings, Terminal } from "lucide-react";
+import { Bot, Cable, ClipboardCheck, MessageSquare, PanelLeftClose, Play, Search, Settings } from "lucide-react";
 import React from "react";
 import type { ConversationListItem, InspectorSelection, WorkbenchViewModel } from "../types.js";
+import { AgentDirectory } from "./agents.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 export function ConversationList(props: {
@@ -52,41 +53,58 @@ export function WorkspaceStatusSurface(props: {
 export function LeftNavigation(props: {
   readonly model: WorkbenchViewModel;
   readonly onSelect: (selection: InspectorSelection) => void;
+  readonly onOpenConversation: () => void;
+  readonly onOpenAgents: () => void;
+  readonly onOpenConnections: () => void;
   readonly onOpenSettings: () => void;
+  readonly selectedAgentId: string | null;
+  readonly onSelectAgent: (agentId: string | null) => void;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
+  readonly conversationActive: boolean;
   readonly settingsActive: boolean;
+  readonly agentsActive: boolean;
+  readonly connectionsActive: boolean;
+  readonly compact?: boolean;
 }): React.ReactElement {
   return (
-    <aside aria-label="Workspace navigation" className="agenthub-left-nav">
+    <aside
+      aria-label="Workspace navigation"
+      className="agenthub-left-nav"
+      data-compact={props.compact || props.collapsed ? "true" : "false"}
+    >
       <div aria-label="Workspace tools" className="agenthub-left-rail">
         <HoverButton
-          aria-label={props.collapsed ? "Expand workspace navigation" : "Collapse workspace navigation"}
-          className="agenthub-sidebar-toggle agenthub-left-toggle"
-          onClick={props.onToggleCollapsed}
-          title={props.collapsed ? "Expand" : "Collapse"}
-          type="button"
-        >
-          <Icon icon={PanelLeftClose} />
-        </HoverButton>
-        <HoverButton
-          aria-label={`Runtime ${props.model.runtime.status}`}
+          aria-current={props.conversationActive ? "page" : undefined}
+          aria-label="Open conversation"
           className="agenthub-rail-button"
-          onClick={() => props.onSelect({ id: "runtime", mode: "runtime" })}
-          title={`Runtime ${props.model.runtime.status}`}
+          onClick={props.onOpenConversation}
+          title="Chat"
           type="button"
         >
-          <Icon icon={Terminal} />
+          <Icon icon={MessageSquare} />
           <span aria-hidden="true" className="agenthub-rail-status-dot" data-status={props.model.runtime.status} />
         </HoverButton>
         <HoverButton
-          aria-label={`${props.model.workspace.agents.length} agents`}
+          aria-current={props.agentsActive ? "page" : undefined}
+          aria-label="Open agents"
           className="agenthub-rail-button"
+          onClick={props.onOpenAgents}
           title="Agents"
           type="button"
         >
           <Icon icon={Bot} />
           <small>{props.model.workspace.agents.length}</small>
+        </HoverButton>
+        <HoverButton
+          aria-current={props.connectionsActive ? "page" : undefined}
+          aria-label="Open connections"
+          className="agenthub-rail-button"
+          onClick={props.onOpenConnections}
+          title="Connections"
+          type="button"
+        >
+          <Icon icon={Cable} />
         </HoverButton>
         <HoverButton
           aria-label={`${props.model.workspace.runCount} runs`}
@@ -126,12 +144,28 @@ export function LeftNavigation(props: {
           </HoverButton>
         </div>
       </div>
+      {props.compact || props.collapsed ? null : props.agentsActive ? (
+        <AgentDirectory
+          model={props.model}
+          selectedAgentId={props.selectedAgentId}
+          onSelectAgent={props.onSelectAgent}
+        />
+      ) : (
       <section aria-label="Conversation navigation" className="agenthub-chat-list-panel">
         <header className="agenthub-chat-list-header">
           <label className="agenthub-conversation-search">
             <Icon icon={Search} />
             <input aria-label="Search conversations" placeholder="Search" type="search" />
           </label>
+          <HoverButton
+            aria-label={props.collapsed ? "Expand workspace navigation" : "Collapse workspace navigation"}
+            className="agenthub-icon-button"
+            onClick={props.onToggleCollapsed}
+            title={props.collapsed ? "Expand" : "Collapse"}
+            type="button"
+          >
+            <Icon icon={PanelLeftClose} />
+          </HoverButton>
         </header>
         <ScrollArea.Root className="agenthub-scroll-root">
           <ScrollArea.Viewport className="agenthub-scroll-viewport">
@@ -142,6 +176,7 @@ export function LeftNavigation(props: {
           </ScrollArea.Scrollbar>
         </ScrollArea.Root>
       </section>
+      )}
     </aside>
   );
 }

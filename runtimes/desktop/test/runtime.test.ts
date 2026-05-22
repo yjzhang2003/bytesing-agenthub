@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createServer } from "node:http";
+import { mkdtemp, writeFile, chmod } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
+  AgentMemoryClient,
+  checkClaudeCodeProviderHealth,
   createRuntimeRegistrationPayload,
   ClaudeCodeProviderAdapter,
   DesktopRuntime,
@@ -75,17 +81,39 @@ describe("DesktopRuntime", () => {
   });
 
   it("reads local config and creates registration metadata", async () => {
+    const checkedAt = "2026-05-22T00:00:00.000Z";
     const config = readDesktopRuntimeConfig({
       AGENTHUB_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
       AGENTHUB_PROVIDER_MODE: "smoke",
       AGENTHUB_WORKSPACE_PATH: process.cwd(),
       AGENTHUB_WORKSPACE_NAME: "AgentHub",
+      AGENTMEMORY_ENABLED: "1",
+      AGENTMEMORY_URL: "http://127.0.0.1:3111",
     } as NodeJS.ProcessEnv);
-    const payload = await createRuntimeRegistrationPayload(config);
+    const payload = await createRuntimeRegistrationPayload(config, {
+      providerHealth: {
+        providerMode: "smoke",
+        status: "connected",
+        binaryPathLabel: "smoke",
+        checkedAt,
+        failureReason: null,
+      },
+      memoryHealth: {
+        enabled: true,
+        status: "connected",
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt,
+        failureReason: null,
+      },
+    });
 
     expect(config.providerMode).toBe("smoke");
+    expect(config.agentMemory.enabled).toBe(true);
     expect(payload.workspace.displayName).toBe("AgentHub");
     expect(payload.capabilities).toContain("provider:smoke");
+    expect(payload.providerHealth).toMatchObject({ status: "connected" });
+    expect(payload.memoryHealth).toMatchObject({ status: "connected" });
   });
 
   it("emits normalized smoke provider events", async () => {
@@ -112,6 +140,7 @@ describe("DesktopRuntime", () => {
   });
 
   it("polls runtime commands and publishes provider events", async () => {
+    const seenPrompts: string[] = [];
     const runtime = new DesktopRuntime(
       {
         authToken: "token",
@@ -119,7 +148,25 @@ describe("DesktopRuntime", () => {
         deviceName: "MacBook Pro",
         heartbeatSeconds: 15,
       },
-      [createFakeProvider()],
+      [
+        {
+          kind: "fake-provider",
+          async startRun(request, sink) {
+            seenPrompts.push(request.systemPrompt);
+            return createFakeProvider().startRun(request, sink);
+          },
+        },
+      ],
+      {
+        memoryClient: {
+          async fetchContext() {
+            return "Remember that the user prefers concise research notes.";
+          },
+          async observe(input) {
+            published.push({ type: "memory.observe", sourceType: input.sourceType, text: input.text });
+          },
+        },
+      },
     );
     const published: unknown[] = [];
     const poller = {
@@ -139,6 +186,10 @@ describe("DesktopRuntime", () => {
               prompt: "hello",
               systemPrompt: "worker",
               providerMode: "fake-provider",
+              memory: {
+                enabled: true,
+                namespace: "agenthub:user_1:workspace_1:agent_1",
+              },
             },
           },
         ];
@@ -150,10 +201,22 @@ describe("DesktopRuntime", () => {
 
     await runtime.pollAndHandleCommands("runtime_1", poller);
 
-    expect(published).toMatchObject([
+    expect(published.filter((event) => (event as { type?: string }).type !== "memory.observe")).toMatchObject([
       { type: "run.status", status: "running" },
       { type: "message.delta", delta: "hello" },
     ]);
+    expect(seenPrompts[0]).toContain("Long-term memory");
+    expect(seenPrompts[0]).toContain("concise research notes");
+    expect(published).toContainEqual({
+      type: "memory.observe",
+      sourceType: "user.prompt",
+      text: "hello",
+    });
+    expect(published).toContainEqual({
+      type: "memory.observe",
+      sourceType: "agent.output",
+      text: "hello",
+    });
   });
 
   it("exposes the Claude Code provider adapter boundary", () => {
@@ -184,5 +247,109 @@ describe("DesktopRuntime", () => {
       type: "run.status",
       status: "failed",
     });
+  });
+
+  it("reports Claude Code preflight health for missing and executable binaries", async () => {
+    await expect(
+      checkClaudeCodeProviderHealth({
+        providerMode: "claude-code",
+        binaryPath: "bad binary",
+      }),
+    ).resolves.toMatchObject({
+      status: "misconfigured",
+    });
+
+    await expect(
+      checkClaudeCodeProviderHealth({
+        providerMode: "claude-code",
+        binaryPath: "/tmp/agenthub-missing-claude-code-binary",
+      }),
+    ).resolves.toMatchObject({
+      status: "missing",
+      binaryPathLabel: "/tmp/agenthub-missing-claude-code-binary",
+    });
+
+    const directory = await mkdtemp(join(tmpdir(), "agenthub-claude-"));
+    const binary = join(directory, "claude");
+    await writeFile(binary, "#!/bin/sh\nprintf 'claude fake 1.0\\n'\n");
+    await chmod(binary, 0o755);
+
+    await expect(
+      checkClaudeCodeProviderHealth({
+        providerMode: "claude-code",
+        binaryPath: binary,
+      }),
+    ).resolves.toMatchObject({
+      status: "connected",
+      binaryPathLabel: binary,
+    });
+  });
+
+  it("checks agentmemory health, fetches context, and records observations", async () => {
+    await expect(
+      new AgentMemoryClient({
+        enabled: true,
+        baseUrl: "not a url",
+        viewerUrl: "http://127.0.0.1:3113",
+        timeoutMs: 500,
+      }).checkHealth(),
+    ).resolves.toMatchObject({ status: "misconfigured" });
+
+    const observed: unknown[] = [];
+    const server = createServer((request, response) => {
+      if (request.url === "/agentmemory/health") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: true }));
+        return;
+      }
+      if (request.url === "/agentmemory/context") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ context: "User likes direct answers." }));
+        return;
+      }
+      if (request.url === "/agentmemory/observe") {
+        const chunks: Buffer[] = [];
+        request.on("data", (chunk: Buffer) => chunks.push(chunk));
+        request.on("end", () => {
+          observed.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+          response.writeHead(202, { "content-type": "application/json" });
+          response.end(JSON.stringify({ ok: true }));
+        });
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected TCP server address");
+    }
+    const client = new AgentMemoryClient({
+      enabled: true,
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      viewerUrl: "http://127.0.0.1:3113",
+      timeoutMs: 500,
+    });
+
+    try {
+      await expect(client.checkHealth()).resolves.toMatchObject({ status: "connected" });
+      await expect(client.fetchContext({ namespace: "agenthub:user:workspace:agent", query: "hello" })).resolves.toBe(
+        "User likes direct answers.",
+      );
+      await client.observe({
+        namespace: "agenthub:user:workspace:agent",
+        text: "hello",
+        sourceType: "user.prompt",
+        metadata: { runId: "run_1" },
+      });
+      expect(observed[0]).toMatchObject({
+        project: "agenthub:user:workspace:agent",
+        content: "hello",
+        metadata: { runId: "run_1", sourceType: "user.prompt" },
+      });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 });

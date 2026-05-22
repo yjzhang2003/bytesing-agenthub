@@ -11,6 +11,30 @@ import type {
 
 export type AgentHubAuthMode = "local-demo" | "supabase";
 export type AgentHubProviderMode = "smoke" | "claude-code";
+export type ProviderConnectionStatus = "connected" | "missing" | "unavailable" | "misconfigured";
+export type MemoryConnectionStatus = "connected" | "disabled" | "unavailable" | "misconfigured";
+
+export interface ProviderHealth {
+  readonly providerMode: AgentHubProviderMode;
+  readonly status: ProviderConnectionStatus;
+  readonly binaryPathLabel: string;
+  readonly checkedAt: ISODateTime;
+  readonly failureReason: string | null;
+}
+
+export interface MemoryHealth {
+  readonly enabled: boolean;
+  readonly status: MemoryConnectionStatus;
+  readonly url: string;
+  readonly viewerUrl: string;
+  readonly checkedAt: ISODateTime;
+  readonly failureReason: string | null;
+}
+
+export interface AgentMemoryConfig {
+  readonly namespace: string;
+  readonly enabled: boolean;
+}
 
 export interface ServiceHealth {
   readonly ok: boolean;
@@ -43,6 +67,8 @@ export interface RuntimeRegistrationPayload {
   readonly appVersion: string;
   readonly capabilities: readonly string[];
   readonly workspace: WorkspaceMetadata;
+  readonly providerHealth?: ProviderHealth;
+  readonly memoryHealth?: MemoryHealth;
 }
 
 export interface RuntimeHeartbeatPayload {
@@ -57,6 +83,8 @@ export interface WorkbenchSnapshot {
   readonly workspaces: readonly Workspace[];
   readonly runtimeDevices: readonly RuntimeDevice[];
   readonly workspaceMetadata: WorkspaceMetadata | null;
+  readonly providerHealth?: ProviderHealth | null;
+  readonly memoryHealth?: MemoryHealth | null;
   readonly conversations: readonly Conversation[];
   readonly agents: readonly Agent[];
   readonly runs: readonly Run[];
@@ -70,6 +98,23 @@ export interface CreateLocalRunRequest {
   readonly agentId: Id;
   readonly prompt: string;
   readonly planId?: Id | null;
+}
+
+export interface CreateAgentRequest {
+  readonly workspaceId: Id;
+  readonly displayName: string;
+  readonly role: Agent["role"];
+  readonly systemPrompt: string;
+  readonly capabilityTags?: readonly string[];
+  readonly policy?: Record<string, unknown>;
+}
+
+export interface UpdateAgentRequest {
+  readonly displayName?: string | undefined;
+  readonly role?: Agent["role"] | undefined;
+  readonly systemPrompt?: string | undefined;
+  readonly capabilityTags?: readonly string[] | undefined;
+  readonly policy?: Record<string, unknown> | undefined;
 }
 
 export type RuntimeCommand =
@@ -87,6 +132,7 @@ export type RuntimeCommand =
         readonly prompt: string;
         readonly systemPrompt: string;
         readonly providerMode: AgentHubProviderMode;
+        readonly memory?: AgentMemoryConfig;
       };
     }
   | {
@@ -120,6 +166,9 @@ export const agentHubApiPaths = {
   runtimeHeartbeat: "/runtime/heartbeat",
   runtimeOffline: "/runtime/offline",
   runtimeCommands: "/runtime/commands",
+  runtimeProviderStatus: "/runtime/provider-status",
   runtimeEvents: "/runtime/events",
+  memoryStatus: "/memory/status",
+  agents: "/agents",
   runs: "/runs",
 } as const;

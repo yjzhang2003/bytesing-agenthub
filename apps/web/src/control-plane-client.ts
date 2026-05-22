@@ -2,7 +2,9 @@ import {
   agentHubApiPaths,
   agentHubLocalDefaults,
   type AgentHubEvent,
+  type CreateAgentRequest,
   type CreateLocalRunRequest,
+  type UpdateAgentRequest,
   type WorkbenchSnapshot,
 } from "@agenthub/contracts";
 
@@ -28,6 +30,23 @@ export class WebControlPlaneClient {
     readonly planId?: string | null;
   }) {
     return this.#post(agentHubApiPaths.runs, input satisfies CreateLocalRunRequest);
+  }
+
+  async listAgents(workspaceId?: string) {
+    const suffix = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+    return this.#get(`${agentHubApiPaths.agents}${suffix}`);
+  }
+
+  async createAgent(input: CreateAgentRequest) {
+    return this.#post(agentHubApiPaths.agents, input);
+  }
+
+  async updateAgent(agentId: string, input: UpdateAgentRequest) {
+    return this.#post(`/agents/${agentId}`, input, "PATCH");
+  }
+
+  async archiveAgent(agentId: string) {
+    return this.#post(`/agents/${agentId}/archive`, {});
   }
 
   async cancelRun(runId: string) {
@@ -63,14 +82,14 @@ export class WebControlPlaneClient {
     return (await response.json()) as T;
   }
 
-  async #post(path: string, body: unknown): Promise<unknown> {
+  async #post(path: string, body: unknown, method = "POST"): Promise<unknown> {
     const response = await fetch(`${this.#baseUrl}${path}`, {
       body: JSON.stringify(body),
       headers: {
         authorization: `Bearer ${this.#accessToken}`,
         "content-type": "application/json",
       },
-      method: "POST",
+      method,
     });
     if (!response.ok) {
       throw new Error(`Control plane request failed: ${response.status}`);

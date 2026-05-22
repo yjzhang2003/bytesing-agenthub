@@ -49,6 +49,37 @@ function AgentHubWebApp(): React.ReactElement {
           .createRun(createRunRequestFromSnapshot(active, target, message))
           .then(() => loadSnapshot());
       }}
+      onCreateAgentRole={(input) => {
+        const active = snapshot;
+        if (!active) {
+          return;
+        }
+        void client
+          .createAgent({
+            workspaceId: active.activeWorkspaceId,
+            displayName: input.displayName,
+            role: input.role,
+            systemPrompt: input.systemPrompt,
+            capabilityTags: input.capabilityTags,
+            policy: input.policy,
+          })
+          .then(() => loadSnapshot());
+      }}
+      onUpdateAgentRole={(input) => {
+        void client
+          .updateAgent(input.agentId, {
+            displayName: input.displayName,
+            role: input.role,
+            systemPrompt: input.systemPrompt,
+            capabilityTags: input.capabilityTags,
+            policy: input.policy,
+          })
+          .then(() => loadSnapshot());
+      }}
+      onArchiveAgentRole={(agentId) => {
+        void client.archiveAgent(agentId).then(() => loadSnapshot());
+      }}
+      onRefreshConnections={() => void loadSnapshot()}
       {...(snapshot ? { snapshot } : {})}
     />
   );

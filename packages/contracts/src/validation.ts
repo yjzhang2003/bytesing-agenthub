@@ -1,8 +1,11 @@
 import type { z } from "zod";
 import {
   createLocalRunRequestSchema,
+  createAgentRequestSchema,
   diffMetadataSchema,
+  memoryHealthSchema,
   orchestratorDispatchPlanSchema,
+  providerHealthSchema,
   providerRuntimeEventSchema,
   runtimeCommandSchema,
   runtimeHeartbeatPayloadSchema,
@@ -10,6 +13,7 @@ import {
   serviceHealthSchema,
   workbenchSnapshotSchema,
   workspaceMetadataSchema,
+  updateAgentRequestSchema,
 } from "./schemas.js";
 
 export interface ValidationResult<T> {
@@ -57,6 +61,18 @@ export function validateServiceHealth(
   return parseWithSchema(serviceHealthSchema, value);
 }
 
+export function validateProviderHealth(
+  value: unknown,
+): ValidationResult<z.infer<typeof providerHealthSchema>> {
+  return parseWithSchema(providerHealthSchema, value);
+}
+
+export function validateMemoryHealth(
+  value: unknown,
+): ValidationResult<z.infer<typeof memoryHealthSchema>> {
+  return parseWithSchema(memoryHealthSchema, value);
+}
+
 export function validateRuntimeRegistrationPayload(
   value: unknown,
 ): ValidationResult<z.infer<typeof runtimeRegistrationPayloadSchema>> {
@@ -85,6 +101,18 @@ export function validateCreateLocalRunRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createLocalRunRequestSchema>> {
   return parseWithSchema(createLocalRunRequestSchema, value);
+}
+
+export function validateCreateAgentRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof createAgentRequestSchema>> {
+  return parseWithSchema(createAgentRequestSchema, value);
+}
+
+export function validateUpdateAgentRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof updateAgentRequestSchema>> {
+  return parseWithSchema(updateAgentRequestSchema, value);
 }
 
 export function validateRuntimeCommand(

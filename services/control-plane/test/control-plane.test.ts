@@ -141,7 +141,7 @@ describe("control plane registry", () => {
     const run = registry.createRun("user_1", {
       workspaceId: "workspace_1",
       conversationId: "conversation_1",
-      agentId: "agent_1",
+      agentId: agentHubLocalDefaults.implementerAgentId,
     });
     const cancelled = registry.cancelRun("user_1", run.id);
 
@@ -226,6 +226,127 @@ describe("control plane registry", () => {
       failureReason: "cancelled",
     });
   });
+
+  it("creates user agent roles and includes them in snapshots", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "You are a research-focused coding agent.",
+      capabilityTags: ["research"],
+      policy: { network: "ask" },
+    });
+
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    expect(snapshot.agents.map((candidate) => candidate.displayName)).toContain("Researcher");
+    expect(snapshot.agents.find((candidate) => candidate.id === agent.id)).toMatchObject({
+      systemPrompt: "You are a research-focused coding agent.",
+      capabilityTags: ["research"],
+    });
+  });
+
+  it("updates and archives user agent roles", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "Original prompt",
+      capabilityTags: [],
+      policy: {},
+    });
+
+    registry.updateAgent("user_1", agent.id, {
+      displayName: "Senior Researcher",
+      systemPrompt: "Updated prompt",
+    });
+    expect(
+      registry.createWorkbenchSnapshot("user_1").agents.find((candidate) => candidate.id === agent.id),
+    ).toMatchObject({
+      displayName: "Senior Researcher",
+      systemPrompt: "Updated prompt",
+    });
+
+    registry.archiveAgent("user_1", agent.id);
+    expect(
+      registry.createWorkbenchSnapshot("user_1").agents.some((candidate) => candidate.id === agent.id),
+    ).toBe(false);
+    expect(() =>
+      registry.createRun("user_1", {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "hello",
+      }),
+    ).toThrow("Agent not found");
+  });
+
+  it("uses selected agent prompts and memory namespace in run commands", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "You remember research decisions.",
+      capabilityTags: [],
+      policy: {},
+    });
+
+    registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: agentHubLocalDefaults.conversationId,
+      agentId: agent.id,
+      prompt: "hello",
+    });
+
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      type: "run.start",
+      payload: {
+        agentId: agent.id,
+        systemPrompt: "You remember research decisions.",
+        memory: {
+          enabled: true,
+          namespace: `agenthub:user_1:workspace_1:${agent.id}`,
+        },
+      },
+    });
+  });
+
+  it("stores provider and memory health from runtime registration", () => {
+    const registry = new ControlPlaneRegistry();
+    const checkedAt = "2026-05-22T00:00:00.000Z";
+    registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:claude-code"],
+      providerHealth: {
+        providerMode: "claude-code",
+        status: "connected",
+        binaryPathLabel: "/usr/local/bin/claude",
+        checkedAt,
+        failureReason: null,
+      },
+      memoryHealth: {
+        enabled: true,
+        status: "connected",
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt,
+        failureReason: null,
+      },
+    });
+
+    expect(registry.createWorkbenchSnapshot("user_1")).toMatchObject({
+      providerHealth: { status: "connected" },
+      memoryHealth: { status: "connected" },
+    });
+    expect(registry.latestProviderHealth("user_1")).toMatchObject({ status: "connected" });
+    expect(registry.latestMemoryHealth("user_1")).toMatchObject({ status: "connected" });
+  });
 });
 
 describe("control plane HTTP local mode", () => {
@@ -279,6 +400,50 @@ describe("control plane HTTP local mode", () => {
       const snapshot = await fetch(`${baseUrl}/workbench/snapshot`, { headers });
       const snapshotBody = await snapshot.json();
       expect(snapshotBody.runtimeDevices[0].status).toBe("online");
+
+      const createAgentResponse = await fetch(`${baseUrl}/agents`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: snapshotBody.activeWorkspaceId,
+          displayName: "Researcher",
+          role: "worker",
+          systemPrompt: "You are a research role.",
+          capabilityTags: ["research"],
+          policy: {},
+        }),
+      });
+      expect(createAgentResponse.status).toBe(201);
+      const createdAgent = await createAgentResponse.json();
+      expect(createdAgent.agent.displayName).toBe("Researcher");
+
+      const agentsResponse = await fetch(`${baseUrl}/agents`, { headers });
+      expect((await agentsResponse.json()).agents.map((agent: { displayName: string }) => agent.displayName)).toContain(
+        "Researcher",
+      );
+
+      const updateAgentResponse = await fetch(`${baseUrl}/agents/${createdAgent.agent.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ systemPrompt: "Updated research role." }),
+      });
+      expect(updateAgentResponse.status).toBe(200);
+
+      const preflight = await fetch(`${baseUrl}/agents/${createdAgent.agent.id}`, {
+        method: "OPTIONS",
+        headers: {
+          "access-control-request-headers": "authorization, content-type",
+          "access-control-request-method": "PATCH",
+          origin: "http://127.0.0.1:5173",
+        },
+      });
+      expect(preflight.headers.get("access-control-allow-methods")).toContain("PATCH");
+
+      const providerStatus = await fetch(`${baseUrl}/runtime/provider-status`, { headers });
+      expect(providerStatus.status).toBe(200);
+
+      const memoryStatus = await fetch(`${baseUrl}/memory/status`, { headers });
+      expect(memoryStatus.status).toBe(200);
 
       const runResponse = await fetch(`${baseUrl}/runs`, {
         method: "POST",

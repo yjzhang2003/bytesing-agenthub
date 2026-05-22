@@ -1,13 +1,18 @@
 import type {
   Agent,
+  AgentMemoryConfig,
   AgentHubProviderMode,
+  CreateAgentRequest,
   Id,
+  MemoryHealth,
   Message,
+  ProviderHealth,
   ProviderRuntimeEvent,
   RuntimeCommand,
   RuntimeDevice,
   Run,
   RunStatus,
+  UpdateAgentRequest,
   WorkbenchSnapshot,
   Workspace,
   WorkspaceMetadata,
@@ -23,6 +28,8 @@ export interface RegisterRuntimeDeviceInput {
   readonly appVersion: string;
   readonly capabilities: readonly string[];
   readonly workspace?: WorkspaceMetadata;
+  readonly providerHealth?: ProviderHealth;
+  readonly memoryHealth?: MemoryHealth;
 }
 
 export interface WorkspaceBinding {
@@ -50,6 +57,10 @@ export class ControlPlaneRegistry {
   readonly #runs = new Map<Id, Run>();
   readonly #messages = new Map<Id, Message>();
   readonly #commands = new Map<Id, RuntimeCommand[]>();
+  readonly #agents = new Map<Id, Agent>();
+  readonly #archivedAgentIds = new Set<Id>();
+  readonly #providerHealth = new Map<Id, ProviderHealth>();
+  readonly #memoryHealth = new Map<Id, MemoryHealth>();
 
   constructor(options: {
     readonly events?: ControlPlaneEventBus;
@@ -92,6 +103,12 @@ export class ControlPlaneRegistry {
         runtimeDeviceId: device.id,
         localPath: input.workspace.localPathLabel,
       });
+    }
+    if (input.providerHealth) {
+      this.#providerHealth.set(ownerUserId, input.providerHealth);
+    }
+    if (input.memoryHealth) {
+      this.#memoryHealth.set(ownerUserId, input.memoryHealth);
     }
     this.#events.publish(this.#deviceStatusEvent(device));
     return device;
@@ -160,6 +177,7 @@ export class ControlPlaneRegistry {
     if (device.status === "offline") {
       throw new Error("Workspace runtime is offline");
     }
+    const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
 
     const now = this.#now().toISOString();
     const run: Run = {
@@ -190,11 +208,66 @@ export class ControlPlaneRegistry {
         agentId: run.agentId,
         workspacePath: binding.localPath,
         prompt: input.prompt ?? "Run AgentHub local smoke task",
-        systemPrompt: this.#agentSystemPrompt(input.agentId),
+        systemPrompt: agent.systemPrompt,
         providerMode,
+        memory: this.#agentMemoryConfig(ownerUserId, run.workspaceId, input.agentId),
       },
     });
     return run;
+  }
+
+  createAgent(ownerUserId: Id, input: CreateAgentRequest): Agent {
+    this.#requireWorkspaceAvailable(ownerUserId, input.workspaceId);
+    const now = this.#now().toISOString();
+    const agent: Agent = {
+      id: crypto.randomUUID(),
+      ownerUserId,
+      providerId: "provider_local",
+      workspaceId: input.workspaceId,
+      displayName: input.displayName,
+      role: input.role,
+      systemPrompt: input.systemPrompt,
+      capabilityTags: [...(input.capabilityTags ?? [])],
+      policy: input.policy ?? {},
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.#agents.set(agent.id, agent);
+    return agent;
+  }
+
+  updateAgent(ownerUserId: Id, agentId: Id, input: UpdateAgentRequest): Agent {
+    const existing = this.#requireOwnedAgent(ownerUserId, agentId);
+    const updated: Agent = {
+      ...existing,
+      ...(input.displayName ? { displayName: input.displayName } : {}),
+      ...(input.role ? { role: input.role } : {}),
+      ...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt } : {}),
+      ...(input.capabilityTags ? { capabilityTags: [...input.capabilityTags] } : {}),
+      ...(input.policy ? { policy: input.policy } : {}),
+      updatedAt: this.#now().toISOString(),
+    };
+    this.#agents.set(updated.id, updated);
+    return updated;
+  }
+
+  archiveAgent(ownerUserId: Id, agentId: Id): Agent {
+    const agent = this.#requireOwnedAgent(ownerUserId, agentId);
+    this.#archivedAgentIds.add(agent.id);
+    return { ...agent, updatedAt: this.#now().toISOString() };
+  }
+
+  listAgents(ownerUserId: Id, workspaceId?: Id): readonly Agent[] {
+    const agents = this.#allAgents(ownerUserId, workspaceId);
+    return agents.filter((agent) => !this.#archivedAgentIds.has(agent.id));
+  }
+
+  latestProviderHealth(ownerUserId: Id): ProviderHealth | null {
+    return this.#providerHealth.get(ownerUserId) ?? null;
+  }
+
+  latestMemoryHealth(ownerUserId: Id): MemoryHealth | null {
+    return this.#memoryHealth.get(ownerUserId) ?? null;
   }
 
   updateRunStatus(ownerUserId: Id, runId: Id, status: RunStatus, failureReason?: string): Run {
@@ -321,6 +394,8 @@ export class ControlPlaneRegistry {
       workspaces: [workspace],
       runtimeDevices: [...this.#devices.values()].filter((device) => device.ownerUserId === ownerUserId),
       workspaceMetadata: metadata,
+      providerHealth: this.latestProviderHealth(ownerUserId),
+      memoryHealth: this.latestMemoryHealth(ownerUserId),
       conversations: [
         {
           id: agentHubLocalDefaults.conversationId,
@@ -333,7 +408,7 @@ export class ControlPlaneRegistry {
           updatedAt: now,
         },
       ],
-      agents: this.#defaultAgents(ownerUserId, workspace.id, now),
+      agents: this.listAgents(ownerUserId, workspace.id),
       runs: [...this.#runs.values()].filter((run) => run.ownerUserId === ownerUserId),
       messages: [...this.#messages.values()].filter((message) => message.ownerUserId === ownerUserId),
       availableActions: runtimeDeviceId ? ["run.start"] : [],
@@ -354,6 +429,38 @@ export class ControlPlaneRegistry {
       throw new Error("Run not found");
     }
     return run;
+  }
+
+  #requireOwnedAgent(ownerUserId: Id, agentId: Id): Agent {
+    const agent =
+      this.#agents.get(agentId) ??
+      this.#defaultAgents(ownerUserId, agentHubLocalDefaults.workspaceId, this.#now().toISOString()).find(
+        (candidate) => candidate.id === agentId,
+      );
+    if (!agent || agent.ownerUserId !== ownerUserId || this.#archivedAgentIds.has(agent.id)) {
+      throw new Error("Agent not found");
+    }
+    return agent;
+  }
+
+  #requireRunnableAgent(ownerUserId: Id, workspaceId: Id, agentId: Id): Agent {
+    const agent = this.#allAgents(ownerUserId, workspaceId).find((candidate) => candidate.id === agentId);
+    if (!agent) {
+      throw new Error("Agent not found");
+    }
+    return agent;
+  }
+
+  #requireWorkspaceAvailable(ownerUserId: Id, workspaceId: Id): void {
+    const binding = this.#workspaceBindings.get(workspaceId);
+    const metadata = this.#workspaceMetadata.get(workspaceId);
+    if (binding?.ownerUserId === ownerUserId || metadata?.workspaceId === workspaceId) {
+      return;
+    }
+    if (workspaceId === agentHubLocalDefaults.workspaceId) {
+      return;
+    }
+    throw new Error("Workspace not found");
   }
 
   #deviceStatusEvent(device: RuntimeDevice): AgentHubEvent {
@@ -442,9 +549,28 @@ export class ControlPlaneRegistry {
     ];
   }
 
-  #agentSystemPrompt(agentId: Id): string {
-    return agentId === agentHubLocalDefaults.orchestratorAgentId
-      ? "You are the AgentHub Orchestrator."
-      : "You are the AgentHub Implementer.";
+  #allAgents(ownerUserId: Id, workspaceId?: Id): readonly Agent[] {
+    const now = this.#now().toISOString();
+    const targetWorkspaceId =
+      workspaceId ??
+      this.#workspaceMetadata.values().next().value?.workspaceId ??
+      agentHubLocalDefaults.workspaceId;
+    const customAgents = [...this.#agents.values()].filter(
+      (agent) =>
+        agent.ownerUserId === ownerUserId &&
+        (!workspaceId || agent.workspaceId === workspaceId) &&
+        !this.#archivedAgentIds.has(agent.id),
+    );
+    const defaultAgents = this.#defaultAgents(ownerUserId, targetWorkspaceId, now).filter(
+      (agent) => !this.#archivedAgentIds.has(agent.id) && !customAgents.some((custom) => custom.id === agent.id),
+    );
+    return [...defaultAgents, ...customAgents];
+  }
+
+  #agentMemoryConfig(ownerUserId: Id, workspaceId: Id, agentId: Id): AgentMemoryConfig {
+    return {
+      enabled: true,
+      namespace: `agenthub:${ownerUserId}:${workspaceId}:${agentId}`,
+    };
   }
 }

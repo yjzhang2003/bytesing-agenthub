@@ -50,6 +50,19 @@ function snapshot(status: "online" | "offline" | "degraded" | "active-running" =
         updatedAt: now,
         workspaceId: "workspace_1",
       },
+      {
+        capabilityTags: ["research"],
+        createdAt: now,
+        displayName: "Researcher",
+        id: "agent_researcher",
+        ownerUserId: "user_1",
+        policy: { network: "ask" },
+        providerId: "provider_1",
+        role: "worker",
+        systemPrompt: "Research before coding.",
+        updatedAt: now,
+        workspaceId: "workspace_1",
+      },
     ],
     authenticated: true,
     availableActions: ["run.create"],
@@ -92,6 +105,21 @@ function snapshot(status: "online" | "offline" | "degraded" | "active-running" =
         updatedAt: now,
       },
     ],
+    providerHealth: {
+      providerMode: "claude-code",
+      status: "connected",
+      binaryPathLabel: "/usr/local/bin/claude",
+      checkedAt: now,
+      failureReason: null,
+    },
+    memoryHealth: {
+      enabled: true,
+      status: "connected",
+      url: "http://127.0.0.1:3111",
+      viewerUrl: "http://127.0.0.1:3113",
+      checkedAt: now,
+      failureReason: null,
+    },
     runs: [
       {
         agentId: "agent_2",
@@ -228,10 +256,12 @@ describe("@agenthub/ui components", () => {
 
     expect(html).toContain("agenthub-conversation-row");
     expect(html).toContain(".agenthub-conversation-row[aria-current=\"page\"]");
-    expect(html).toContain(".agenthub-conversation-row[aria-current=\"page\"]::before");
     expect(html).toContain("grid-template-areas:");
-    expect(html).toContain("min-height: 50px");
+    expect(html).toContain("min-height: 64px");
+    expect(html).toContain("border-radius: 0");
     expect(html).toContain("border-color: transparent");
+    expect(html).not.toContain("translateY(-1px)");
+    expect(html).not.toContain("translateX(2px)");
   });
 
   it("uses a denser IM top bar with coordinated content rows", () => {
@@ -341,6 +371,74 @@ describe("@agenthub/ui components", () => {
     expect(settings).toContain("Appearance");
     expect(settings).toContain("Permissions");
     expect(settings).toContain("Review");
+    expect(settings).not.toContain("Claude Code");
+    expect(settings).not.toContain("Long-term memory");
+    expect(settings).not.toContain("Create agent role");
+  });
+
+  it("renders a dedicated agents page with list, editor, and archive protections", () => {
+    const model = createWorkbenchViewModel(snapshot());
+    const html = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="agents" viewModel={model} />);
+
+    expect(html).toContain('data-center-view="agents"');
+    expect(html).toContain("--agenthub-directory-column:316px");
+    expect(html).toContain('data-view="agents"');
+    expect(html).toContain("Agent roles");
+    expect(html).toContain('aria-label="Agent directory"');
+    expect(html).toContain('aria-label="Resize agent directory"');
+    expect(html).toContain('aria-label="Search agents"');
+    expect(html).toContain("Researcher");
+    expect(html).toContain("Plan work");
+    expect(html).toContain("Capability tags");
+    expect(html).toContain("Policy JSON");
+    expect(html).toContain("New agent");
+    expect(html).toContain("Save changes");
+    expect(html).toContain("Archive");
+    expect(html).toContain("Default agent");
+    expect(html).toContain('disabled="" type="button"');
+    expect(html).not.toContain('aria-label="Conversation navigation"');
+    expect(html).not.toContain("Conversation details");
+  });
+
+  it("renders a dedicated connections page for Claude Code, memory, and future Codex", () => {
+    const model = createWorkbenchViewModel(snapshot());
+    const html = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="connections" viewModel={model} />);
+
+    expect(html).toContain('data-center-view="connections"');
+    expect(html).toContain('data-view="connections"');
+    expect(html).toContain("Connections");
+    expect(html).toContain("Claude Code");
+    expect(html).toContain('aria-label="Resize provider list"');
+    expect(html).toContain("connected");
+    expect(html).toContain("/usr/local/bin/claude");
+    expect(html).toContain("Refresh status");
+    expect(html).toContain("Codex");
+    expect(html).toContain("Coming soon");
+    expect(html).toContain("Long-term memory");
+    expect(html).toContain("http://127.0.0.1:3111");
+    expect(html).not.toContain('aria-label="Conversation navigation"');
+    expect(html).not.toContain("Conversation details");
+  });
+
+  it("uses rail tools to open agents and connections pages", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain('aria-label="Open conversation"');
+    expect(html).toContain('aria-label="Open agents"');
+    expect(html).toContain('aria-label="Open connections"');
+    expect(html).toContain('aria-label="Resize conversation list"');
+    expect(html).toContain("lucide-message-square");
+    expect(html).toContain("lucide-cable");
+    expect(html).toMatch(/aria-label="Search conversations"[\s\S]*aria-label="Collapse workspace navigation"/);
+  });
+
+  it("keeps the left rail visible when conversation navigation is collapsed", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} initialLeftCollapsed />);
+
+    expect(html).toContain('data-left-collapsed="true"');
+    expect(html).toContain('aria-label="Workspace tools"');
+    expect(html).toContain('aria-label="Open conversation"');
+    expect(html).not.toContain('aria-label="Conversation navigation"');
   });
 
   it("maps snapshots into MVP view models without client-only transcript fixtures", () => {
@@ -360,6 +458,10 @@ describe("@agenthub/ui components", () => {
 
     expect(model.workspace.workspaceName).toBe("AgentHub");
     expect(model.runtime.canExecute).toBe(true);
+    expect(model.runtime.providerStatusLabel).toBe("Claude Code connected");
+    expect(model.runtime.memoryStatusLabel).toBe("Memory connected");
+    expect(model.agentsPage.agents.map((agent) => agent.label)).toContain("Researcher");
+    expect(model.connections.providers.map((provider) => provider.label)).toEqual(["Claude Code", "Codex"]);
     expect(model.timeline.map((item) => item.kind)).toEqual([
       "message",
       "run-event",

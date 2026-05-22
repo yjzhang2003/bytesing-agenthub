@@ -2,7 +2,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import {
   agentHubApiPaths,
   agentHubLocalDefaults,
+  createAgentRequestSchema,
   createLocalRunRequestSchema,
+  updateAgentRequestSchema,
   providerRuntimeEventSchema,
   runtimeHeartbeatPayloadSchema,
   runtimeRegistrationPayloadSchema,
@@ -34,7 +36,7 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, {
     "access-control-allow-headers": "authorization, content-type",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
     "access-control-allow-origin": "*",
     "content-type": "application/json",
   });
@@ -119,6 +121,44 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
+      if (request.method === "GET" && url.pathname === agentHubApiPaths.runtimeProviderStatus) {
+        sendJson(response, 200, { providerHealth: registry.latestProviderHealth(auth.userId) });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === agentHubApiPaths.memoryStatus) {
+        sendJson(response, 200, { memoryHealth: registry.latestMemoryHealth(auth.userId) });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === agentHubApiPaths.agents) {
+        const workspaceId = url.searchParams.get("workspaceId") ?? undefined;
+        sendJson(response, 200, { agents: registry.listAgents(auth.userId, workspaceId) });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === agentHubApiPaths.agents) {
+        const body = createAgentRequestSchema.parse(await readJson(request));
+        const agent = registry.createAgent(auth.userId, body);
+        sendJson(response, 201, { agent });
+        return;
+      }
+
+      const agentMatch = url.pathname.match(/^\/agents\/([^/]+)$/);
+      if (request.method === "PATCH" && agentMatch?.[1]) {
+        const body = updateAgentRequestSchema.parse(await readJson(request));
+        const agent = registry.updateAgent(auth.userId, agentMatch[1], body);
+        sendJson(response, 200, { agent });
+        return;
+      }
+
+      const archiveAgentMatch = url.pathname.match(/^\/agents\/([^/]+)\/archive$/);
+      if (request.method === "POST" && archiveAgentMatch?.[1]) {
+        const agent = registry.archiveAgent(auth.userId, archiveAgentMatch[1]);
+        sendJson(response, 200, { agent });
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === agentHubApiPaths.runtimeRegister) {
         const parsed = runtimeRegistrationPayloadSchema.parse(await readJson(request));
         const device = registry.registerRuntimeDevice(auth.userId, {
@@ -127,6 +167,8 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
           appVersion: parsed.appVersion,
           capabilities: parsed.capabilities,
           workspace: parsed.workspace,
+          ...(parsed.providerHealth ? { providerHealth: parsed.providerHealth } : {}),
+          ...(parsed.memoryHealth ? { memoryHealth: parsed.memoryHealth } : {}),
           ...(parsed.deviceId ? { id: parsed.deviceId } : {}),
         });
         sendJson(response, 200, { device });

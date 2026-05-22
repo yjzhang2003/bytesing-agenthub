@@ -24,5 +24,8 @@ export { AgentMentionComposer } from "./components/composer.js";
 export { ChatTimeline } from "./components/timeline.js";
 export { ConversationList, WorkspaceStatusSurface } from "./components/navigation.js";
 export { SettingsPage } from "./components/settings.js";
+export { AgentsPage } from "./components/agents.js";
+export type { AgentRoleMutationInput } from "./components/agents.js";
+export { ConnectionsPage } from "./components/connections.js";
 export { DiffCard, PermissionCard, PlanCard } from "./components/cards.js";
 export { ParticipantChip, RuntimeStatusBadge } from "./components/primitives.js";

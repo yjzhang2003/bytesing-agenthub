@@ -6,13 +6,19 @@ import type { InspectorSelection, WorkbenchLayoutMode, WorkbenchViewModel } from
 import { createWorkbenchViewModel, workbenchLayoutForWidth } from "../view-model.js";
 import { workbenchCss } from "../styles.js";
 import { AgentMentionComposer } from "./composer.js";
+import { AgentsPage, type AgentRoleMutationInput } from "./agents.js";
+import { ConnectionsPage } from "./connections.js";
 import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
 
-type CenterView = "conversation" | "settings";
+type CenterView = "conversation" | "agents" | "connections" | "settings";
+
+function clampPanelWidth(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 export function AgentHubWorkbench(props: {
   readonly snapshot?: WorkbenchSnapshot;
@@ -23,8 +29,13 @@ export function AgentHubWorkbench(props: {
   readonly initialInspectorSelection?: InspectorSelection | null;
   readonly initialFullScreenDiffId?: string | null;
   readonly initialCenterView?: CenterView;
+  readonly initialLeftCollapsed?: boolean;
   readonly onRetry?: () => void;
   readonly onSend?: (message: string, target?: string) => void;
+  readonly onCreateAgentRole?: (input: Omit<AgentRoleMutationInput, "agentId">) => void;
+  readonly onUpdateAgentRole?: (input: AgentRoleMutationInput & { readonly agentId: string }) => void;
+  readonly onArchiveAgentRole?: (agentId: string) => void;
+  readonly onRefreshConnections?: () => void;
 }): React.ReactElement {
   const model = props.viewModel ?? createWorkbenchViewModel(props.snapshot);
   const [selection, setSelection] = React.useState<InspectorSelection | null>(
@@ -34,6 +45,9 @@ export function AgentHubWorkbench(props: {
     props.initialFullScreenDiffId ?? null,
   );
   const [centerView, setCenterView] = React.useState<CenterView>(props.initialCenterView ?? "conversation");
+  const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(
+    model.agentsPage.selectedAgentId,
+  );
   const [theme, setTheme] = React.useState<"light" | "dark">(() => {
     if (typeof window === "undefined") {
       return "dark";
@@ -46,8 +60,10 @@ export function AgentHubWorkbench(props: {
     const storedTheme = window.localStorage.getItem("agenthub.theme");
     return storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
   });
-  const [leftCollapsed, setLeftCollapsed] = React.useState(false);
+  const [leftCollapsed, setLeftCollapsed] = React.useState(props.initialLeftCollapsed ?? false);
   const [rightCollapsed, setRightCollapsed] = React.useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = React.useState(316);
+  const [directoryPanelWidth, setDirectoryPanelWidth] = React.useState(316);
   const [mobileLeftOpen, setMobileLeftOpen] = React.useState(false);
   const [mobileRightOpen, setMobileRightOpen] = React.useState(false);
   const [detectedLayoutMode, setDetectedLayoutMode] = React.useState<WorkbenchLayoutMode>("wide");
@@ -70,12 +86,49 @@ export function AgentHubWorkbench(props: {
     ? { duration: 0 }
     : { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] as const };
   const mobileLayout = layoutMode === "narrow" || layoutMode === "mobile-web";
+  const managementPage = centerView !== "conversation";
+  const compactLeftNavigation = centerView === "connections" || centerView === "settings";
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
-  const renderInspector = !mobileLayout && layoutMode === "wide";
-  const renderMobileInspector = mobileLayout && mobileRightOpen;
+  const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
+  const renderMobileInspector = !managementPage && mobileLayout && mobileRightOpen;
   const fullScreenDiff =
     fullScreenDiffId && model.inspector.diff?.id === fullScreenDiffId ? model.inspector.diff : null;
+  const beginHorizontalResize = React.useCallback((
+    event: React.PointerEvent,
+    options: {
+      readonly startWidth: number;
+      readonly min: number;
+      readonly max: number;
+      readonly onResize: (width: number) => void;
+    },
+  ) => {
+    if (mobileLayout) {
+      return;
+    }
+    event.preventDefault();
+    const startX = event.clientX;
+    const pointerId = event.pointerId;
+    event.currentTarget.setPointerCapture(pointerId);
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = clampPanelWidth(
+        options.startWidth + moveEvent.clientX - startX,
+        options.min,
+        Math.min(options.max, window.innerWidth - 520),
+      );
+      options.onResize(nextWidth);
+    };
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  }, [mobileLayout]);
+  const workbenchStyle = {
+    "--agenthub-left-column": `${leftPanelWidth}px`,
+    "--agenthub-directory-column": `${directoryPanelWidth}px`,
+  } as React.CSSProperties;
 
   if (props.loading) {
     return (
@@ -110,32 +163,71 @@ export function AgentHubWorkbench(props: {
         className="agenthub-workbench"
         data-left-collapsed={leftCollapsed ? "true" : "false"}
         data-layout={layoutMode}
+        data-center-view={centerView}
         data-mobile-left-open={mobileLeftOpen ? "true" : "false"}
         data-mobile-right-open={mobileRightOpen ? "true" : "false"}
         data-right-collapsed={rightCollapsed ? "true" : "false"}
         data-state={model.runtime.status}
         data-theme={theme}
+        style={workbenchStyle}
       >
         <WorkbenchStyle />
         {renderLeftNavigation ? (
-          <div aria-hidden={leftCollapsed ? "true" : undefined} className="agenthub-motion-left-panel">
+          <div className="agenthub-motion-left-panel">
             <LeftNavigation
               collapsed={leftCollapsed}
+              compact={compactLeftNavigation}
               model={model}
+              onOpenConversation={() => {
+                setCenterView("conversation");
+                setMobileLeftOpen(false);
+              }}
               onOpenSettings={() => {
                 setCenterView("settings");
+                setMobileLeftOpen(false);
+              }}
+              onOpenAgents={() => {
+                setCenterView("agents");
+                setMobileLeftOpen(false);
+              }}
+              onOpenConnections={() => {
+                setCenterView("connections");
                 setMobileLeftOpen(false);
               }}
               onSelect={(nextSelection) => {
                 setCenterView("conversation");
                 setSelection(nextSelection);
               }}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={(agentId) => {
+                setSelectedAgentId(agentId);
+                setCenterView("agents");
+              }}
+              conversationActive={centerView === "conversation"}
               settingsActive={centerView === "settings"}
+              agentsActive={centerView === "agents"}
+              connectionsActive={centerView === "connections"}
               onToggleCollapsed={() => {
                 setMobileLeftOpen(false);
                 setLeftCollapsed((current) => !current);
               }}
             />
+            {!leftCollapsed && !compactLeftNavigation ? (
+              <div
+                aria-label={centerView === "agents" ? "Resize agent directory" : "Resize conversation list"}
+                className="agenthub-resize-handle agenthub-panel-resize-handle"
+                onPointerDown={(event) =>
+                  beginHorizontalResize(event, {
+                    startWidth: leftPanelWidth,
+                    min: 260,
+                    max: 500,
+                    onResize: setLeftPanelWidth,
+                  })
+                }
+                role="separator"
+                tabIndex={0}
+              />
+            ) : null}
           </div>
         ) : null}
         <AnimatePresence initial={false}>
@@ -149,9 +241,22 @@ export function AgentHubWorkbench(props: {
             >
               <LeftNavigation
                 collapsed={leftCollapsed}
+                compact={compactLeftNavigation}
                 model={model}
+                onOpenConversation={() => {
+                  setCenterView("conversation");
+                  setMobileLeftOpen(false);
+                }}
                 onOpenSettings={() => {
                   setCenterView("settings");
+                  setMobileLeftOpen(false);
+                }}
+                onOpenAgents={() => {
+                  setCenterView("agents");
+                  setMobileLeftOpen(false);
+                }}
+                onOpenConnections={() => {
+                  setCenterView("connections");
                   setMobileLeftOpen(false);
                 }}
                 onSelect={(nextSelection) => {
@@ -159,7 +264,16 @@ export function AgentHubWorkbench(props: {
                   setSelection(nextSelection);
                   setMobileLeftOpen(false);
                 }}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={(agentId) => {
+                  setSelectedAgentId(agentId);
+                  setCenterView("agents");
+                  setMobileLeftOpen(false);
+                }}
+                conversationActive={centerView === "conversation"}
                 settingsActive={centerView === "settings"}
+                agentsActive={centerView === "agents"}
+                connectionsActive={centerView === "connections"}
                 onToggleCollapsed={() => {
                   setMobileLeftOpen(false);
                   setLeftCollapsed((current) => !current);
@@ -175,7 +289,7 @@ export function AgentHubWorkbench(props: {
         >
         <header className="agenthub-conversation-header">
           <div className="agenthub-title-cluster">
-            {leftCollapsed ? (
+            {leftCollapsed && !managementPage ? (
               <HoverButton
                 aria-label="Expand workspace navigation"
                 className="agenthub-icon-button"
@@ -186,7 +300,15 @@ export function AgentHubWorkbench(props: {
               </HoverButton>
             ) : null}
             <div>
-              <strong>{centerView === "settings" ? "Settings" : model.activeConversationTitle}</strong>
+              <strong>
+                {centerView === "settings"
+                  ? "Settings"
+                  : centerView === "agents"
+                    ? "Agents"
+                    : centerView === "connections"
+                      ? "Connections"
+                      : model.activeConversationTitle}
+              </strong>
               <small>{model.workspace.workspaceName}</small>
             </div>
           </div>
@@ -207,6 +329,7 @@ export function AgentHubWorkbench(props: {
               <HoverButton
                 aria-label="Open conversation details"
                 className="agenthub-icon-button"
+                disabled={managementPage}
                 onClick={() => {
                   setRightCollapsed(false);
                   setMobileRightOpen(true);
@@ -222,6 +345,7 @@ export function AgentHubWorkbench(props: {
               <HoverButton
                 aria-label="Expand Context Inspector"
                 className="agenthub-icon-button"
+                disabled={managementPage}
                 onClick={() => setRightCollapsed(false)}
                 type="button"
               >
@@ -238,7 +362,28 @@ export function AgentHubWorkbench(props: {
             </HoverButton>
           </div>
         </header>
-        {centerView === "settings" ? (
+        {centerView === "agents" ? (
+          <AgentsPage
+            model={model}
+            selectedAgentId={selectedAgentId}
+            {...(props.onCreateAgentRole ? { onCreateAgentRole: props.onCreateAgentRole } : {})}
+            {...(props.onUpdateAgentRole ? { onUpdateAgentRole: props.onUpdateAgentRole } : {})}
+            {...(props.onArchiveAgentRole ? { onArchiveAgentRole: props.onArchiveAgentRole } : {})}
+          />
+        ) : centerView === "connections" ? (
+          <ConnectionsPage
+            onResizeProviders={(event) =>
+              beginHorizontalResize(event, {
+                startWidth: directoryPanelWidth,
+                min: 260,
+                max: 500,
+                onResize: setDirectoryPanelWidth,
+              })
+            }
+            model={model}
+            {...(props.onRefreshConnections ? { onRefreshConnections: props.onRefreshConnections } : {})}
+          />
+        ) : centerView === "settings" ? (
           <SettingsPage
             model={model}
             onSelect={(nextSelection) => {

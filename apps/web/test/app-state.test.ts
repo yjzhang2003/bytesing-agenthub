@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentHubLocalDefaults } from "@agenthub/contracts";
 import {
   applyAgentHubEventToSnapshot,
@@ -9,6 +9,9 @@ import { createDefaultWebControlPlaneClient } from "../src/control-plane-client.
 import { readWebSupabaseConfig } from "../src/supabase.js";
 
 describe("web app state", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it("creates a workspace-first authenticated demo flow", () => {
     const flow = createDemoWorkspaceFlow();
     expect(flow.state.authenticated).toBe(true);
@@ -37,6 +40,40 @@ describe("web app state", () => {
     } as ImportMetaEnv);
 
     expect(client).toBeTruthy();
+  });
+
+  it("calls Control Plane agent role APIs", async () => {
+    const requests: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        requests.push({ url, init });
+        return new Response(JSON.stringify({ agent: { id: "agent_new" }, agents: [] }), { status: 200 });
+      }),
+    );
+    const client = createDefaultWebControlPlaneClient({
+      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
+      VITE_AGENTHUB_LOCAL_AUTH_TOKEN: agentHubLocalDefaults.authToken,
+    } as ImportMetaEnv);
+
+    await client.createAgent({
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "Research carefully.",
+      capabilityTags: ["research"],
+      policy: {},
+    });
+    await client.updateAgent("agent_new", { systemPrompt: "Updated." });
+    await client.archiveAgent("agent_new");
+    await client.listAgents("workspace_1");
+
+    expect(requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`)).toEqual([
+      "POST /agents",
+      "PATCH /agents/agent_new",
+      "POST /agents/agent_new/archive",
+      "GET /agents",
+    ]);
   });
 
   it("creates direct run requests for the selected worker target", () => {

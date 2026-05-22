@@ -1,11 +1,24 @@
+import { mkdtemp, writeFile, chmod } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
 const root = new URL("..", import.meta.url);
 const authToken = process.env.AGENTHUB_LOCAL_AUTH_TOKEN ?? "agenthub-local-demo-token";
-const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:5310";
-
+const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:5312";
 const processes = [];
+
+async function createFakeClaudeBinary() {
+  const directory = await mkdtemp(join(tmpdir(), "agenthub-fake-claude-"));
+  const binary = join(directory, "claude");
+  await writeFile(
+    binary,
+    "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'claude fake 1.0'; exit 0; fi\necho \"Fake Claude Code received: $2\"\n",
+  );
+  await chmod(binary, 0o755);
+  return binary;
+}
 
 function start(name, args, env = {}) {
   const child = spawn("pnpm", args, {
@@ -15,7 +28,7 @@ function start(name, args, env = {}) {
       AGENTHUB_AUTH_MODE: "local-demo",
       AGENTHUB_LOCAL_AUTH_TOKEN: authToken,
       AGENTHUB_CONTROL_PLANE_URL: controlPlaneUrl,
-      AGENTHUB_PROVIDER_MODE: "smoke",
+      AGENTHUB_PROVIDER_MODE: "claude-code",
       CONTROL_PLANE_PORT: new URL(controlPlaneUrl).port,
       ...env,
     },
@@ -44,7 +57,7 @@ async function fetchJson(path, options = {}) {
 
 async function waitFor(path, label) {
   let lastError;
-  for (let index = 0; index < 40; index += 1) {
+  for (let index = 0; index < 60; index += 1) {
     try {
       return await fetchJson(path);
     } catch (error) {
@@ -56,22 +69,23 @@ async function waitFor(path, label) {
 }
 
 async function main() {
+  const fakeClaude = await createFakeClaudeBinary();
   start("control-plane", ["--filter", "@agenthub/control-plane", "dev"]);
   await waitFor("/health", "Control Plane");
-
-  start("desktop-runtime", ["--filter", "@agenthub/desktop-runtime", "dev"]);
+  start("desktop-runtime", ["--filter", "@agenthub/desktop-runtime", "dev"], {
+    AGENTHUB_CLAUDE_CODE_BIN: fakeClaude,
+  });
 
   let snapshot;
-  for (let index = 0; index < 40; index += 1) {
+  for (let index = 0; index < 60; index += 1) {
     snapshot = await fetchJson("/workbench/snapshot");
-    if (snapshot.runtimeDevices?.some((device) => device.status === "online")) {
+    if (snapshot.providerHealth?.status === "connected") {
       break;
     }
     await delay(250);
   }
-
-  if (!snapshot?.runtimeDevices?.some((device) => device.status === "online")) {
-    throw new Error("Desktop Runtime did not register as online");
+  if (snapshot?.providerHealth?.status !== "connected") {
+    throw new Error("Fake Claude Code provider did not report connected");
   }
 
   const runResponse = await fetchJson("/runs", {
@@ -79,43 +93,31 @@ async function main() {
       workspaceId: snapshot.activeWorkspaceId,
       conversationId: snapshot.activeConversationId,
       agentId: snapshot.agents.find((agent) => agent.role === "worker")?.id,
-      prompt: "Verify AgentHub local runnable smoke path",
+      prompt: "Verify fake Claude Code path",
     }),
     method: "POST",
   });
-  if (!runResponse.run?.id) {
-    throw new Error("Run creation did not return a run id");
-  }
 
-  let completedRun;
-  let providerMessage;
-  for (let index = 0; index < 40; index += 1) {
+  for (let index = 0; index < 60; index += 1) {
     snapshot = await fetchJson("/workbench/snapshot");
-    completedRun = snapshot.runs?.find(
+    const completedRun = snapshot.runs?.find(
       (run) => run.id === runResponse.run.id && run.status === "completed",
     );
-    providerMessage = snapshot.messages?.find((message) =>
+    const providerMessage = snapshot.messages?.find((message) =>
       message.parts?.some(
         (part) =>
           part.runId === runResponse.run.id &&
           typeof part.text === "string" &&
-          part.text.includes("Smoke provider received"),
+          part.text.includes("Fake Claude Code received"),
       ),
     );
     if (completedRun && providerMessage) {
-      break;
+      console.log("[smoke] Fake Claude Code provider preflight and run loop verified");
+      return;
     }
     await delay(250);
   }
-
-  if (!completedRun) {
-    throw new Error("Smoke run did not reach completed state in the workbench snapshot");
-  }
-  if (!providerMessage) {
-    throw new Error("Smoke provider output was not recorded in the workbench snapshot");
-  }
-
-  console.log("[smoke] Control Plane, Desktop Runtime, command delivery, provider output, and snapshot lifecycle verified");
+  throw new Error("Fake Claude Code run did not complete with provider output");
 }
 
 try {

@@ -119,6 +119,28 @@ export const workspaceMetadataSchema = z.object({
   providerCapabilities: z.array(z.string()),
 });
 
+export const providerHealthSchema = z.object({
+  providerMode: z.enum(["smoke", "claude-code"]),
+  status: z.enum(["connected", "missing", "unavailable", "misconfigured"]),
+  binaryPathLabel: z.string().min(1),
+  checkedAt: z.string().datetime(),
+  failureReason: z.string().nullable(),
+});
+
+export const memoryHealthSchema = z.object({
+  enabled: z.boolean(),
+  status: z.enum(["connected", "disabled", "unavailable", "misconfigured"]),
+  url: z.string().min(1),
+  viewerUrl: z.string().min(1),
+  checkedAt: z.string().datetime(),
+  failureReason: z.string().nullable(),
+});
+
+export const agentMemoryConfigSchema = z.object({
+  namespace: z.string().min(1),
+  enabled: z.boolean(),
+});
+
 export const runtimeRegistrationPayloadSchema = z.object({
   deviceId: idSchema.optional(),
   displayName: z.string().min(1),
@@ -126,6 +148,8 @@ export const runtimeRegistrationPayloadSchema = z.object({
   appVersion: z.string().min(1),
   capabilities: z.array(z.string()),
   workspace: workspaceMetadataSchema,
+  providerHealth: providerHealthSchema.optional(),
+  memoryHealth: memoryHealthSchema.optional(),
 });
 
 export const runtimeHeartbeatPayloadSchema = z.object({
@@ -139,6 +163,27 @@ export const createLocalRunRequestSchema = z.object({
   prompt: z.string().min(1),
   planId: idSchema.nullable().optional(),
 });
+
+export const createAgentRequestSchema = z.object({
+  workspaceId: idSchema,
+  displayName: z.string().min(1),
+  role: z.enum(["orchestrator", "worker"]),
+  systemPrompt: z.string(),
+  capabilityTags: z.array(z.string()).default([]),
+  policy: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const updateAgentRequestSchema = z
+  .object({
+    displayName: z.string().min(1).optional(),
+    role: z.enum(["orchestrator", "worker"]).optional(),
+    systemPrompt: z.string().optional(),
+    capabilityTags: z.array(z.string()).optional(),
+    policy: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one agent field must be provided",
+  });
 
 export const runtimeCommandSchema = z.discriminatedUnion("type", [
   z.object({
@@ -155,6 +200,7 @@ export const runtimeCommandSchema = z.discriminatedUnion("type", [
       prompt: z.string().min(1),
       systemPrompt: z.string(),
       providerMode: z.enum(["smoke", "claude-code"]),
+      memory: agentMemoryConfigSchema.optional(),
     }),
   }),
   z.object({
@@ -271,6 +317,8 @@ export const workbenchSnapshotSchema = z.object({
   workspaces: z.array(workspaceSchema),
   runtimeDevices: z.array(runtimeDeviceSchema),
   workspaceMetadata: workspaceMetadataSchema.nullable(),
+  providerHealth: providerHealthSchema.nullable().optional(),
+  memoryHealth: memoryHealthSchema.nullable().optional(),
   conversations: z.array(conversationSchema),
   agents: z.array(agentSchema),
   runs: z.array(runSchema),
@@ -280,8 +328,12 @@ export const workbenchSnapshotSchema = z.object({
 
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
+export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type DiffMetadataPayload = z.infer<typeof diffMetadataSchema>;
+export type MemoryHealthPayload = z.infer<typeof memoryHealthSchema>;
 export type RuntimeCommandPayload = z.infer<typeof runtimeCommandSchema>;
+export type ProviderHealthPayload = z.infer<typeof providerHealthSchema>;
 export type ServiceHealthPayload = z.infer<typeof serviceHealthSchema>;
+export type UpdateAgentRequestPayload = z.infer<typeof updateAgentRequestSchema>;
 export type RuntimeRegistrationPayloadData = z.infer<typeof runtimeRegistrationPayloadSchema>;
 export type WorkbenchSnapshotPayload = z.infer<typeof workbenchSnapshotSchema>;
