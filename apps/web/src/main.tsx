@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { AgentHubWorkbench } from "@agenthub/ui";
-import { agentHubLocalDefaults, type WorkbenchSnapshot } from "@agenthub/contracts";
+import { type WorkbenchSnapshot } from "@agenthub/contracts";
+import { applyAgentHubEventToSnapshot, createRunRequestFromSnapshot } from "./app-state.js";
 import { createDefaultWebControlPlaneClient } from "./control-plane-client.js";
 import React from "react";
 
@@ -24,11 +25,12 @@ function AgentHubWebApp(): React.ReactElement {
 
   React.useEffect(() => {
     void loadSnapshot();
-    const stream = client.openEvents(() => {
-      void loadSnapshot();
+    const stream = client.openEvents((event) => {
+      setSnapshot((current) => (current ? applyAgentHubEventToSnapshot(current, event) : current));
     });
     stream.onerror = () => {
       setError("Control Plane event stream disconnected");
+      void loadSnapshot();
     };
     return () => stream.close();
   }, [client, loadSnapshot]);
@@ -38,18 +40,13 @@ function AgentHubWebApp(): React.ReactElement {
       error={error}
       loading={loading}
       onRetry={() => void loadSnapshot()}
-      onSend={(message) => {
+      onSend={(message, target) => {
         const active = snapshot;
         if (!active) {
           return;
         }
         void client
-          .createRun({
-            workspaceId: active.activeWorkspaceId,
-            conversationId: active.activeConversationId,
-            agentId: active.agents.find((agent) => agent.role === "worker")?.id ?? agentHubLocalDefaults.implementerAgentId,
-            prompt: message,
-          })
+          .createRun(createRunRequestFromSnapshot(active, target, message))
           .then(() => loadSnapshot());
       }}
       {...(snapshot ? { snapshot } : {})}

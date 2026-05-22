@@ -28,6 +28,28 @@ describe("control plane auth", () => {
 });
 
 describe("control plane registry", () => {
+  function createRegisteredRunLoopRegistry() {
+    const registry = new ControlPlaneRegistry();
+    const device = registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:smoke"],
+      workspace: {
+        workspaceId: "workspace_1",
+        displayName: "Project",
+        localPathLabel: "/tmp/project",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+        providerCapabilities: ["provider:smoke"],
+      },
+    });
+
+    return { registry, device };
+  }
+
   it("registers runtime devices and marks expired heartbeats offline", () => {
     let now = new Date("2026-05-21T00:00:00.000Z");
     const registry = new ControlPlaneRegistry({
@@ -80,6 +102,27 @@ describe("control plane registry", () => {
     ).toThrow("Workspace runtime is offline");
   });
 
+  it("rejects unbound workspace runs without queueing runtime commands", () => {
+    const registry = new ControlPlaneRegistry();
+    const device = registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:smoke"],
+    });
+
+    expect(() =>
+      registry.createRun("user_1", {
+        workspaceId: "workspace_missing",
+        conversationId: "conversation_1",
+        agentId: "agent_1",
+        prompt: "hello",
+      }),
+    ).toThrow("Workspace is not bound to this user runtime");
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toHaveLength(0);
+  });
+
   it("creates and cancels a routed run for an online workspace runtime", () => {
     const registry = new ControlPlaneRegistry();
     const device = registry.registerRuntimeDevice("user_1", {
@@ -107,23 +150,7 @@ describe("control plane registry", () => {
   });
 
   it("records provider output into the workbench snapshot", () => {
-    const registry = new ControlPlaneRegistry();
-    const device = registry.registerRuntimeDevice("user_1", {
-      id: "runtime_1",
-      displayName: "MacBook Pro",
-      platform: "macos",
-      appVersion: "0.1.0",
-      capabilities: ["provider:smoke"],
-      workspace: {
-        workspaceId: "workspace_1",
-        displayName: "Project",
-        localPathLabel: "/tmp/project",
-        gitBranch: "main",
-        gitBaseCommit: "abc123",
-        dirty: false,
-        providerCapabilities: ["provider:smoke"],
-      },
-    });
+    const { registry, device } = createRegisteredRunLoopRegistry();
     const run = registry.createRun("user_1", {
       workspaceId: "workspace_1",
       conversationId: agentHubLocalDefaults.conversationId,
@@ -141,6 +168,63 @@ describe("control plane registry", () => {
 
     const snapshot = registry.createWorkbenchSnapshot("user_1");
     expect(snapshot.messages[0]?.parts[0]?.text).toBe("done");
+  });
+
+  it("normalizes provider terminal statuses into AgentHub terminal events", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const run = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: agentHubLocalDefaults.conversationId,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      prompt: "hello",
+    });
+
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "run.status",
+      runId: run.id,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      status: "completed",
+      message: "done",
+    });
+
+    expect(registry.getRun("user_1", run.id).completedAt).not.toBeNull();
+    expect(registry.events.snapshot().at(-1)).toMatchObject({
+      type: "agent.run.completed",
+      runId: run.id,
+      payload: {
+        status: "completed",
+        message: "done",
+      },
+    });
+  });
+
+  it("records cancellation terminal status after runtime cancellation", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const run = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: agentHubLocalDefaults.conversationId,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      prompt: "hello",
+    });
+    registry.cancelRun("user_1", run.id);
+
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      type: "run.cancel",
+      payload: { runId: run.id },
+    });
+
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "run.status",
+      runId: run.id,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      status: "cancelled",
+      message: "cancelled",
+    });
+
+    expect(registry.getRun("user_1", run.id)).toMatchObject({
+      status: "cancelled",
+      failureReason: "cancelled",
+    });
   });
 });
 

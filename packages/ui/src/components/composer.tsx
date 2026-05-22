@@ -137,7 +137,6 @@ export function AgentMentionComposer(props: {
         <textarea
           aria-describedby={props.disabled ? "agenthub-composer-disabled-reason" : undefined}
           aria-label={`Message ${selected?.target ?? ""}`}
-          disabled={props.disabled}
           ref={textareaRef}
           onChange={(event) => setMessage(event.currentTarget.value)}
           placeholder={props.disabled ? "Runtime offline" : "Message an agent, @mention or /command"}

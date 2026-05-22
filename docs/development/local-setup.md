@@ -27,6 +27,14 @@ pnpm dev:web
 pnpm dev:desktop
 ```
 
+`pnpm dev:web` prints the actual Web URL. It is normally `http://127.0.0.1:5173/`, but Vite will choose the next port, such as `5174`, if `5173` is already in use. Desktop loads `AGENTHUB_WEB_URL`, which defaults to `http://127.0.0.1:5173`; if Web starts on a different port, start Desktop with the printed URL:
+
+```bash
+AGENTHUB_WEB_URL=http://127.0.0.1:5174 pnpm dev:desktop
+```
+
+Desktop is launched from `apps/desktop` and loads its package-local Electron entry at `apps/desktop/dist/main.js` after running `pnpm --filter @agenthub/desktop build`.
+
 Or run the automated local smoke verification:
 
 ```bash
@@ -89,6 +97,13 @@ Desktop Runtime:
 - `AGENTHUB_RUNTIME_HEARTBEAT_SECONDS`
 - `AGENTHUB_RUNTIME_POLL_SECONDS`
 
+Claude Code provider mode:
+
+- `AGENTHUB_PROVIDER_MODE=claude-code`
+- `AGENTHUB_CLAUDE_CODE_BIN=claude` or an absolute path to the authenticated Claude Code CLI
+
+When these are set on the Desktop Runtime process, new Control Plane run commands are executed by the Claude Code provider adapter. Do not set `AGENTHUB_PROVIDER_MODE=claude-code` until the CLI is installed and authenticated on the same machine as the Desktop Runtime.
+
 Web/Desktop clients:
 
 - `VITE_SUPABASE_URL`
@@ -114,7 +129,14 @@ pnpm --filter @agenthub/desktop rebuild electron
 
 ## Smoke Verification
 
-`pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode, waits for health and runtime registration, creates a minimal run, waits for the smoke provider to complete it, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.
+`pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode, waits for health and runtime registration, creates a minimal run, verifies command delivery through the Desktop Runtime, waits for smoke provider output to appear in the workbench snapshot, verifies the run reaches `completed`, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.
+
+Failure recovery:
+
+- Missing or busy Control Plane: confirm `CONTROL_PLANE_PORT` matches `AGENTHUB_CONTROL_PLANE_URL`, or run with a different port pair such as `AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:5311 CONTROL_PLANE_PORT=5311 pnpm smoke:local`.
+- Offline Desktop Runtime: check the runtime terminal for registration or heartbeat failures, and confirm `AGENTHUB_LOCAL_AUTH_TOKEN`, `AGENTHUB_CONTROL_PLANE_URL`, and `AGENTHUB_WORKSPACE_PATH` match the Control Plane process.
+- Provider failure in smoke mode: inspect the smoke output for the missing step named by the failure message, such as runtime registration, run completion, or provider output recording.
+- Missing Claude Code binary: set `AGENTHUB_CLAUDE_CODE_BIN` to the installed CLI path or return to `AGENTHUB_PROVIDER_MODE=smoke`; Claude Code mode reports startup failures instead of silently falling back to smoke output.
 
 ## Known Limitations
 

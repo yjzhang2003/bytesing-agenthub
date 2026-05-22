@@ -1,5 +1,3 @@
-import { desktopRuntime } from "@agenthub/desktop-runtime";
-
 export interface DesktopShellConfig {
   readonly controlPlaneUrl: string;
   readonly startsRuntime: boolean;
@@ -13,5 +11,7 @@ export const defaultDesktopShellConfig: DesktopShellConfig = {
 };
 
 export function getRuntimeStartupSummary(): string {
-  return `${desktopRuntime.deviceName} heartbeat=${desktopRuntime.heartbeatSeconds}s`;
+  const deviceName = process.env.AGENTHUB_RUNTIME_DEVICE_NAME ?? "AgentHub Desktop Runtime";
+  const heartbeatSeconds = Number.parseInt(process.env.AGENTHUB_RUNTIME_HEARTBEAT_SECONDS ?? "15", 10);
+  return `${deviceName} heartbeat=${heartbeatSeconds}s`;
 }

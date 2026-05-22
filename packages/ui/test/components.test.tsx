@@ -379,6 +379,7 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("Agents");
     expect(html).toContain("Runs");
     expect(html).toContain("Desktop Runtime must be online");
+    expect(html).not.toMatch(/<textarea(?=[^>]*agenthub-composer-disabled-reason)[^>]*\sdisabled=/);
   });
 
   it("normalizes unavailable inspector selection to empty state", () => {

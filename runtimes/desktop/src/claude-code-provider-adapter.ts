@@ -43,8 +43,27 @@ export class ClaudeCodeProviderAdapter implements ProviderAdapter {
       });
     });
 
+    let settled = false;
     const done = new Promise<void>((resolve) => {
+      child.on("error", (error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        sink({
+          type: "run.status",
+          runId: request.runId,
+          agentId: request.agentId,
+          status: "failed",
+          message: `Claude Code process failed to start: ${error.message}`,
+        });
+        resolve();
+      });
       child.on("close", (code) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         sink({
           type: "run.status",
           runId: request.runId,
@@ -60,6 +79,13 @@ export class ClaudeCodeProviderAdapter implements ProviderAdapter {
       runId: request.runId,
       async cancel() {
         child.kill("SIGTERM");
+        sink({
+          type: "run.status",
+          runId: request.runId,
+          agentId: request.agentId,
+          status: "cancelling",
+          message: "Cancellation requested",
+        });
       },
       done,
     };

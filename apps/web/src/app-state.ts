@@ -1,9 +1,14 @@
 import type {
   Agent,
+  AgentHubEvent,
   AgentHubClientState,
   Conversation,
+  CreateLocalRunRequest,
+  Message,
   PermissionRequest,
+  Run,
   RuntimeDevice,
+  WorkbenchSnapshot,
   Workspace,
 } from "@agenthub/contracts";
 import { emptyAgentHubClientState } from "@agenthub/contracts";
@@ -122,3 +127,120 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
   };
 }
 
+export function createRunRequestFromSnapshot(
+  snapshot: Pick<AgentHubClientState, "activeWorkspaceId" | "agents" | "conversations"> & {
+    readonly activeConversationId?: string | null;
+  },
+  target: string | undefined,
+  prompt: string,
+): CreateLocalRunRequest {
+  const normalizedTarget = target?.replace(/^@/, "").toLowerCase();
+  const selectedAgent =
+    snapshot.agents.find(
+      (agent) =>
+        agent.id === target ||
+        agent.displayName.toLowerCase() === normalizedTarget ||
+        `@${agent.displayName}`.toLowerCase() === target?.toLowerCase(),
+    ) ??
+    snapshot.agents.find((agent) => agent.role === "worker") ??
+    snapshot.agents[0];
+
+  if (!snapshot.activeWorkspaceId) {
+    throw new Error("No active workspace is available");
+  }
+  const activeConversationId =
+    snapshot.activeConversationId ?? snapshot.conversations.find((conversation) => !conversation.archivedAt)?.id;
+  if (!activeConversationId) {
+    throw new Error("No active conversation is available");
+  }
+  if (!selectedAgent) {
+    throw new Error("No runnable agent is available");
+  }
+
+  return {
+    workspaceId: snapshot.activeWorkspaceId,
+    conversationId: activeConversationId,
+    agentId: selectedAgent.id,
+    prompt,
+  };
+}
+
+export function applyAgentHubEventToSnapshot(
+  snapshot: WorkbenchSnapshot,
+  event: AgentHubEvent,
+): WorkbenchSnapshot {
+  if (event.ownerUserId !== snapshot.userId) {
+    return snapshot;
+  }
+  if (event.type === "runtime.device.status_changed") {
+    return {
+      ...snapshot,
+      runtimeDevices: snapshot.runtimeDevices.map((runtime) =>
+        runtime.id === event.payload.runtimeDeviceId
+          ? {
+              ...runtime,
+              status: event.payload.status,
+              updatedAt: event.occurredAt,
+            }
+          : runtime,
+      ),
+    };
+  }
+  if (
+    event.type === "agent.run.status_changed" ||
+    event.type === "agent.run.completed" ||
+    event.type === "agent.run.failed"
+  ) {
+    return {
+      ...snapshot,
+      runs: snapshot.runs.map((run) =>
+        run.id === event.runId
+          ? updateRunFromStatusEvent(run, event.payload.status, event.payload.message ?? null, event.occurredAt)
+          : run,
+      ),
+    };
+  }
+  if (event.type === "agent.run.message_delta") {
+    const message: Message = {
+      id: event.id,
+      ownerUserId: event.ownerUserId,
+      conversationId: event.conversationId ?? snapshot.activeConversationId,
+      authorKind: "agent",
+      authorId: event.payload.agentId,
+      parts: [
+        {
+          type: "markdown",
+          text: event.payload.delta,
+          ...(event.runId ? { runId: event.runId } : {}),
+        },
+      ],
+      replyToMessageId: null,
+      createdAt: event.occurredAt,
+      updatedAt: event.occurredAt,
+    };
+    return {
+      ...snapshot,
+      messages: [...snapshot.messages, message],
+    };
+  }
+  return snapshot;
+}
+
+function updateRunFromStatusEvent(
+  run: Run,
+  status: Run["status"],
+  message: string | null,
+  occurredAt: string,
+): Run {
+  const startedAt = run.startedAt ?? (status === "running" || status === "streaming" ? occurredAt : null);
+  const completedAt =
+    status === "completed" || status === "failed" || status === "cancelled" ? occurredAt : run.completedAt;
+  return {
+    ...run,
+    status,
+    startedAt,
+    completedAt,
+    failureReason: status === "failed" || status === "cancelled" ? message : run.failureReason,
+    updatedAt: occurredAt,
+  };
+}

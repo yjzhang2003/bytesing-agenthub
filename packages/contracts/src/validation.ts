@@ -4,6 +4,7 @@ import {
   diffMetadataSchema,
   orchestratorDispatchPlanSchema,
   providerRuntimeEventSchema,
+  runtimeCommandSchema,
   runtimeHeartbeatPayloadSchema,
   runtimeRegistrationPayloadSchema,
   serviceHealthSchema,
@@ -84,6 +85,12 @@ export function validateCreateLocalRunRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createLocalRunRequestSchema>> {
   return parseWithSchema(createLocalRunRequestSchema, value);
+}
+
+export function validateRuntimeCommand(
+  value: unknown,
+): ValidationResult<z.infer<typeof runtimeCommandSchema>> {
+  return parseWithSchema(runtimeCommandSchema, value);
 }
 
 export function isDiffMetadataStale(

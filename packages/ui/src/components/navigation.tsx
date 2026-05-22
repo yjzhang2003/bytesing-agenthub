@@ -1,5 +1,4 @@
 import * as ScrollArea from "@radix-ui/react-scroll-area";
-import * as Separator from "@radix-ui/react-separator";
 import { Bot, ClipboardCheck, PanelLeftClose, Play, Search, Settings, Terminal } from "lucide-react";
 import React from "react";
 import type { ConversationListItem, InspectorSelection, WorkbenchViewModel } from "../types.js";

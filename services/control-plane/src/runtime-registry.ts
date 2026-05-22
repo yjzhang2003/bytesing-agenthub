@@ -210,7 +210,7 @@ export class ControlPlaneRegistry {
       updatedAt: now,
     };
     this.#runs.set(updated.id, updated);
-    this.#publishRunStatus(updated, status === "failed" ? "agent.run.failed" : "agent.run.status_changed");
+    this.#publishRunStatus(updated, this.#runEventTypeForStatus(status));
     return updated;
   }
 
@@ -372,7 +372,10 @@ export class ControlPlaneRegistry {
     };
   }
 
-  #publishRunStatus(run: Run, type: "agent.run.status_changed" | "agent.run.failed"): void {
+  #publishRunStatus(
+    run: Run,
+    type: "agent.run.status_changed" | "agent.run.completed" | "agent.run.failed",
+  ): void {
     const payload = {
       status: run.status,
       agentId: run.agentId,
@@ -394,6 +397,18 @@ export class ControlPlaneRegistry {
   #enqueueCommand(runtimeDeviceId: Id, command: RuntimeCommand): void {
     const current = this.#commands.get(runtimeDeviceId) ?? [];
     this.#commands.set(runtimeDeviceId, [...current, command]);
+  }
+
+  #runEventTypeForStatus(
+    status: RunStatus,
+  ): "agent.run.status_changed" | "agent.run.completed" | "agent.run.failed" {
+    if (status === "completed") {
+      return "agent.run.completed";
+    }
+    if (status === "failed") {
+      return "agent.run.failed";
+    }
+    return "agent.run.status_changed";
   }
 
   #defaultAgents(ownerUserId: Id, workspaceId: Id, now: string): readonly Agent[] {

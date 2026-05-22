@@ -114,7 +114,23 @@ export class DesktopRuntime {
     await this.#client.publishProviderEvent(event);
   }
 
-  async handleCommand(command: RuntimeCommand): Promise<void> {
+  async pollAndHandleCommands(
+    runtimeDeviceId: string,
+    client: {
+      readonly pollCommands: (runtimeDeviceId: string) => Promise<readonly RuntimeCommand[]>;
+      readonly publishProviderEvent: (event: ProviderRuntimeEvent) => Promise<void>;
+    } = this.#client,
+  ): Promise<void> {
+    const commands = await client.pollCommands(runtimeDeviceId);
+    for (const command of commands) {
+      await this.handleCommand(command, client);
+    }
+  }
+
+  async handleCommand(
+    command: RuntimeCommand,
+    eventPublisher: { readonly publishProviderEvent: (event: ProviderRuntimeEvent) => Promise<void> } = this.#client,
+  ): Promise<void> {
     if (command.type === "run.cancel") {
       await this.cancelRun(command.payload.runId);
       return;
@@ -131,7 +147,7 @@ export class DesktopRuntime {
         conversationContext: [],
       },
       (event) => {
-        void this.publishProviderEvent(event);
+        void eventPublisher.publishProviderEvent(event);
       },
     );
   }

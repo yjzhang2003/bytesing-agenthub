@@ -82,24 +82,39 @@ async function main() {
     }),
     method: "POST",
   });
+  if (!runResponse.run?.id) {
+    throw new Error("Run creation did not return a run id");
+  }
 
-  let completed = false;
+  let completedRun;
+  let providerMessage;
   for (let index = 0; index < 40; index += 1) {
     snapshot = await fetchJson("/workbench/snapshot");
-    completed = snapshot.runs?.some(
+    completedRun = snapshot.runs?.find(
       (run) => run.id === runResponse.run.id && run.status === "completed",
     );
-    if (completed) {
+    providerMessage = snapshot.messages?.find((message) =>
+      message.parts?.some(
+        (part) =>
+          part.runId === runResponse.run.id &&
+          typeof part.text === "string" &&
+          part.text.includes("Smoke provider received"),
+      ),
+    );
+    if (completedRun && providerMessage) {
       break;
     }
     await delay(250);
   }
 
-  if (!completed) {
-    throw new Error("Smoke run did not complete");
+  if (!completedRun) {
+    throw new Error("Smoke run did not reach completed state in the workbench snapshot");
+  }
+  if (!providerMessage) {
+    throw new Error("Smoke provider output was not recorded in the workbench snapshot");
   }
 
-  console.log("[smoke] Control Plane, Desktop Runtime, snapshot, and run lifecycle verified");
+  console.log("[smoke] Control Plane, Desktop Runtime, command delivery, provider output, and snapshot lifecycle verified");
 }
 
 try {

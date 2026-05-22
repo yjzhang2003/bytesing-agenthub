@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isDiffMetadataStale,
+  validateCreateLocalRunRequest,
   validateRuntimeRegistrationPayload,
   validateServiceHealth,
   validateWorkbenchSnapshot,
@@ -8,7 +9,13 @@ import {
   validateDiffMetadata,
   validateOrchestratorDispatchPlan,
   validateProviderRuntimeEvent,
+  validateRuntimeCommand,
 } from "../src/index.js";
+import {
+  claudeCodeRunStartCommandFixture,
+  runCancelCommandFixture,
+  smokeProviderOutputFixtures,
+} from "./run-loop-fixtures.js";
 
 describe("contract validation", () => {
   it("rejects invalid orchestrator output without steps", () => {
@@ -33,6 +40,30 @@ describe("contract validation", () => {
     });
 
     expect(result.ok).toBe(false);
+  });
+
+  it("accepts run loop command and provider event contracts", () => {
+    expect(
+      validateCreateLocalRunRequest({
+        workspaceId: "workspace_1",
+        conversationId: "conversation_1",
+        agentId: "agent_1",
+        prompt: "Implement the feature",
+        planId: null,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateRuntimeCommand(claudeCodeRunStartCommandFixture).ok,
+    ).toBe(true);
+
+    expect(
+      validateRuntimeCommand(runCancelCommandFixture).ok,
+    ).toBe(true);
+
+    for (const event of smokeProviderOutputFixtures) {
+      expect(validateProviderRuntimeEvent(event).ok).toBe(true);
+    }
   });
 
   it("detects stale diff metadata fingerprints", () => {

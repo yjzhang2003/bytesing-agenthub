@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check:electron": "tsx src/check-electron.ts",
-    "dev": "pnpm check:electron && pnpm build && AGENTHUB_ELECTRON_ENTRY=1 electron dist/apps/desktop/src/main.js",
+    "dev": "pnpm check:electron && pnpm build && AGENTHUB_ELECTRON_ENTRY=1 electron dist/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

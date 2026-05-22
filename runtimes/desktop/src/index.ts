@@ -11,7 +11,6 @@ export { DesktopRuntime } from "./runtime.js";
 export type { DesktopRuntimeConfig, LocalWorkspaceRegistration } from "./runtime.js";
 export { SmokeProviderAdapter } from "./smoke-provider-adapter.js";
 import { DesktopRuntime } from "./runtime.js";
-import type { RuntimeCommand } from "@agenthub/contracts";
 export type {
   AgentRunHandle,
   AgentRunRequest,
@@ -55,12 +54,7 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
 
   const poll = setInterval(() => {
     void runtime
-      .pollCommands(device.id)
-      .then(async (commands: readonly RuntimeCommand[]) => {
-        for (const command of commands) {
-          await runtime.handleCommand(command);
-        }
-      })
+      .pollAndHandleCommands(device.id)
       .catch((error: unknown) => {
         console.error("[desktop-runtime] command poll failed", error);
       });

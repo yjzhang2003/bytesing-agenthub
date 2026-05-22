@@ -140,6 +140,34 @@ export const createLocalRunRequestSchema = z.object({
   planId: idSchema.nullable().optional(),
 });
 
+export const runtimeCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: idSchema,
+    type: z.literal("run.start"),
+    runtimeDeviceId: idSchema,
+    createdAt: z.string().datetime(),
+    payload: z.object({
+      runId: idSchema,
+      workspaceId: idSchema,
+      conversationId: idSchema,
+      agentId: idSchema,
+      workspacePath: z.string().min(1),
+      prompt: z.string().min(1),
+      systemPrompt: z.string(),
+      providerMode: z.enum(["smoke", "claude-code"]),
+    }),
+  }),
+  z.object({
+    id: idSchema,
+    type: z.literal("run.cancel"),
+    runtimeDeviceId: idSchema,
+    createdAt: z.string().datetime(),
+    payload: z.object({
+      runId: idSchema,
+    }),
+  }),
+]);
+
 const workspaceSchema = z.object({
   id: idSchema,
   ownerUserId: idSchema,
@@ -253,6 +281,7 @@ export const workbenchSnapshotSchema = z.object({
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type DiffMetadataPayload = z.infer<typeof diffMetadataSchema>;
+export type RuntimeCommandPayload = z.infer<typeof runtimeCommandSchema>;
 export type ServiceHealthPayload = z.infer<typeof serviceHealthSchema>;
 export type RuntimeRegistrationPayloadData = z.infer<typeof runtimeRegistrationPayloadSchema>;
 export type WorkbenchSnapshotPayload = z.infer<typeof workbenchSnapshotSchema>;
