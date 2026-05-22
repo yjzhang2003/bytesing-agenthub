@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define AgentHub's agent identity model, IM-style conversation behavior, Orchestrator planning flow, run lifecycle, and result aggregation.
+
+## Requirements
 
 ### Requirement: Agent identity model
 The system SHALL model agents as product identities separate from their execution provider.

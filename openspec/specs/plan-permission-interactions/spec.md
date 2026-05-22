@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define plan cards, plan actions, plan state visibility, inline permission cards, global permission queues, decision actions, and timeout states.
+
+## Requirements
 
 ### Requirement: Plan summary card
 The system SHALL show Orchestrator plans as compact timeline cards with full details available in the Context Inspector.

@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define how AgentHub represents code artifacts, git-based diff summaries, full diff retrieval, persistence limits, temporary caching, and stale diff detection.
+
+## Requirements
 
 ### Requirement: Code artifact metadata
 The system SHALL represent code-related outputs as artifacts attached to messages or runs.

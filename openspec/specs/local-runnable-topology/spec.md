@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the local development topology, health checks, root commands, configuration, and Electron startup diagnostics for running AgentHub locally.
+
+## Requirements
 
 ### Requirement: Local development process topology
 The system SHALL provide a documented local development topology that starts Control Plane API, Desktop Runtime, Web client, and Desktop client as separate processes.

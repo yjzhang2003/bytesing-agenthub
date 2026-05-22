@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the Desktop, Web, and iOS diff review experience for summary cards, full diff viewing, file navigation, review actions, and unavailable diff states.
+
+## Requirements
 
 ### Requirement: Diff summary card
 The system SHALL show code changes as compact diff summary cards in the conversation timeline.

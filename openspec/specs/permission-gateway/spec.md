@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define permission request events, user authorization decisions, risk gates, audit logging, and timeout handling for risky agent actions.
+
+## Requirements
 
 ### Requirement: Permission request events
 The system SHALL represent risky agent actions as explicit permission request events before execution.

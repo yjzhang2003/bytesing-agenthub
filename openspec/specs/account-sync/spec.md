@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define account-scoped access, ownership, synchronization, local workspace metadata, and offline execution visibility across AgentHub clients.
+
+## Requirements
 
 ### Requirement: Account-based access
 The system SHALL require a user account for Desktop, Web, and iOS clients before accessing conversations, workspaces, runtime devices, agents, runs, artifacts, or permission records.

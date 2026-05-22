@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the native iOS AgentHub experience, including navigation, runtime visibility, mobile plan and permission handling, diff review, and offline behavior.
+
+## Requirements
 
 ### Requirement: Native iOS experience
 The iOS client SHALL be a native SwiftUI experience that follows the same product model as Desktop and Web.

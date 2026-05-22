@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define Desktop Runtime registration, heartbeat, workspace binding, Claude Code execution, event normalization, cancellation, and local smoke provider behavior.
+
+## Requirements
 
 ### Requirement: Desktop Runtime registration
 The system SHALL allow a signed-in Desktop Runtime to register itself as an executable device for the owning user.
