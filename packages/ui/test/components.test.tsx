@@ -6,11 +6,13 @@ import type {
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  AgentMentionComposer,
   AgentHubWorkbench,
   DiffCard,
   PermissionCard,
   PlanCard,
   RuntimeStatusBadge,
+  SettingsPage,
   createWorkbenchViewModel,
   workbenchLayoutForWidth,
 } from "../src/index.js";
@@ -200,6 +202,145 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("Collapse workspace navigation");
     expect(workbench).toContain("Collapse Context Inspector");
     expect(workbench).toContain("Switch to light mode");
+  });
+
+  it("renders conversation messages as IM bubbles with compact event surfaces", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("agenthub-message-bubble");
+    expect(html).toContain('data-author="agent"');
+    expect(html).toContain("Implemented the shell");
+    expect(html).toContain("agenthub-event-pill");
+    expect(html).toContain("Run running");
+  });
+
+  it("keeps hover-border controls transparent until interactive states", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("agenthub-hover-control");
+    expect(html).toContain("border: 1px solid transparent");
+    expect(html).toContain(".agenthub-hover-control:hover:not(:disabled)");
+    expect(html).toContain(".agenthub-hover-control:focus-visible");
+  });
+
+  it("renders conversation rows as IM list rows without selected card borders", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("agenthub-conversation-row");
+    expect(html).toContain(".agenthub-conversation-row[aria-current=\"page\"]");
+    expect(html).toContain(".agenthub-conversation-row[aria-current=\"page\"]::before");
+    expect(html).toContain("grid-template-areas:");
+    expect(html).toContain("min-height: 50px");
+    expect(html).toContain("border-color: transparent");
+  });
+
+  it("uses a denser IM top bar with coordinated content rows", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("grid-template-rows: 64px minmax(0, 1fr) auto");
+    expect(html).toContain("min-height: 64px");
+    expect(html).toContain("font-size: 14px");
+    expect(html).toContain("max-height: calc(100dvh - 64px)");
+  });
+
+  it("adds restrained motion for hover controls, composer growth, and side panels", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("--agenthub-motion-fast");
+    expect(html).toContain("--agenthub-motion-medium");
+    expect(html).toContain("transition: height var(--agenthub-motion-medium)");
+    expect(html).toContain("agenthub-composer-suggestions");
+    expect(html).toContain("agenthub-motion-left-panel");
+    expect(html).toContain("agenthub-motion-right-panel");
+    expect(html).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it("renders the composer as a compact rounded input with trigger-based suggestions", () => {
+    const html = renderToStaticMarkup(
+      <AgentMentionComposer selectedTarget="@Orchestrator" targets={["@Orchestrator", "@Implementer"]} />,
+    );
+    const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("agenthub-composer-box");
+    expect(html).toContain('data-multiline="false"');
+    expect(html).toContain("agenthub-composer-actions");
+    expect(html).toContain("agenthub-composer-send");
+    expect(workbench).toContain("resize: none");
+    expect(workbench).toContain('grid-template-areas: "input actions"');
+    expect(workbench).toContain('.agenthub-composer-box[data-multiline="true"]');
+    expect(html).toContain("Message an agent, @mention or /command");
+    expect(workbench).toContain("agenthub-composer-suggestions");
+    expect(html).not.toContain("Agent target");
+    expect(html).not.toContain(">Target<");
+    expect(html).not.toContain(">Plan Mode<");
+    expect(html).not.toContain("agenthub-composer-toolbar");
+    expect(html).not.toContain("agenthub-composer-footer");
+  });
+
+  it("keeps chat primary in narrow layouts with side panel toggles", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench layoutMode="narrow" snapshot={snapshot()} />);
+
+    expect(html).toContain('data-layout="narrow"');
+    expect(html).toContain('data-mobile-left-open="false"');
+    expect(html).toContain('data-mobile-right-open="false"');
+    expect(html).toContain("agenthub-mobile-panel-actions");
+    expect(html).toContain("Open workspace navigation");
+    expect(html).toContain("Open conversation details");
+    expect(html).toContain("agenthub-chat-thread");
+    expect(html).toContain(".agenthub-mobile-panel-actions { display: none;");
+    expect(html).toContain('.agenthub-workbench[data-layout="narrow"] .agenthub-motion-left-panel');
+    expect(html).toContain('.agenthub-workbench[data-layout="narrow"] .agenthub-motion-right-panel');
+  });
+
+  it("hides mobile panel controls in standard desktop layouts", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench layoutMode="standard" snapshot={snapshot()} />);
+
+    expect(html).toContain('data-layout="standard"');
+    expect(html).toContain(".agenthub-mobile-panel-actions { display: none;");
+    expect(html).not.toContain('.agenthub-workbench[data-layout="standard"] .agenthub-mobile-panel-actions { display: inline-flex; }');
+  });
+
+  it("keeps workspace metadata out of the left navigation chrome", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).not.toContain('aria-label="Workspace status"');
+    expect(html).toContain("Settings");
+    expect(html).toContain("Runtime");
+  });
+
+  it("uses a WeChat-style split left navigation with rail tools and conversation search", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("agenthub-left-rail");
+    expect(html).toContain("agenthub-chat-list-panel");
+    expect(html).toContain("agenthub-chat-list-header");
+    expect(html).toContain('aria-label="Search conversations"');
+    expect(html).toContain("agenthub-conversation-search");
+    expect(html).toContain("agenthub-rail-button");
+    expect(html).toContain("grid-template-columns: 58px minmax(0, 1fr)");
+    expect(html).toContain("--agenthub-left-column: clamp(300px, 24vw, 340px)");
+    expect(html).toContain("grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr)");
+    expect(html).toContain("grid-template-rows: 64px minmax(0, 1fr)");
+    expect(html).toContain("border-bottom: 1px solid var(--agenthub-border)");
+  });
+
+  it("pins settings to the bottom navigation and renders a real settings page", () => {
+    const model = createWorkbenchViewModel(snapshot(), { pendingPermissions: [pendingPermission] });
+    const workbench = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="settings" viewModel={model} />);
+    const settings = renderToStaticMarkup(
+      <SettingsPage model={model} onSelect={() => undefined} onToggleTheme={() => undefined} theme="dark" />,
+    );
+
+    expect(workbench).toContain("agenthub-nav-bottom");
+    expect(workbench).toContain('aria-current="page"');
+    expect(workbench).toContain('data-view="settings"');
+    expect(workbench).toContain('aria-label="Settings page"');
+    expect(workbench).toContain("~/IdeaProjects/agenthub");
+    expect(settings).toContain("Workspace");
+    expect(settings).toContain("Runtime");
+    expect(settings).toContain("Appearance");
+    expect(settings).toContain("Permissions");
+    expect(settings).toContain("Review");
   });
 
   it("maps snapshots into MVP view models without client-only transcript fixtures", () => {

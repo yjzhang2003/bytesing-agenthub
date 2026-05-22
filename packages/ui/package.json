@@ -13,6 +13,7 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-tooltip": "^1.2.8",
     "lucide-react": "^1.16.0",
+    "motion": "^12.40.0",
     "react": "^19.2.3"
   },
   "devDependencies": {
