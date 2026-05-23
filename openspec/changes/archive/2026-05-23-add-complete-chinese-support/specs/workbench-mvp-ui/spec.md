@@ -1,6 +1,5 @@
-## Purpose
-Define the Desktop/Web MVP workbench UI, including shell layout, left navigation, timeline composition, composer targeting, Context Inspector modes, responsive behavior, and visual verification.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: Desktop/Web MVP workbench shell
 The system SHALL present the Desktop/Web MVP as a workspace-scoped three-column workbench at desktop widths and SHALL render product-owned shell text in the selected product language.
 
@@ -30,21 +29,6 @@ The Desktop/Web MVP workbench SHALL expose workspace context, runtime state, con
 #### Scenario: Pending permissions exist
 - **WHEN** one or more permissions require a user decision
 - **THEN** the left navigation exposes a visible pending permission affordance independent of the Context Inspector
-
-### Requirement: MVP timeline composition
-The Desktop/Web MVP timeline SHALL display user messages, agent messages, Orchestrator messages, run events, plan cards, permission cards, diff cards, artifact cards, and final summaries in chronological context.
-
-#### Scenario: Multi-agent local run is visible
-- **WHEN** Control Plane provides messages and run events for the active conversation
-- **THEN** the timeline groups related content while preserving participant identity, run state, and chronological order
-
-#### Scenario: Selectable timeline card is opened
-- **WHEN** the user selects a plan, permission, diff, artifact, runtime, or run card from the timeline
-- **THEN** the Context Inspector opens the matching detail mode without removing the conversation timeline
-
-#### Scenario: Conversation has no timeline items
-- **WHEN** the active conversation has no messages or events
-- **THEN** the timeline displays an empty state with the active workspace and runtime context still visible
 
 ### Requirement: MVP composer targeting
 The Desktop/Web MVP composer SHALL make agent targeting explicit for Orchestrator and worker agents and SHALL localize product-owned composer affordances.
@@ -84,21 +68,9 @@ The Desktop/Web MVP Context Inspector SHALL support empty, plan, permission, dif
 - **WHEN** the user selects runtime status
 - **THEN** the inspector displays device identity, online state, heartbeat, capabilities, workspace binding, active runs, and offline/degraded explanations when applicable using the selected product language for product chrome
 
-### Requirement: MVP responsive workbench
-The Desktop/Web MVP workbench SHALL degrade predictably when horizontal space is limited.
-
-#### Scenario: Viewport cannot support three columns
-- **WHEN** the viewport width cannot comfortably display left navigation, timeline, and Context Inspector
-- **THEN** the Context Inspector collapses into a drawer or detail route before the timeline becomes unusable
-
-#### Scenario: Viewport is narrow
-- **WHEN** the viewport width cannot comfortably display the left navigation and timeline together
-- **THEN** the left navigation collapses into a drawer while preserving access to pending permissions and runtime status
-
 ### Requirement: MVP visual verification
 The Desktop/Web MVP implementation SHALL include rendered verification for the critical workbench states in English and Simplified Chinese.
 
 #### Scenario: UI implementation is ready for review
 - **WHEN** the MVP workbench UI is considered complete
 - **THEN** verification covers online workbench, offline runtime, active multi-agent conversation, draft plan review, pending permission queue, inline permission card, diff review, full-screen diff review, empty conversation, error state, narrow layout, and Simplified Chinese language rendering
-

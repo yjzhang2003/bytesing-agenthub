@@ -3,7 +3,12 @@ import { Moon, PanelLeftClose, PanelRightClose, Sun } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
-import { AgentHubI18nProvider, createAgentHubI18n } from "../i18n.js";
+import {
+  AgentHubI18nProvider,
+  createAgentHubI18n,
+  readStoredAgentHubLocale,
+  writeStoredAgentHubLocale,
+} from "../i18n.js";
 import type { InspectorSelection, WorkbenchLayoutMode, WorkbenchViewModel } from "../types.js";
 import { createWorkbenchViewModel, workbenchLayoutForWidth } from "../view-model.js";
 import { workbenchCss } from "../styles.js";
@@ -34,7 +39,7 @@ export function AgentHubWorkbench(props: {
   readonly initialFullScreenDiffId?: string | null;
   readonly initialCenterView?: CenterView;
   readonly initialLeftCollapsed?: boolean;
-  readonly locale?: AgentHubLocale;
+  readonly locale?: AgentHubLocale | undefined;
   readonly onRetry?: () => void;
   readonly onSend?: (message: string, target?: string) => void;
   readonly onCreateAgentRole?: (input: Omit<AgentRoleMutationInput, "agentId">) => void;
@@ -44,7 +49,17 @@ export function AgentHubWorkbench(props: {
   readonly onArchiveAgentRole?: (agentId: string) => void;
   readonly onRefreshConnections?: () => void;
 }): React.ReactElement {
-  const i18n = React.useMemo(() => createAgentHubI18n(props.locale), [props.locale]);
+  const [storedLocale, setStoredLocale] = React.useState<AgentHubLocale>(() => {
+    if (props.locale) {
+      return props.locale;
+    }
+    if (typeof window === "undefined") {
+      return "en-US";
+    }
+    return readStoredAgentHubLocale(window.localStorage);
+  });
+  const activeLocale = props.locale ?? storedLocale;
+  const i18n = React.useMemo(() => createAgentHubI18n(activeLocale), [activeLocale]);
   const model = props.viewModel ?? createWorkbenchViewModel(props.snapshot);
   const [selection, setSelection] = React.useState<InspectorSelection | null>(
     props.initialInspectorSelection ?? model.inspector.selection,
@@ -100,6 +115,18 @@ export function AgentHubWorkbench(props: {
   React.useEffect(() => {
     window.localStorage.setItem(ENTER_TO_SEND_STORAGE_KEY, enterToSend ? "true" : "false");
   }, [enterToSend]);
+  React.useEffect(() => {
+    if (!props.locale) {
+      return;
+    }
+    setStoredLocale(props.locale);
+  }, [props.locale]);
+  const setLocale = React.useCallback((nextLocale: AgentHubLocale) => {
+    setStoredLocale(nextLocale);
+    if (typeof window !== "undefined") {
+      writeStoredAgentHubLocale(window.localStorage, nextLocale);
+    }
+  }, []);
   const layoutMode = props.layoutMode ?? detectedLayoutMode;
   const reduceMotion = useReducedMotion();
   const motionTransition = reduceMotion
@@ -155,7 +182,7 @@ export function AgentHubWorkbench(props: {
 
   if (props.loading) {
     return (
-      <AgentHubI18nProvider locale={props.locale}>
+      <AgentHubI18nProvider locale={activeLocale}>
         <AgentHubThemeProvider mode={theme}>
           <main
             className="agenthub-workbench"
@@ -183,7 +210,7 @@ export function AgentHubWorkbench(props: {
 
   if (props.error) {
     return (
-      <AgentHubI18nProvider locale={props.locale}>
+      <AgentHubI18nProvider locale={activeLocale}>
         <AgentHubThemeProvider mode={theme}>
           <main
             className="agenthub-workbench"
@@ -211,7 +238,7 @@ export function AgentHubWorkbench(props: {
   }
 
   return (
-    <AgentHubI18nProvider locale={props.locale}>
+    <AgentHubI18nProvider locale={activeLocale}>
       <AgentHubThemeProvider mode={theme}>
         <MotionConfig
           reducedMotion={reduceMotion ? "always" : "never"}
@@ -274,8 +301,8 @@ export function AgentHubWorkbench(props: {
                   <div
                     aria-label={
                       centerView === "agents"
-                        ? "Resize agent directory"
-                        : "Resize conversation list"
+                        ? i18n.t("nav.resizeAgentDirectory")
+                        : i18n.t("nav.resizeConversationList")
                     }
                     className="agenthub-resize-handle agenthub-panel-resize-handle"
                     onPointerDown={(event) =>
@@ -345,7 +372,7 @@ export function AgentHubWorkbench(props: {
               ) : null}
             </AnimatePresence>
             <section
-              aria-label="Conversation workbench"
+              aria-label={i18n.t("nav.conversationWorkbench")}
               className="agenthub-center"
               data-view={centerView}
             >
@@ -368,16 +395,19 @@ export function AgentHubWorkbench(props: {
                       {centerView === "settings"
                         ? i18n.t("nav.settings", { fallback: "Settings" })
                         : centerView === "agents"
-                          ? i18n.t("nav.openAgents", { fallback: "Agents" })
+                          ? i18n.t("agents.agents")
                           : centerView === "connections"
-                            ? i18n.t("nav.openConnections", { fallback: "Connections" })
+                            ? i18n.t("connections.connections")
                             : model.activeConversationTitle}
                     </strong>
                     <small>{model.workspace.workspaceName}</small>
                   </div>
                 </div>
                 <div className="agenthub-header-actions">
-                  <div className="agenthub-mobile-panel-actions" aria-label="Mobile panel controls">
+                  <div
+                    className="agenthub-mobile-panel-actions"
+                    aria-label={i18n.t("nav.mobilePanelControls")}
+                  >
                     <HoverButton
                       aria-label={i18n.t("nav.openWorkspaceNavigation", {
                         fallback: "Open workspace navigation",
@@ -468,8 +498,9 @@ export function AgentHubWorkbench(props: {
               ) : centerView === "settings" ? (
                 <SettingsPage
                   enterToSend={enterToSend}
-                  locale={props.locale}
+                  locale={activeLocale}
                   model={model}
+                  onLocaleChange={setLocale}
                   onSelect={(nextSelection) => {
                     setCenterView("conversation");
                     setSelection(nextSelection);
@@ -495,7 +526,7 @@ export function AgentHubWorkbench(props: {
                     disabled={model.composer.disabled}
                     disabledReason={model.composer.disabledReason}
                     enterToSend={enterToSend}
-                    locale={props.locale}
+                    locale={activeLocale}
                     modeLabel={model.composer.modeLabel}
                     {...(props.onSend ? { onSend: props.onSend } : {})}
                     selectedTarget={model.composer.selectedTarget}
@@ -554,9 +585,12 @@ export function AgentHubWorkbench(props: {
               ) : null}
             </AnimatePresence>
             {fullScreenDiff ? (
-              <section aria-label="Full-screen diff review" className="agenthub-fullscreen-diff">
+              <section
+                aria-label={i18n.t("nav.fullScreenDiffReview")}
+                className="agenthub-fullscreen-diff"
+              >
                 <header>
-                  <strong>Full-screen diff review</strong>
+                  <strong>{i18n.t("nav.fullScreenDiffReview")}</strong>
                   <HoverButton onClick={() => setFullScreenDiffId(null)} type="button">
                     {i18n.t("actions.returnToConversation", { fallback: "Return to conversation" })}
                   </HoverButton>

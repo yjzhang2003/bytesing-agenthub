@@ -19,8 +19,17 @@ export type {
 } from "./types.js";
 
 export { createWorkbenchViewModel, workbenchLayoutForWidth } from "./view-model.js";
-export { AgentHubI18nProvider, createAgentHubI18n } from "./i18n.js";
-export type { AgentHubLocale } from "./i18n.js";
+export {
+  AGENTHUB_LOCALE_STORAGE_KEY,
+  AgentHubI18nProvider,
+  agentHubTranslationKeys,
+  createAgentHubI18n,
+  normalizeAgentHubLocale,
+  readStoredAgentHubLocale,
+  supportedAgentHubLocales,
+  writeStoredAgentHubLocale,
+} from "./i18n.js";
+export type { AgentHubLocale, TranslationKey } from "./i18n.js";
 export { AgentHubWorkbench } from "./components/workbench.js";
 export { AgentMentionComposer } from "./components/composer.js";
 export { ChatTimeline } from "./components/timeline.js";

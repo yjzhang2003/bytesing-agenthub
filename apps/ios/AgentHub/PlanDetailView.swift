@@ -2,27 +2,30 @@ import SwiftUI
 
 struct PlanDetailView: View {
     let plan: PlanSummary
+    @AppStorage("agenthub.locale") private var localeRaw = AgentHubMobileLocale.english.rawValue
+    private var strings: AgentHubStrings {
+        AgentHubStrings(locale: AgentHubMobileLocale.normalized(localeRaw))
+    }
 
     var body: some View {
         List {
-            Section("Goal") {
+            Section(strings.text(.goal)) {
                 Text(plan.goal)
             }
-            Section("Status") {
+            Section(strings.text(.statusLabel)) {
                 Text(plan.status.rawValue)
             }
-            Section("Agents") {
+            Section(strings.text(.agents)) {
                 ForEach(plan.assignedAgents, id: \.self) { agent in
                     Text(agent)
                 }
             }
-            Section("Actions") {
-                Button("Approve") {}
-                Button("Ask to revise") {}
-                Button("Cancel", role: .destructive) {}
+            Section(strings.text(.actions)) {
+                Button(strings.text(.approve)) {}
+                Button(strings.text(.revise)) {}
+                Button(strings.text(.cancel), role: .destructive) {}
             }
         }
-        .navigationTitle("Plan")
+        .navigationTitle(strings.text(.plan))
     }
 }
-

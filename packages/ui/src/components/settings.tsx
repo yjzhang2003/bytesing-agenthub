@@ -1,8 +1,8 @@
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
-import { useAgentHubI18n } from "../i18n.js";
+import { supportedAgentHubLocales, useAgentHubI18n } from "../i18n.js";
 import type { InspectorSelection, WorkbenchViewModel } from "../types.js";
-import { AgentHubButton, AgentHubSwitch } from "./antd-primitives.js";
+import { AgentHubButton, AgentHubSelect, AgentHubSwitch } from "./antd-primitives.js";
 import { DetailSection, RuntimeStatusBadge } from "./primitives.js";
 
 export function SettingsPage(props: {
@@ -10,6 +10,7 @@ export function SettingsPage(props: {
   readonly enterToSend: boolean;
   readonly locale?: AgentHubLocale | undefined;
   readonly theme: "light" | "dark";
+  readonly onLocaleChange?: (locale: AgentHubLocale) => void;
   readonly onToggleEnterToSend: (enabled: boolean) => void;
   readonly onToggleTheme: () => void;
   readonly onSelect: (selection: InspectorSelection) => void;
@@ -18,10 +19,7 @@ export function SettingsPage(props: {
   const firstPermission = props.model.inspector.permissions[0];
 
   return (
-    <div
-      aria-label={i18n.t("nav.settings", { fallback: "Settings page" })}
-      className="agenthub-settings-page"
-    >
+    <div aria-label={i18n.t("settings.page")} className="agenthub-settings-page">
       <section className="agenthub-settings-panel">
         <header>
           <div>
@@ -66,6 +64,32 @@ export function SettingsPage(props: {
               <AgentHubSwitch checked={props.enterToSend} onChange={props.onToggleEnterToSend} />
             </label>
           </div>
+        </DetailSection>
+      </section>
+
+      <section className="agenthub-settings-panel">
+        <header>
+          <div>
+            <strong>{i18n.t("language.language")}</strong>
+            <p className="agenthub-muted">
+              {i18n.t("language.preferences")} · {i18n.t("language.english")} /{" "}
+              {i18n.t("language.simplifiedChinese")}
+            </p>
+          </div>
+        </header>
+        <DetailSection title={i18n.t("language.language")}>
+          <AgentHubSelect
+            aria-label={i18n.t("language.language")}
+            value={i18n.locale}
+            onChange={(value) => props.onLocaleChange?.(value)}
+            options={supportedAgentHubLocales.map((locale) => ({
+              label:
+                locale === "zh-CN"
+                  ? i18n.t("language.simplifiedChinese")
+                  : i18n.t("language.english"),
+              value: locale,
+            }))}
+          />
         </DetailSection>
       </section>
 

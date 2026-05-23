@@ -1,5 +1,6 @@
 import { Archive, Bot, Plus, Save } from "lucide-react";
 import React from "react";
+import { useAgentHubI18n } from "../i18n.js";
 import type { AgentPageAgentViewModel, WorkbenchViewModel } from "../types.js";
 import {
   AgentHubAvatar,
@@ -28,7 +29,11 @@ function parseTags(value: string): readonly string[] {
     .filter(Boolean);
 }
 
-function parsePolicy(value: string): { readonly ok: true; readonly value: Record<string, unknown> } | { readonly ok: false; readonly error: string } {
+function parsePolicy(
+  value: string,
+):
+  | { readonly ok: true; readonly value: Record<string, unknown> }
+  | { readonly ok: false; readonly error: string } {
   try {
     const parsed = JSON.parse(value) as unknown;
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -67,7 +72,9 @@ function AgentListRow(props: {
       </AgentHubAvatar>
       <span className="agenthub-agent-contact-copy">
         <span className="agenthub-row-main">{props.agent.label}</span>
-        <small>{props.agent.role} · {props.agent.providerLabel}</small>
+        <small>
+          {props.agent.role} · {props.agent.providerLabel}
+        </small>
       </span>
       <AgentHubBadge count={props.agent.capabilityTags.length} size="small" />
     </AgentHubButton>
@@ -79,6 +86,7 @@ export function AgentDirectory(props: {
   readonly selectedAgentId: string | null;
   readonly onSelectAgent: (agentId: string | null) => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const [query, setQuery] = React.useState("");
   const filteredAgents = props.model.agentsPage.agents.filter((agent) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -100,19 +108,22 @@ export function AgentDirectory(props: {
     null;
 
   return (
-    <section aria-label="Agent directory" className="agenthub-chat-list-panel agenthub-agent-directory-sidebar">
+    <section
+      aria-label={i18n.t("agents.agentDirectory")}
+      className="agenthub-chat-list-panel agenthub-agent-directory-sidebar"
+    >
       <header className="agenthub-chat-list-header">
         <label className="agenthub-conversation-search">
           <AgentHubSearchInput
-            aria-label="Search agents"
+            aria-label={i18n.t("agents.searchAgents")}
             onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder="Search agents"
+            placeholder={i18n.t("agents.searchAgents")}
             type="search"
             value={query}
           />
         </label>
         <AgentHubButton
-          aria-label="New agent"
+          aria-label={i18n.t("actions.newAgent")}
           className="agenthub-icon-button"
           htmlType="button"
           onClick={() => props.onSelectAgent(null)}
@@ -120,8 +131,8 @@ export function AgentDirectory(props: {
           <Icon icon={Plus} />
         </AgentHubButton>
       </header>
-      <nav aria-label="Agent roles" className="agenthub-agent-directory-list">
-        <small className="agenthub-agent-directory-group">Agents</small>
+      <nav aria-label={i18n.t("agents.agentRoles")} className="agenthub-agent-directory-list">
+        <small className="agenthub-agent-directory-group">{i18n.t("agents.agents")}</small>
         {filteredAgents.map((agent) => (
           <AgentListRow
             agent={agent}
@@ -138,12 +149,17 @@ export function AgentDirectory(props: {
 function AgentEditor(props: {
   readonly agent: AgentPageAgentViewModel | null;
   readonly onCreateAgentRole?: (input: Omit<AgentRoleMutationInput, "agentId">) => void;
-  readonly onUpdateAgentRole?: (input: AgentRoleMutationInput & { readonly agentId: string }) => void;
+  readonly onUpdateAgentRole?: (
+    input: AgentRoleMutationInput & { readonly agentId: string },
+  ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const [mode, setMode] = React.useState<"edit" | "new">("edit");
   const [displayName, setDisplayName] = React.useState(props.agent?.label ?? "");
-  const [role, setRole] = React.useState<AgentPageAgentViewModel["role"]>(props.agent?.role ?? "worker");
+  const [role, setRole] = React.useState<AgentPageAgentViewModel["role"]>(
+    props.agent?.role ?? "worker",
+  );
   const [systemPrompt, setSystemPrompt] = React.useState(props.agent?.systemPrompt ?? "");
   const [tags, setTags] = React.useState(props.agent?.capabilityTags.join(", ") ?? "");
   const [policyJson, setPolicyJson] = React.useState(props.agent?.policyJson ?? "{}");
@@ -172,14 +188,26 @@ function AgentEditor(props: {
     <section className="agenthub-agent-detail">
       <header className="agenthub-agent-profile">
         <AgentHubAvatar className="agenthub-agent-profile-avatar" size={92}>
-          {mode === "new" ? <Icon icon={Plus} /> : props.agent?.label.slice(0, 2).toUpperCase() ?? <Icon icon={Bot} />}
+          {mode === "new" ? (
+            <Icon icon={Plus} />
+          ) : (
+            (props.agent?.label.slice(0, 2).toUpperCase() ?? <Icon icon={Bot} />)
+          )}
         </AgentHubAvatar>
         <div className="agenthub-agent-profile-copy">
-          <strong>{mode === "new" ? "New agent" : props.agent?.label ?? "Agent"}</strong>
+          <strong>
+            {mode === "new"
+              ? i18n.t("actions.newAgent")
+              : (props.agent?.label ?? i18n.t("agents.agent"))}
+          </strong>
           <p className="agenthub-muted">
-            {mode === "new" ? "Claude Code-backed role configuration" : `${props.agent?.role ?? "worker"} · ${props.agent?.providerLabel ?? "Claude Code"}`}
+            {mode === "new"
+              ? i18n.t("agents.configuration")
+              : `${props.agent?.role ?? "worker"} · ${props.agent?.providerLabel ?? "Claude Code"}`}
           </p>
-          {props.agent?.defaultAgent ? <span className="agenthub-agent-default">Default agent</span> : null}
+          {props.agent?.defaultAgent ? (
+            <span className="agenthub-agent-default">{i18n.t("agents.defaultAgent")}</span>
+          ) : null}
         </div>
         <div className="agenthub-agent-profile-actions">
           <AgentHubButton
@@ -193,7 +221,7 @@ function AgentEditor(props: {
               setPolicyJson("{}");
             }}
           >
-            <Icon icon={Plus} /> New agent
+            <Icon icon={Plus} /> {i18n.t("actions.newAgent")}
           </AgentHubButton>
         </div>
       </header>
@@ -224,17 +252,17 @@ function AgentEditor(props: {
         }}
       >
         <label>
-          <span>Name</span>
+          <span>{i18n.t("agents.name")}</span>
           <AgentHubTextInput
-            aria-label="Agent name"
+            aria-label={i18n.t("agents.agentName")}
             value={displayName}
             onChange={(event) => setDisplayName(event.currentTarget.value)}
           />
         </label>
         <label>
-          <span>Role</span>
+          <span>{i18n.t("agents.role")}</span>
           <AgentHubSelect
-            aria-label="Agent role"
+            aria-label={i18n.t("agents.agentRole")}
             value={role}
             onChange={(value) => setRole(value)}
             options={[
@@ -244,26 +272,26 @@ function AgentEditor(props: {
           />
         </label>
         <label className="agenthub-agent-editor-wide">
-          <span>System prompt</span>
+          <span>{i18n.t("agents.systemPrompt")}</span>
           <AgentHubTextArea
-            aria-label="Agent system prompt"
+            aria-label={i18n.t("agents.systemPrompt")}
             rows={7}
             value={systemPrompt}
             onChange={(event) => setSystemPrompt(event.currentTarget.value)}
           />
         </label>
         <label>
-          <span>Capability tags</span>
+          <span>{i18n.t("agents.capabilityTags")}</span>
           <AgentHubTextInput
-            aria-label="Capability tags"
+            aria-label={i18n.t("agents.capabilityTags")}
             value={tags}
             onChange={(event) => setTags(event.currentTarget.value)}
           />
         </label>
         <label className="agenthub-agent-editor-wide">
-          <span>Policy JSON</span>
+          <span>{i18n.t("agents.policyJson")}</span>
           <AgentHubTextArea
-            aria-label="Policy JSON"
+            aria-label={i18n.t("agents.policyJson")}
             aria-invalid={policyError ? "true" : undefined}
             rows={5}
             value={policyJson}
@@ -275,13 +303,13 @@ function AgentEditor(props: {
           {policyError ? <span className="agenthub-form-error">{policyError}</span> : null}
         </label>
         {props.agent ? (
-          <DetailSection title="Memory namespace">
+          <DetailSection title={i18n.t("agents.memoryNamespace")}>
             <code>{props.agent.memoryNamespace}</code>
           </DetailSection>
         ) : null}
         <div className="agenthub-action-row agenthub-agent-editor-wide">
           <AgentHubButton disabled={!canSubmit} htmlType="submit">
-            <Icon icon={Save} /> Save changes
+            <Icon icon={Save} /> {i18n.t("actions.saveChanges")}
           </AgentHubButton>
           <AgentHubButton
             disabled={!props.agent || props.agent.defaultAgent}
@@ -293,7 +321,7 @@ function AgentEditor(props: {
               }
             }}
           >
-            <Icon icon={Archive} /> Archive
+            <Icon icon={Archive} /> {i18n.t("actions.archive")}
           </AgentHubButton>
         </div>
       </form>
@@ -305,16 +333,19 @@ export function AgentsPage(props: {
   readonly model: WorkbenchViewModel;
   readonly selectedAgentId: string | null;
   readonly onCreateAgentRole?: (input: Omit<AgentRoleMutationInput, "agentId">) => void;
-  readonly onUpdateAgentRole?: (input: AgentRoleMutationInput & { readonly agentId: string }) => void;
+  readonly onUpdateAgentRole?: (
+    input: AgentRoleMutationInput & { readonly agentId: string },
+  ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const selected =
     props.model.agentsPage.agents.find((agent) => agent.id === props.selectedAgentId) ??
     props.model.agentsPage.agents[0] ??
     null;
 
   return (
-    <div aria-label="Agents page" className="agenthub-agents-page">
+    <div aria-label={i18n.t("agents.agents")} className="agenthub-agents-page">
       <AgentEditor
         agent={props.selectedAgentId === null ? null : selected}
         key={props.selectedAgentId ?? "new"}

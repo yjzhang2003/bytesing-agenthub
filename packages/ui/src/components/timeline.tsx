@@ -1,5 +1,6 @@
 import React from "react";
 import { lexer, type Token, type Tokens } from "marked";
+import { useAgentHubI18n } from "../i18n.js";
 import type { InspectorSelection, TimelineItemViewModel } from "../types.js";
 import { HoverButton } from "./primitives.js";
 
@@ -61,7 +62,9 @@ function renderInline(tokens: readonly Token[] | undefined, keyPrefix: string): 
         return <React.Fragment key={key}>{textToken.text}</React.Fragment>;
       }
       default:
-        return "text" in token ? <React.Fragment key={key}>{String(token.text)}</React.Fragment> : null;
+        return "text" in token ? (
+          <React.Fragment key={key}>{String(token.text)}</React.Fragment>
+        ) : null;
     }
   });
 }
@@ -105,7 +108,10 @@ function renderBlocks(tokens: readonly Token[], keyPrefix = "md"): React.ReactNo
         const list = token as Tokens.List;
         const ListTag = list.ordered ? "ol" : "ul";
         return (
-          <ListTag key={key} start={list.ordered && typeof list.start === "number" ? list.start : undefined}>
+          <ListTag
+            key={key}
+            start={list.ordered && typeof list.start === "number" ? list.start : undefined}
+          >
             {list.items.map((item, itemIndex) => (
               <li key={`${key}-item-${itemIndex}`}>
                 {item.task ? (
@@ -125,7 +131,9 @@ function renderBlocks(tokens: readonly Token[], keyPrefix = "md"): React.ReactNo
               <thead>
                 <tr>
                   {table.header.map((cell, cellIndex) => (
-                    <th key={`${key}-head-${cellIndex}`}>{renderInline(cell.tokens, `${key}-head-${cellIndex}`)}</th>
+                    <th key={`${key}-head-${cellIndex}`}>
+                      {renderInline(cell.tokens, `${key}-head-${cellIndex}`)}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -160,6 +168,7 @@ function MessageBubble(props: {
   readonly item: TimelineItemViewModel;
   readonly onOpenAgent?: (agentId: string) => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const author = props.item.authorKind ?? "system";
   const canOpenAgent = author === "agent" && props.item.authorId;
   return (
@@ -170,7 +179,7 @@ function MessageBubble(props: {
       <div className="agenthub-message-content">
         {canOpenAgent ? (
           <HoverButton
-            aria-label={`Open ${props.item.title} agent`}
+            aria-label={i18n.t("agents.openAgent", { agent: props.item.title })}
             className="agenthub-message-meta agenthub-message-agent-link"
             onClick={() => props.onOpenAgent?.(props.item.authorId ?? "")}
             type="button"
@@ -184,7 +193,10 @@ function MessageBubble(props: {
         )}
         <div className="agenthub-message-bubble" data-author={author}>
           {props.item.state === "loading" ? (
-            <span className="agenthub-message-loading" aria-label={`${props.item.title} is replying`}>
+            <span
+              className="agenthub-message-loading"
+              aria-label={`${props.item.title} is replying`}
+            >
               <span aria-hidden="true" className="agenthub-message-loading-dot" />
               <span aria-hidden="true" className="agenthub-message-loading-dot" />
               <span aria-hidden="true" className="agenthub-message-loading-dot" />
@@ -243,12 +255,17 @@ export function ChatTimeline(props: {
   readonly onSelect?: (selection: InspectorSelection) => void;
   readonly onOpenAgent?: (agentId: string) => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const timelineRef = React.useRef<HTMLOListElement | null>(null);
   const first = props.items[0];
   const viewModelItems =
-    first && typeof first === "object" && "kind" in first ? (props.items as readonly TimelineItemViewModel[]) : null;
+    first && typeof first === "object" && "kind" in first
+      ? (props.items as readonly TimelineItemViewModel[])
+      : null;
   const scrollKey = viewModelItems
-    ? viewModelItems.map((item) => `${item.id}:${item.state}:${item.body.join("\u0000")}`).join("\u0001")
+    ? viewModelItems
+        .map((item) => `${item.id}:${item.state}:${item.body.join("\u0000")}`)
+        .join("\u0001")
     : props.items.length.toString();
 
   React.useLayoutEffect(() => {
@@ -266,7 +283,11 @@ export function ChatTimeline(props: {
 
   if (!viewModelItems) {
     return (
-      <ol aria-label="Conversation timeline" className="agenthub-chat-thread" ref={timelineRef}>
+      <ol
+        aria-label={i18n.t("nav.conversationTimeline")}
+        className="agenthub-chat-thread"
+        ref={timelineRef}
+      >
         {(props.items as readonly React.ReactNode[]).map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -275,11 +296,18 @@ export function ChatTimeline(props: {
   }
 
   return (
-    <ol aria-label="Conversation timeline" className="agenthub-chat-thread" ref={timelineRef}>
+    <ol
+      aria-label={i18n.t("nav.conversationTimeline")}
+      className="agenthub-chat-thread"
+      ref={timelineRef}
+    >
       {viewModelItems.map((item) => (
         <li key={item.id} data-kind={item.kind}>
           {item.kind === "message" ? (
-            <MessageBubble item={item} {...(props.onOpenAgent ? { onOpenAgent: props.onOpenAgent } : {})} />
+            <MessageBubble
+              item={item}
+              {...(props.onOpenAgent ? { onOpenAgent: props.onOpenAgent } : {})}
+            />
           ) : item.kind === "run-event" || item.kind === "summary" || item.kind === "empty" ? (
             item.inspectorSelection ? (
               <CompactTimelineCard

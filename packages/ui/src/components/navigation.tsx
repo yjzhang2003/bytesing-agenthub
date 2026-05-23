@@ -49,7 +49,7 @@ export function ConversationList(props: {
                 })
               : i18n.t("state.idle", { fallback: "Idle" })}
             {conversation.pendingPermissions > 0
-              ? ` · ${conversation.pendingPermissions} pending`
+              ? ` · ${i18n.t("nav.pending", { count: conversation.pendingPermissions })}`
               : ""}
           </span>
         </HoverButton>
@@ -133,7 +133,7 @@ export function LeftNavigation(props: {
           aria-label={i18n.t("nav.openAgents", { fallback: "Open agents" })}
           className="agenthub-rail-button"
           onClick={props.onOpenAgents}
-          title={i18n.t("nav.openAgents", { fallback: "Agents" })}
+          title={i18n.t("agents.agents")}
           type="button"
         >
           <Icon icon={Bot} />
@@ -144,7 +144,7 @@ export function LeftNavigation(props: {
           aria-label={i18n.t("nav.openConnections", { fallback: "Open connections" })}
           className="agenthub-rail-button"
           onClick={props.onOpenConnections}
-          title={i18n.t("nav.openConnections", { fallback: "Connections" })}
+          title={i18n.t("connections.connections")}
           type="button"
         >
           <Icon icon={Cable} />
@@ -155,7 +155,7 @@ export function LeftNavigation(props: {
             count: props.model.workspace.runCount,
           })}
           className="agenthub-rail-button"
-          title={i18n.t("nav.runs", { fallback: "Runs", count: props.model.workspace.runCount })}
+          title={i18n.t("nav.runsLabel")}
           type="button"
         >
           <Icon icon={Play} />

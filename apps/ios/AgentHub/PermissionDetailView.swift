@@ -2,20 +2,23 @@ import SwiftUI
 
 struct PermissionDetailView: View {
     let permission: PermissionSummary
+    @AppStorage("agenthub.locale") private var localeRaw = AgentHubMobileLocale.english.rawValue
+    private var strings: AgentHubStrings {
+        AgentHubStrings(locale: AgentHubMobileLocale.normalized(localeRaw))
+    }
 
     var body: some View {
         List {
-            Section("Request") {
+            Section(strings.text(.request)) {
                 Text(permission.summary)
-                Text("Risk: \(permission.risk)")
-                Text("Status: \(permission.status.rawValue)")
+                Text(strings.text(.risk(permission.risk)))
+                Text(strings.text(.status(permission.status.rawValue)))
             }
-            Section("Actions") {
-                Button("Allow once") {}
-                Button("Deny", role: .destructive) {}
+            Section(strings.text(.actions)) {
+                Button(strings.text(.allowOnce)) {}
+                Button(strings.text(.deny), role: .destructive) {}
             }
         }
-        .navigationTitle("Permission")
+        .navigationTitle(strings.text(.permission))
     }
 }
-

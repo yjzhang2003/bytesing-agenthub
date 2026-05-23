@@ -1,113 +1,210 @@
 import React from "react";
 
-export type AgentHubLocale = "en-US" | "zh-CN";
+export const supportedAgentHubLocales = ["en-US", "zh-CN"] as const;
+export type AgentHubLocale = (typeof supportedAgentHubLocales)[number];
+export const AGENTHUB_LOCALE_STORAGE_KEY = "agenthub.locale";
 
-type TranslationKey =
-  | "actions.askToRevise"
-  | "actions.cancel"
-  | "actions.cancelPlan"
-  | "actions.clear"
-  | "actions.deny"
-  | "actions.openReview"
-  | "actions.approve"
-  | "actions.allowOnce"
-  | "actions.retry"
-  | "actions.review"
-  | "actions.revise"
-  | "actions.returnToConversation"
-  | "actions.sendMessage"
-  | "actions.switchToDark"
-  | "actions.switchToLight"
-  | "agents.openAgent"
-  | "composer.commandDirect"
-  | "composer.commandPlan"
-  | "composer.disabledReason"
-  | "composer.messageAgent"
-  | "composer.offline"
-  | "composer.placeholder"
-  | "composer.suggestions"
-  | "connections.statusRuntime"
-  | "nav.chat"
-  | "nav.collapse"
-  | "nav.collapseInspector"
-  | "nav.collapseWorkspace"
-  | "nav.conversationDetails"
-  | "nav.conversationNavigation"
-  | "nav.conversations"
-  | "nav.expand"
-  | "nav.expandInspector"
-  | "nav.expandWorkspace"
-  | "nav.openAgents"
-  | "nav.openConnections"
-  | "nav.openConversation"
-  | "nav.openConversationDetails"
-  | "nav.openWorkspaceNavigation"
-  | "nav.pendingPermissions"
-  | "nav.runs"
-  | "nav.search"
-  | "nav.searchConversations"
-  | "nav.settings"
-  | "nav.workspaceNavigation"
-  | "nav.workspaceStatus"
-  | "nav.workspaceTools"
-  | "settings.appearance"
-  | "settings.branch"
-  | "settings.darkMode"
-  | "settings.device"
-  | "settings.enterToSend"
-  | "settings.heartbeat"
-  | "settings.keyboard"
-  | "settings.keyboardDescription"
-  | "settings.messageInput"
-  | "settings.name"
-  | "settings.path"
-  | "settings.permissions"
-  | "settings.permissionsPending"
-  | "settings.platform"
-  | "settings.project"
-  | "settings.runtime"
-  | "settings.runtimeDescription"
-  | "settings.shiftEnter"
-  | "settings.version"
-  | "settings.workbenchDisplay"
-  | "settings.workspace"
-  | "settings.workspaceDescription"
-  | "state.connectionError"
-  | "state.controlPlaneOffline"
-  | "state.fetchingSnapshot"
-  | "state.loadingAgentHub"
-  | "state.loadingWorkbench"
-  | "state.noBranch"
-  | "state.noConversations"
-  | "state.noParticipants"
-  | "state.noWorkspacePath"
-  | "state.runStatus"
-  | "state.idle";
+const enUS = {
+  "actions.allowOnce": "Allow once",
+  "actions.approve": "Approve",
+  "actions.archive": "Archive",
+  "actions.askToRevise": "Ask to revise",
+  "actions.cancel": "Cancel",
+  "actions.cancelPlan": "Cancel plan",
+  "actions.clear": "Clear",
+  "actions.deny": "Deny",
+  "actions.newAgent": "New agent",
+  "actions.openReview": "Open review",
+  "actions.openFullScreenDiffReview": "Open full-screen diff review",
+  "actions.refreshStatus": "Refresh status",
+  "actions.retry": "Retry",
+  "actions.review": "Review",
+  "actions.revise": "Revise",
+  "actions.returnToConversation": "Return to conversation",
+  "actions.saveChanges": "Save changes",
+  "actions.sendMessage": "Send message",
+  "actions.switchToDark": "Switch to dark mode",
+  "actions.switchToLight": "Switch to light mode",
+  "agents.agent": "Agent",
+  "agents.agentDirectory": "Agent directory",
+  "agents.agentName": "Agent name",
+  "agents.agentRole": "Agent role",
+  "agents.agentRoles": "Agent roles",
+  "agents.agents": "Agents",
+  "agents.capabilityTags": "Capability tags",
+  "agents.configuration": "Claude Code-backed role configuration",
+  "agents.defaultAgent": "Default agent",
+  "agents.memoryNamespace": "Memory namespace",
+  "agents.name": "Name",
+  "agents.openAgent": "Open {agent} agent",
+  "agents.policyJson": "Policy JSON",
+  "agents.policyJsonInvalid": "Policy JSON is invalid.",
+  "agents.policyObjectRequired": "Policy must be a JSON object.",
+  "agents.role": "Role",
+  "agents.searchAgents": "Search agents",
+  "agents.systemPrompt": "System prompt",
+  "composer.commandDirect": "Send a direct agent message",
+  "composer.commandPlan": "Plan with the orchestrator",
+  "composer.disabledReason": "Desktop Runtime must be online before sending.",
+  "composer.messageAgent": "Message {target}",
+  "composer.offline": "Runtime offline",
+  "composer.placeholder": "Message an agent, @mention or /command",
+  "composer.suggestions": "Composer suggestions",
+  "connections.agentmemory": "agentmemory",
+  "connections.binary": "Binary",
+  "connections.checked": "Checked",
+  "connections.connection": "Connection",
+  "connections.connections": "Connections",
+  "connections.connectionsDescription": "Local providers and memory services",
+  "connections.enabled": "Enabled",
+  "connections.futureProvider": "Future provider slot",
+  "connections.issue": "Issue",
+  "connections.localProvider": "Local provider connection",
+  "connections.longTermMemory": "Long-term memory",
+  "connections.mode": "Mode",
+  "connections.notConfigured": "Not configured",
+  "connections.providerConnections": "Provider connections",
+  "connections.resizeProviderList": "Resize provider list",
+  "connections.serviceStatus": "agentmemory service status",
+  "connections.status": "Status",
+  "connections.statusRuntime": "Runtime {status}",
+  "connections.url": "URL",
+  "connections.viewer": "Viewer",
+  "inspector.action": "Action",
+  "inspector.actions": "Actions",
+  "inspector.assumptions": "Assumptions",
+  "inspector.capabilities": "Capabilities",
+  "inspector.command": "Command",
+  "inspector.completed": "Completed",
+  "inspector.device": "Device",
+  "inspector.diffReview": "Diff review",
+  "inspector.files": "Files",
+  "inspector.goal": "Goal",
+  "inspector.heartbeat": "Heartbeat",
+  "inspector.noCapabilities": "No capabilities published",
+  "inspector.paths": "Paths",
+  "inspector.platform": "Platform",
+  "inspector.relatedRun": "Related run",
+  "inspector.request": "Request",
+  "inspector.risk": "Risk",
+  "inspector.runtimeDetails": "Runtime details",
+  "inspector.runStatus": "Run {status}",
+  "inspector.started": "Started",
+  "inspector.steps": "Steps",
+  "inspector.timing": "Timing",
+  "inspector.unavailable": "The selected item is no longer available in the latest snapshot.",
+  "inspector.version": "Version",
+  "inspector.workspace": "Workspace",
+  "language.english": "English",
+  "language.language": "Language",
+  "language.preferences": "Product language",
+  "language.simplifiedChinese": "Simplified Chinese",
+  "nav.chat": "Chat",
+  "nav.collapse": "Collapse",
+  "nav.collapseInspector": "Collapse Context Inspector",
+  "nav.collapseWorkspace": "Collapse workspace navigation",
+  "nav.conversationDetails": "Conversation details",
+  "nav.conversationNavigation": "Conversation navigation",
+  "nav.conversationTimeline": "Conversation timeline",
+  "nav.conversationWorkbench": "Conversation workbench",
+  "nav.conversations": "Conversations",
+  "nav.expand": "Expand",
+  "nav.expandInspector": "Expand Context Inspector",
+  "nav.expandWorkspace": "Expand workspace navigation",
+  "nav.fullScreenDiffReview": "Full-screen diff review",
+  "nav.mobilePanelControls": "Mobile panel controls",
+  "nav.openAgents": "Open agents",
+  "nav.openConnections": "Open connections",
+  "nav.openConversation": "Open conversation",
+  "nav.openConversationDetails": "Open conversation details",
+  "nav.openWorkspaceNavigation": "Open workspace navigation",
+  "nav.pending": "{count} pending",
+  "nav.pendingPermissions": "{count} pending permissions",
+  "nav.resizeAgentDirectory": "Resize agent directory",
+  "nav.resizeConversationList": "Resize conversation list",
+  "nav.runs": "{count} runs",
+  "nav.runsLabel": "Runs",
+  "nav.search": "Search",
+  "nav.searchConversations": "Search conversations",
+  "nav.settings": "Settings",
+  "nav.workspaceNavigation": "Workspace navigation",
+  "nav.workspaceStatus": "Workspace status",
+  "nav.workspaceTools": "Workspace tools",
+  "settings.appearance": "Appearance",
+  "settings.branch": "Branch",
+  "settings.darkMode": "Dark mode",
+  "settings.device": "Device",
+  "settings.enterToSend": "Enter sends message",
+  "settings.heartbeat": "Heartbeat",
+  "settings.keyboard": "Keyboard",
+  "settings.keyboardDescription": "Message composer shortcuts",
+  "settings.messageInput": "Message input",
+  "settings.name": "Name",
+  "settings.path": "Path",
+  "settings.page": "Settings page",
+  "settings.permissions": "Permissions",
+  "settings.permissionsPending": "{count} pending request(s)",
+  "settings.platform": "Platform",
+  "settings.project": "Project",
+  "settings.runtime": "Runtime",
+  "settings.runtimeDescription": "Desktop runtime connection",
+  "settings.shiftEnter": "Shift+Enter inserts a new line.",
+  "settings.version": "Version",
+  "settings.workbenchDisplay": "Workbench display preferences",
+  "settings.workspace": "Workspace",
+  "settings.workspaceDescription": "Local project metadata",
+  "state.connectionError": "Connection error",
+  "state.controlPlaneOffline": "Control Plane offline",
+  "state.fetchingSnapshot": "Fetching the latest Control Plane snapshot.",
+  "state.idle": "Idle",
+  "state.loadingAgentHub": "Loading AgentHub",
+  "state.loadingWorkbench": "Loading workbench",
+  "state.noBranch": "No branch",
+  "state.noConversations": "No conversations yet",
+  "state.noParticipants": "No participants",
+  "state.noWorkspacePath": "No workspace path",
+  "state.runStatus": "Run {status}",
+} as const;
 
-type TranslationValues = Readonly<Record<string, string | number>>;
-
-type AgentHubI18n = {
-  readonly locale: AgentHubLocale;
-  readonly t: (key: TranslationKey, values?: TranslationValues) => string;
-};
-
-const zhCN: Record<TranslationKey, string> = {
+const zhCN: Record<keyof typeof enUS, string> = {
   "actions.allowOnce": "允许一次",
   "actions.approve": "批准",
+  "actions.archive": "归档",
   "actions.askToRevise": "要求修改",
   "actions.cancel": "取消",
   "actions.cancelPlan": "取消计划",
   "actions.clear": "清除",
   "actions.deny": "拒绝",
+  "actions.newAgent": "新建智能体",
   "actions.openReview": "打开审查",
+  "actions.openFullScreenDiffReview": "打开全屏差异审查",
+  "actions.refreshStatus": "刷新状态",
   "actions.retry": "重试",
   "actions.review": "审查",
   "actions.revise": "修改",
   "actions.returnToConversation": "返回会话",
+  "actions.saveChanges": "保存更改",
   "actions.sendMessage": "发送消息",
   "actions.switchToDark": "切换到深色模式",
   "actions.switchToLight": "切换到浅色模式",
+  "agents.agent": "智能体",
+  "agents.agentDirectory": "智能体目录",
+  "agents.agentName": "智能体名称",
+  "agents.agentRole": "智能体角色",
+  "agents.agentRoles": "智能体角色",
+  "agents.agents": "智能体",
+  "agents.capabilityTags": "能力标签",
+  "agents.configuration": "Claude Code 驱动的角色配置",
+  "agents.defaultAgent": "默认智能体",
+  "agents.memoryNamespace": "记忆命名空间",
+  "agents.name": "名称",
   "agents.openAgent": "打开 {agent} 智能体",
+  "agents.policyJson": "策略 JSON",
+  "agents.policyJsonInvalid": "策略 JSON 无效。",
+  "agents.policyObjectRequired": "策略必须是 JSON 对象。",
+  "agents.role": "角色",
+  "agents.searchAgents": "搜索智能体",
+  "agents.systemPrompt": "系统提示词",
   "composer.commandDirect": "发送直接智能体消息",
   "composer.commandPlan": "使用协调智能体制定计划",
   "composer.disabledReason": "桌面运行时在线后才能发送。",
@@ -115,24 +212,80 @@ const zhCN: Record<TranslationKey, string> = {
   "composer.offline": "运行时离线",
   "composer.placeholder": "给智能体发送消息，@提及或使用 /命令",
   "composer.suggestions": "输入建议",
+  "connections.agentmemory": "agentmemory",
+  "connections.binary": "二进制",
+  "connections.checked": "检查时间",
+  "connections.connection": "连接",
+  "connections.connections": "连接",
+  "connections.connectionsDescription": "本地提供方和记忆服务",
+  "connections.enabled": "已启用",
+  "connections.futureProvider": "未来提供方槽位",
+  "connections.issue": "问题",
+  "connections.localProvider": "本地提供方连接",
+  "connections.longTermMemory": "长期记忆",
+  "connections.mode": "模式",
+  "connections.notConfigured": "未配置",
+  "connections.providerConnections": "提供方连接",
+  "connections.resizeProviderList": "调整提供方列表宽度",
+  "connections.serviceStatus": "agentmemory 服务状态",
+  "connections.status": "状态",
   "connections.statusRuntime": "运行时 {status}",
+  "connections.url": "URL",
+  "connections.viewer": "查看器",
+  "inspector.action": "操作",
+  "inspector.actions": "操作",
+  "inspector.assumptions": "假设",
+  "inspector.capabilities": "能力",
+  "inspector.command": "命令",
+  "inspector.completed": "完成时间",
+  "inspector.device": "设备",
+  "inspector.diffReview": "差异审查",
+  "inspector.files": "文件",
+  "inspector.goal": "目标",
+  "inspector.heartbeat": "心跳",
+  "inspector.noCapabilities": "未发布能力",
+  "inspector.paths": "路径",
+  "inspector.platform": "平台",
+  "inspector.relatedRun": "关联运行",
+  "inspector.request": "请求",
+  "inspector.risk": "风险",
+  "inspector.runtimeDetails": "运行时详情",
+  "inspector.runStatus": "运行 {status}",
+  "inspector.started": "开始时间",
+  "inspector.steps": "步骤",
+  "inspector.timing": "时间",
+  "inspector.unavailable": "所选项目已不在最新快照中。",
+  "inspector.version": "版本",
+  "inspector.workspace": "工作区",
+  "language.english": "English",
+  "language.language": "语言",
+  "language.preferences": "产品语言",
+  "language.simplifiedChinese": "简体中文",
   "nav.chat": "聊天",
   "nav.collapse": "折叠",
   "nav.collapseInspector": "折叠上下文检查器",
   "nav.collapseWorkspace": "折叠工作区导航",
   "nav.conversationDetails": "会话详情",
   "nav.conversationNavigation": "会话导航",
+  "nav.conversationTimeline": "会话时间线",
+  "nav.conversationWorkbench": "会话工作台",
   "nav.conversations": "会话",
   "nav.expand": "展开",
   "nav.expandInspector": "展开上下文检查器",
   "nav.expandWorkspace": "展开工作区导航",
+  "nav.fullScreenDiffReview": "全屏差异审查",
+  "nav.mobilePanelControls": "移动面板控制",
   "nav.openAgents": "打开智能体",
   "nav.openConnections": "打开连接",
   "nav.openConversation": "打开会话",
   "nav.openConversationDetails": "打开会话详情",
   "nav.openWorkspaceNavigation": "打开工作区导航",
+  "nav.pending": "{count} 个待处理",
   "nav.pendingPermissions": "{count} 个待处理权限",
+  "nav.resizeAgentDirectory": "调整智能体目录宽度",
+  "nav.resizeConversationList": "调整会话列表宽度",
   "nav.runs": "{count} 次运行",
+  "nav.runsLabel": "运行",
   "nav.search": "搜索",
   "nav.searchConversations": "搜索会话",
   "nav.settings": "设置",
@@ -150,6 +303,7 @@ const zhCN: Record<TranslationKey, string> = {
   "settings.messageInput": "消息输入",
   "settings.name": "名称",
   "settings.path": "路径",
+  "settings.page": "设置",
   "settings.permissions": "权限",
   "settings.permissionsPending": "{count} 个待处理请求",
   "settings.platform": "平台",
@@ -174,20 +328,44 @@ const zhCN: Record<TranslationKey, string> = {
   "state.runStatus": "运行 {status}",
 };
 
+export type TranslationKey = keyof typeof enUS;
+type TranslationValues = Readonly<Record<string, string | number>>;
+
+type AgentHubI18n = {
+  readonly locale: AgentHubLocale;
+  readonly t: (key: TranslationKey, values?: TranslationValues) => string;
+};
+
+export const agentHubTranslationKeys = Object.keys(enUS) as TranslationKey[];
+
 function interpolate(template: string, values: TranslationValues = {}): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`));
 }
 
+export function normalizeAgentHubLocale(value: unknown): AgentHubLocale {
+  return supportedAgentHubLocales.includes(value as AgentHubLocale)
+    ? (value as AgentHubLocale)
+    : "en-US";
+}
+
 export function createAgentHubI18n(locale: AgentHubLocale = "en-US"): AgentHubI18n {
+  const normalizedLocale = normalizeAgentHubLocale(locale);
+  const translations = normalizedLocale === "zh-CN" ? zhCN : enUS;
   return {
-    locale,
-    t: (key, values) => {
-      if (locale === "zh-CN") {
-        return interpolate(zhCN[key], values);
-      }
-      return interpolate(String(values?.fallback ?? key), values);
-    },
+    locale: normalizedLocale,
+    t: (key, values) => interpolate(translations[key] ?? enUS[key], values),
   };
+}
+
+export function readStoredAgentHubLocale(storage: Pick<Storage, "getItem">): AgentHubLocale {
+  return normalizeAgentHubLocale(storage.getItem(AGENTHUB_LOCALE_STORAGE_KEY));
+}
+
+export function writeStoredAgentHubLocale(
+  storage: Pick<Storage, "setItem">,
+  locale: AgentHubLocale,
+): void {
+  storage.setItem(AGENTHUB_LOCALE_STORAGE_KEY, normalizeAgentHubLocale(locale));
 }
 
 const AgentHubI18nContext = React.createContext<AgentHubI18n>(createAgentHubI18n());
@@ -202,7 +380,7 @@ export function AgentHubI18nProvider(props: {
   );
 }
 
-export function useAgentHubI18n(locale?: AgentHubLocale): AgentHubI18n {
+export function useAgentHubI18n(locale?: AgentHubLocale | undefined): AgentHubI18n {
   const context = React.useContext(AgentHubI18nContext);
   return React.useMemo(() => (locale ? createAgentHubI18n(locale) : context), [context, locale]);
 }

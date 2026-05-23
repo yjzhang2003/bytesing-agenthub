@@ -2,6 +2,10 @@ import SwiftUI
 
 struct WorkspaceListView: View {
     let state: AgentHubMobileState
+    @AppStorage("agenthub.locale") private var localeRaw = AgentHubMobileLocale.english.rawValue
+    private var strings: AgentHubStrings {
+        AgentHubStrings(locale: AgentHubMobileLocale.normalized(localeRaw))
+    }
 
     var body: some View {
         NavigationStack {
@@ -11,14 +15,13 @@ struct WorkspaceListView: View {
                 } label: {
                     VStack(alignment: .leading) {
                         Text(workspace.name)
-                        Text("Runtime: \(workspace.runtimeStatus.rawValue)")
+                        Text("\(strings.text(.runtime)): \(workspace.runtimeStatus.rawValue)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .navigationTitle("Workspaces")
+            .navigationTitle(strings.text(.workspaces))
         }
     }
 }
-
