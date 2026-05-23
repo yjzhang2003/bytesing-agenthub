@@ -114,12 +114,19 @@ describe("web app state", () => {
     });
     await client.updateAgent("agent_new", { systemPrompt: "Updated." });
     await client.archiveAgent("agent_new");
+    await client.createAgentConversation({
+      workspaceId: "workspace_1",
+      agentId: "agent_new",
+    });
+    await client.setActiveConversation("conversation_new");
     await client.listAgents("workspace_1");
 
     expect(requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`)).toEqual([
       "POST /agents",
       "PATCH /agents/agent_new",
       "POST /agents/agent_new/archive",
+      "POST /agents/agent_new/conversations",
+      "POST /conversations/conversation_new/active",
       "GET /agents",
     ]);
   });

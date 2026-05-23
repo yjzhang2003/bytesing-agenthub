@@ -254,6 +254,7 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("Collapse workspace navigation");
     expect(workbench).toContain("Collapse Context Inspector");
     expect(workbench).toContain("Switch to light mode");
+    expect(workbench).toContain('.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel');
   });
 
   it("renders conversation messages as IM bubbles and active agent replies as loading bubbles", () => {
@@ -488,7 +489,11 @@ describe("@agenthub/ui components", () => {
   it("renders a dedicated agents page with a shared search field and readable configuration", () => {
     const model = createWorkbenchViewModel(snapshot());
     const html = renderToStaticMarkup(
-      <AgentHubWorkbench initialCenterView="agents" viewModel={model} />,
+      <AgentHubWorkbench
+        initialCenterView="agents"
+        viewModel={model}
+        onArchiveAgentRole={() => undefined}
+      />,
     );
 
     expect(html).toContain('data-center-view="agents"');
@@ -508,31 +513,43 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("Responsibilities");
     expect(html).toContain("Capability tags");
     expect(html).toContain("Basic information");
-    expect(html).toContain("Configuration summary");
     expect(html).toContain("Advanced configuration");
+    expect(html).toContain("agenthub-agent-readonly-row");
+    expect(html).toContain("Memory namespace");
+    expect(html).not.toContain("Configuration summary");
     expect(html).toContain("agenthub-agent-settings-group");
     expect(html).toContain("agenthub-agent-settings-body");
     expect(html).toContain("<summary");
     const agentProfileCss = html.match(/\.agenthub-agent-profile \{[^}]*\}/)?.[0] ?? "";
     expect(agentProfileCss).toContain(".agenthub-agent-profile");
     expect(agentProfileCss).not.toContain("border-bottom");
-    const saveDockCss = html.match(/\.agenthub-agent-save-dock \{[^}]*\}/)?.[0] ?? "";
-    expect(saveDockCss).toContain("position: absolute");
-    expect(saveDockCss).not.toContain("box-shadow");
-    const saveButtonCss = html.match(/\.agenthub-antd-button\.ant-btn\.agenthub-agent-save-button \{[^}]*\}/)?.[0] ?? "";
-    expect(saveButtonCss).toContain("border-color: transparent");
-    const agentEditorLabelCss = html.match(/\.agenthub-agent-editor label,[\s\S]*?\.agenthub-role-form label \{[^}]*\}/)?.[0] ?? "";
-    expect(agentEditorLabelCss).toContain("grid-template-columns: minmax(150px, 28%) minmax(0, 1fr)");
+    const formActionsCss = html.match(/\.agenthub-agent-form-actions \{[^}]*\}/)?.[0] ?? "";
+    expect(formActionsCss).toContain("width: min(100%, 820px)");
+    expect(formActionsCss).toContain("justify-content: flex-end");
+    const deleteButtonCss = html.match(/\.agenthub-antd-button\.ant-btn\.agenthub-agent-delete-button \{[^}]*\}/)?.[0] ?? "";
+    expect(deleteButtonCss).toContain("border-color: transparent");
+    expect(html).toContain("--agenthub-type-title: 16px");
+    expect(html).toContain(".agenthub-agent-settings-group > header,\n.agenthub-agent-advanced summary");
+    expect(html).toContain(".agenthub-agent-advanced summary::-webkit-details-marker");
+    expect(html).toContain("list-style: none");
+    const agentEditorLabelCss = html.match(/\.agenthub-agent-editor label,[\s\S]*?\.agenthub-agent-readonly-row \{[^}]*\}/)?.[0] ?? "";
+    expect(agentEditorLabelCss).toContain("grid-template-columns: minmax(136px, 28%) minmax(0, 1fr)");
+    expect(agentEditorLabelCss).not.toContain("border-top");
     const agentEditorInputCss = html.match(/\.agenthub-agent-editor input,[\s\S]*?\.agenthub-role-form textarea \{[^}]*\}/)?.[0] ?? "";
     expect(agentEditorInputCss).toContain("border: 1px solid transparent");
     expect(html).toContain(".agenthub-agent-editor .agenthub-antd-input.ant-input:hover");
+    expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="Responsibilities")[^>]*\srows=/);
+    expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="System prompt")[^>]*\srows=/);
+    expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="Policy JSON")[^>]*\srows=/);
+    expect(html).toContain("max-height: 150px");
     expect(html).toContain(".agenthub-workbench textarea {\n  resize: none;");
     expect(html).toContain(".agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-content");
     expect(html).not.toMatch(/agenthub-agent-profile-actions[\s\S]*New agent/);
-    expect(html).toContain("agenthub-agent-save-dock");
-    expect(html).toContain("agenthub-agent-save-button");
-    expect(html).toContain("Save changes");
-    expect(html).not.toMatch(/agenthub-agent-save-button[^>]*disabled/);
+    expect(html).toContain("agenthub-agent-form-actions");
+    expect(html).toContain("agenthub-agent-delete-button");
+    expect(html).toContain("Delete agent");
+    expect(html).toContain("New conversation");
+    expect(html).not.toContain("Save changes");
     expect(html).toContain("Default agent");
     expect(html).toContain('disabled="" type="button"');
     expect(html).not.toContain('aria-label="Conversation navigation"');
@@ -554,7 +571,8 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("Advanced configuration");
     expect(html).toContain("<summary");
     expect(html).toContain("Policy JSON");
-    expect(html).toContain("Save changes");
+    expect(html).not.toContain("New conversation");
+    expect(html).not.toContain("Save changes");
     expect(html).not.toContain("Choose template");
   });
 
@@ -642,6 +660,84 @@ describe("@agenthub/ui components", () => {
     ]);
     expect(model.workspace.pendingPermissionCount).toBe(1);
     expect(model.inspector.selection?.mode).toBe("permission");
+  });
+
+  it("scopes timeline and composer to the active same-agent conversation", () => {
+    const base = snapshot();
+    const directSnapshot = {
+      ...base,
+      activeConversationId: "conversation_direct_2",
+      conversations: [
+        ...base.conversations,
+        {
+          archivedAt: null,
+          createdAt: now,
+          id: "conversation_direct_1",
+          kind: "single-agent" as const,
+          ownerUserId: "user_1",
+          title: "Researcher",
+          updatedAt: now,
+          workspaceId: "workspace_1",
+        },
+        {
+          archivedAt: null,
+          createdAt: now,
+          id: "conversation_direct_2",
+          kind: "single-agent" as const,
+          ownerUserId: "user_1",
+          title: "Researcher",
+          updatedAt: now,
+          workspaceId: "workspace_1",
+        },
+      ],
+      conversationParticipants: [
+        {
+          agentId: "agent_researcher",
+          archivedAt: null,
+          addedByUserId: "user_1",
+          conversationId: "conversation_direct_1",
+          createdAt: now,
+          id: "participant_direct_1",
+          ownerUserId: "user_1",
+          updatedAt: now,
+        },
+        {
+          agentId: "agent_researcher",
+          archivedAt: null,
+          addedByUserId: "user_1",
+          conversationId: "conversation_direct_2",
+          createdAt: now,
+          id: "participant_direct_2",
+          ownerUserId: "user_1",
+          updatedAt: now,
+        },
+      ],
+      messages: [
+        {
+          authorId: "agent_2",
+          authorKind: "agent" as const,
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "message_old_group",
+          ownerUserId: "user_1",
+          parts: [{ text: "old group message", type: "markdown" as const }],
+          replyToMessageId: null,
+          updatedAt: now,
+        },
+      ],
+      runs: [],
+    };
+
+    const model = createWorkbenchViewModel(directSnapshot);
+
+    expect(model.timeline).toEqual([
+      expect.objectContaining({
+        id: "empty-conversation",
+        title: "Empty conversation",
+      }),
+    ]);
+    expect(model.composer.selectedTarget).toBe("@Researcher");
+    expect(model.workspace.conversations.filter((conversation) => conversation.title === "Researcher")).toHaveLength(2);
   });
 
   it("hides only active loading placeholders after a run message starts", () => {

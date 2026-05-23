@@ -84,6 +84,24 @@ function AgentHubWebApp(): React.ReactElement {
       onArchiveAgentRole={(agentId) => {
         void client.archiveAgent(agentId).then(() => loadSnapshot());
       }}
+      onCreateAgentConversation={(agentId) => {
+        const active = snapshot;
+        if (!active) {
+          return;
+        }
+        return client
+          .createAgentConversation({
+            workspaceId: active.activeWorkspaceId,
+            agentId,
+          })
+          .then(() => loadSnapshot());
+      }}
+      onOpenConversation={(conversationId) => {
+        setSnapshot((current) =>
+          current ? { ...current, activeConversationId: conversationId } : current,
+        );
+        void client.setActiveConversation(conversationId).then(() => loadSnapshot());
+      }}
       onAddAgentToChat={(conversationId, agentId) => {
         void client.addAgentToConversation(conversationId, agentId).then(() => loadSnapshot());
       }}

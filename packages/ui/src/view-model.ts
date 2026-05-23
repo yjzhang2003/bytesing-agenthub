@@ -222,7 +222,13 @@ function timelineItemsFromSnapshot(
     ];
   }
 
-  const messageItems = snapshot.messages.map((message) => ({
+  const activeConversationId = activeConversation(snapshot)?.id;
+  const activeMessages = snapshot.messages.filter(
+    (message) => message.conversationId === activeConversationId,
+  );
+  const activeRuns = snapshot.runs.filter((run) => run.conversationId === activeConversationId);
+
+  const messageItems = activeMessages.map((message) => ({
     authorId: message.authorId,
     authorKind: message.authorKind,
     body: messageBody(message.parts),
@@ -234,11 +240,11 @@ function timelineItemsFromSnapshot(
   }));
 
   const runIdsWithMessages = new Set(
-    snapshot.messages.flatMap((message) =>
+    activeMessages.flatMap((message) =>
       message.parts.map((part) => part.runId).filter((runId): runId is string => Boolean(runId)),
     ),
   );
-  const runItems = snapshot.runs
+  const runItems = activeRuns
     .map((run) => ({ item: activeRunMessage(run, snapshot.agents), run }))
     .filter(
       ({ item, run }) =>

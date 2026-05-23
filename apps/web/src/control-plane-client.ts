@@ -3,6 +3,7 @@ import {
   agentHubLocalDefaults,
   type AgentHubEventType,
   type AgentHubEvent,
+  type CreateAgentConversationRequest,
   type CreateAgentRequest,
   type CreateLocalRunRequest,
   type UpdateAgentRequest,
@@ -66,6 +67,14 @@ export class WebControlPlaneClient {
 
   async archiveAgent(agentId: string) {
     return this.#post(`/agents/${agentId}/archive`, {});
+  }
+
+  async createAgentConversation(input: CreateAgentConversationRequest) {
+    return this.#post(agentHubApiPaths.agentConversations(input.agentId), input);
+  }
+
+  async setActiveConversation(conversationId: string) {
+    return this.#post(agentHubApiPaths.activeConversation(conversationId), {});
   }
 
   async addAgentToConversation(conversationId: string, agentId: string) {

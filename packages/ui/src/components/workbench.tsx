@@ -47,6 +47,8 @@ export function AgentHubWorkbench(props: {
     input: AgentRoleMutationInput & { readonly agentId: string },
   ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
+  readonly onCreateAgentConversation?: (agentId: string) => void | Promise<void>;
+  readonly onOpenConversation?: (conversationId: string) => void;
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onRefreshConnections?: () => void;
@@ -62,7 +64,26 @@ export function AgentHubWorkbench(props: {
   });
   const activeLocale = props.locale ?? storedLocale;
   const i18n = React.useMemo(() => createAgentHubI18n(activeLocale), [activeLocale]);
-  const model = props.viewModel ?? createWorkbenchViewModel(props.snapshot);
+  const [activeConversationIdOverride, setActiveConversationIdOverride] = React.useState<
+    string | null
+  >(null);
+  const effectiveSnapshot = React.useMemo(() => {
+    if (!props.snapshot || !activeConversationIdOverride) {
+      return props.snapshot;
+    }
+    if (
+      !props.snapshot.conversations.some(
+        (conversation) => conversation.id === activeConversationIdOverride,
+      )
+    ) {
+      return props.snapshot;
+    }
+    return {
+      ...props.snapshot,
+      activeConversationId: activeConversationIdOverride,
+    };
+  }, [activeConversationIdOverride, props.snapshot]);
+  const model = props.viewModel ?? createWorkbenchViewModel(effectiveSnapshot);
   const [selection, setSelection] = React.useState<InspectorSelection | null>(
     props.initialInspectorSelection ?? model.inspector.selection,
   );
@@ -129,6 +150,17 @@ export function AgentHubWorkbench(props: {
       setSelectedAgentId(firstAgentId);
     }
   }, [centerView, model.agentsPage.agents, selectedAgentId]);
+  React.useEffect(() => {
+    if (
+      activeConversationIdOverride &&
+      props.snapshot &&
+      !props.snapshot.conversations.some(
+        (conversation) => conversation.id === activeConversationIdOverride,
+      )
+    ) {
+      setActiveConversationIdOverride(null);
+    }
+  }, [activeConversationIdOverride, props.snapshot]);
   const setLocale = React.useCallback((nextLocale: AgentHubLocale) => {
     setStoredLocale(nextLocale);
     if (typeof window !== "undefined") {
@@ -141,12 +173,13 @@ export function AgentHubWorkbench(props: {
     ? { duration: 0 }
     : { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] as const };
   const mobileLayout = layoutMode === "narrow" || layoutMode === "mobile-web";
+  const overlayInspectorLayout = mobileLayout || layoutMode === "standard";
   const managementPage = centerView !== "conversation";
   const compactLeftNavigation = centerView === "connections" || centerView === "settings";
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
   const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
-  const renderMobileInspector = !managementPage && mobileLayout && mobileRightOpen;
+  const renderOverlayInspector = !managementPage && overlayInspectorLayout && mobileRightOpen;
   const fullScreenDiff =
     fullScreenDiffId && model.inspector.diff?.id === fullScreenDiffId ? model.inspector.diff : null;
   const openChatInfo = React.useCallback(() => {
@@ -156,11 +189,11 @@ export function AgentHubWorkbench(props: {
     setCenterView("conversation");
     setSelection({ id: model.inspector.chatInfo.id, mode: "chat-info" });
     setRightCollapsed(false);
-    if (mobileLayout) {
+    if (overlayInspectorLayout) {
       setMobileRightOpen(true);
       setMobileLeftOpen(false);
     }
-  }, [mobileLayout, model.inspector.chatInfo]);
+  }, [model.inspector.chatInfo, overlayInspectorLayout]);
   const beginHorizontalResize = React.useCallback(
     (
       event: React.PointerEvent,
@@ -199,6 +232,22 @@ export function AgentHubWorkbench(props: {
     "--agenthub-left-column": `${leftPanelWidth}px`,
     "--agenthub-directory-column": `${directoryPanelWidth}px`,
   } as React.CSSProperties;
+  const openConversation = React.useCallback(
+    (conversationId?: string) => {
+      if (conversationId) {
+        setActiveConversationIdOverride(conversationId);
+        props.onOpenConversation?.(conversationId);
+        if (selection?.mode === "chat-info") {
+          setSelection({ id: conversationId, mode: "chat-info" });
+        } else {
+          setSelection(null);
+        }
+      }
+      setCenterView("conversation");
+      setMobileLeftOpen(false);
+    },
+    [props.onOpenConversation, selection?.mode],
+  );
 
   if (props.loading) {
     return (
@@ -284,9 +333,9 @@ export function AgentHubWorkbench(props: {
                   compact={compactLeftNavigation}
                   model={model}
                   onOpenConversation={() => {
-                    setCenterView("conversation");
-                    setMobileLeftOpen(false);
+                    openConversation();
                   }}
+                  onSelectConversation={openConversation}
                   onOpenSettings={() => {
                     setCenterView("settings");
                     setMobileLeftOpen(false);
@@ -353,9 +402,9 @@ export function AgentHubWorkbench(props: {
                     compact={compactLeftNavigation}
                     model={model}
                     onOpenConversation={() => {
-                      setCenterView("conversation");
-                      setMobileLeftOpen(false);
+                      openConversation();
                     }}
+                    onSelectConversation={openConversation}
                     onOpenSettings={() => {
                       setCenterView("settings");
                       setMobileLeftOpen(false);
@@ -511,6 +560,20 @@ export function AgentHubWorkbench(props: {
                   {...(props.onArchiveAgentRole
                     ? { onArchiveAgentRole: props.onArchiveAgentRole }
                     : {})}
+                  {...(props.onCreateAgentConversation
+                    ? {
+                        onCreateAgentConversation: (agentId: string) => {
+                          return Promise.resolve(props.onCreateAgentConversation?.(agentId)).then(
+                            () => {
+                              setActiveConversationIdOverride(null);
+                              setCenterView("conversation");
+                              setSelection(null);
+                              setMobileLeftOpen(false);
+                            },
+                          );
+                        },
+                      }
+                    : {})}
                 />
               ) : centerView === "connections" ? (
                 <ConnectionsPage
@@ -594,7 +657,7 @@ export function AgentHubWorkbench(props: {
               </div>
             ) : null}
             <AnimatePresence initial={false}>
-              {renderMobileInspector ? (
+              {renderOverlayInspector ? (
                 <motion.div
                   className="agenthub-motion-right-panel"
                   key="mobile-context-inspector"

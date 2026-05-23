@@ -3,6 +3,7 @@ import {
   agentHubApiPaths,
   agentHubLocalDefaults,
   addConversationAgentRequestSchema,
+  createAgentConversationRequestSchema,
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   updateAgentRequestSchema,
@@ -162,6 +163,17 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
+      const agentConversationMatch = url.pathname.match(/^\/agents\/([^/]+)\/conversations$/);
+      if (request.method === "POST" && agentConversationMatch?.[1]) {
+        const body = createAgentConversationRequestSchema.parse(await readJson(request));
+        if (body.agentId !== agentConversationMatch[1]) {
+          throw new Error("Agent id path and body must match");
+        }
+        const conversation = registry.createAgentConversation(auth.userId, body);
+        sendJson(response, 201, conversation);
+        return;
+      }
+
       const conversationAgentMatch = url.pathname.match(/^\/conversations\/([^/]+)\/agents$/);
       if (request.method === "POST" && conversationAgentMatch?.[1]) {
         const body = addConversationAgentRequestSchema.parse(await readJson(request));
@@ -171,6 +183,13 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
           body.agentId,
         );
         sendJson(response, 200, { participant });
+        return;
+      }
+
+      const activeConversationMatch = url.pathname.match(/^\/conversations\/([^/]+)\/active$/);
+      if (request.method === "POST" && activeConversationMatch?.[1]) {
+        const conversation = registry.setActiveConversation(auth.userId, activeConversationMatch[1]);
+        sendJson(response, 200, { conversation });
         return;
       }
 

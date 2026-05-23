@@ -30,6 +30,11 @@ body { overflow: hidden; }
   --agenthub-right-column: clamp(320px, 26vw, 380px);
   --agenthub-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --agenthub-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --agenthub-type-xs: 11px;
+  --agenthub-type-sm: 12px;
+  --agenthub-type-md: 13px;
+  --agenthub-type-lg: 14px;
+  --agenthub-type-title: 16px;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -41,7 +46,7 @@ body { overflow: hidden; }
   background: var(--agenthub-bg);
   color: var(--agenthub-text);
   font-family: var(--agenthub-font);
-  font-size: 13px;
+  font-size: var(--agenthub-type-md);
   line-height: 1.5;
   letter-spacing: 0;
   transition: grid-template-columns var(--agenthub-motion-medium);
@@ -1087,6 +1092,8 @@ body { overflow: hidden; }
   white-space: nowrap;
 }
 .agenthub-agent-detail {
+  --agenthub-agent-detail-x: min(5vw, 56px);
+  position: relative;
   min-width: 0;
   width: 100%;
   height: 100%;
@@ -1094,36 +1101,36 @@ body { overflow: hidden; }
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 44px min(7vw, 84px) 156px;
+  padding: 28px var(--agenthub-agent-detail-x) 104px;
   display: grid;
   align-content: start;
-  gap: 26px;
+  gap: 18px;
 }
 .agenthub-agent-profile {
   min-width: 0;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 .agenthub-agent-profile-avatar {
-  width: 72px;
-  height: 72px;
-  font-size: 21px;
+  width: 52px;
+  height: 52px;
+  font-size: var(--agenthub-type-title);
 }
 .agenthub-agent-profile-avatar .agenthub-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 .agenthub-agent-profile-copy {
   min-width: 0;
   display: grid;
   justify-items: start;
-  gap: 8px;
+  gap: 6px;
 }
 .agenthub-agent-profile-copy strong {
-  font-size: 32px;
-  line-height: 1.08;
+  font-size: 22px;
+  line-height: 1.14;
   letter-spacing: 0;
 }
 .agenthub-agent-profile-copy p {
@@ -1137,7 +1144,7 @@ body { overflow: hidden; }
   border: 1px solid var(--agenthub-border);
   border-radius: 999px;
   color: var(--agenthub-text-secondary);
-  font-size: 12px;
+  font-size: var(--agenthub-type-sm);
   line-height: 1.2;
 }
 .agenthub-section-heading {
@@ -1148,39 +1155,12 @@ body { overflow: hidden; }
 .agenthub-section-heading strong,
 .agenthub-section-heading h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--agenthub-type-title);
   line-height: 1.2;
 }
 .agenthub-section-heading small {
   color: var(--agenthub-text-secondary);
-  font-size: 13px;
-}
-.agenthub-agent-summary {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.agenthub-agent-summary div {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 9px;
-  border: 1px solid var(--agenthub-border);
-  border-radius: var(--agenthub-radius);
-  background: var(--agenthub-surface);
-}
-.agenthub-agent-summary dt {
-  color: var(--agenthub-text-muted);
-  font-size: 12px;
-}
-.agenthub-agent-summary dd {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--agenthub-type-md);
 }
 .agenthub-agent-template-section {
   display: grid;
@@ -1188,29 +1168,29 @@ body { overflow: hidden; }
 .agenthub-agent-template-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 18px 24px 22px;
+  gap: 8px;
+  padding: 14px 18px 16px;
 }
 .agenthub-antd-button.ant-btn.agenthub-agent-template-option {
   min-width: 0;
   height: auto;
-  min-height: 92px;
-  padding: 14px;
+  min-height: 76px;
+  padding: 11px;
   display: grid;
   justify-content: stretch;
   align-content: start;
-  gap: 7px;
+  gap: 5px;
   border: 1px solid var(--agenthub-border);
   border-radius: var(--agenthub-radius);
   text-align: left;
 }
 .agenthub-agent-template-option > span {
-  font-size: 14px;
+  font-size: var(--agenthub-type-md);
   font-weight: 700;
 }
 .agenthub-agent-template-option > small {
   color: var(--agenthub-text-secondary);
-  font-size: 12px;
+  font-size: var(--agenthub-type-sm);
   line-height: 1.35;
   white-space: normal;
 }
@@ -1221,53 +1201,53 @@ body { overflow: hidden; }
 .agenthub-agent-advanced {
   padding: 0;
 }
+.agenthub-agent-settings-group > header,
 .agenthub-agent-advanced summary {
-  min-height: 64px;
-  padding: 0 24px;
+  min-height: 50px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
+}
+.agenthub-agent-advanced summary {
   cursor: pointer;
   color: var(--agenthub-text);
-  list-style-position: outside;
+  list-style: none;
 }
+.agenthub-agent-advanced summary::-webkit-details-marker {
+  display: none;
+}
+.agenthub-agent-settings-group > header h3,
 .agenthub-agent-advanced summary h3 {
-  display: inline;
-  margin: 0 0 0 6px;
-  font-size: 18px;
+  margin: 0;
+  font-size: var(--agenthub-type-title);
   line-height: 1.2;
 }
 .agenthub-agent-advanced-grid {
   display: grid;
 }
-.agenthub-agent-save-dock {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  z-index: 20;
-  grid-column: 1 / -1;
-  justify-self: end;
-  width: fit-content;
+.agenthub-agent-form-actions {
+  width: min(100%, 820px);
+  justify-content: flex-end;
   margin: 0;
-  padding: 0;
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-save-button {
-  min-height: 40px;
-  padding-inline: 16px;
+.agenthub-antd-button.ant-btn.agenthub-agent-delete-button {
+  min-height: 34px;
+  padding-inline: 12px;
   border-color: transparent;
   background: color-mix(in srgb, var(--agenthub-surface) 96%, transparent);
   color: var(--agenthub-text);
-  font-size: 14px;
+  font-size: var(--agenthub-type-md);
   font-weight: 700;
   transition:
     background-color var(--agenthub-motion-fast),
     border-color var(--agenthub-motion-fast),
     color var(--agenthub-motion-fast);
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-save-button:hover,
-.agenthub-antd-button.ant-btn.agenthub-agent-save-button:focus-visible {
-  border-color: var(--agenthub-border-strong);
-  background: var(--agenthub-surface-hover);
-  color: var(--agenthub-text);
+.agenthub-antd-button.ant-btn.agenthub-agent-delete-button:hover,
+.agenthub-antd-button.ant-btn.agenthub-agent-delete-button:focus-visible {
+  border-color: var(--agenthub-danger);
+  background: color-mix(in srgb, var(--agenthub-danger) 10%, var(--agenthub-surface));
+  color: var(--agenthub-danger);
 }
 .agenthub-agents-layout,
 .agenthub-connections-layout {
@@ -1307,26 +1287,14 @@ body { overflow: hidden; }
 }
 .agenthub-agent-editor {
   display: grid;
-  gap: 20px;
+  gap: 14px;
 }
 .agenthub-agent-settings-group {
   width: min(100%, 820px);
   overflow: hidden;
   border: 1px solid var(--agenthub-border);
-  border-radius: 18px;
+  border-radius: var(--agenthub-radius);
   background: color-mix(in srgb, var(--agenthub-surface) 92%, var(--agenthub-bg));
-}
-.agenthub-agent-settings-group > header {
-  min-height: 64px;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--agenthub-border);
-}
-.agenthub-agent-settings-group > header h3 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
 }
 .agenthub-agent-settings-body {
   display: grid;
@@ -1334,32 +1302,37 @@ body { overflow: hidden; }
   gap: 0;
 }
 .agenthub-agent-settings-body > .agenthub-detail-section {
-  padding: 16px 24px;
-  border-top: 1px solid var(--agenthub-border);
+  padding: 12px 18px;
 }
 .agenthub-agent-editor label,
-.agenthub-role-form label {
+.agenthub-role-form label,
+.agenthub-agent-readonly-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(150px, 28%) minmax(0, 1fr);
+  grid-template-columns: minmax(136px, 28%) minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
-  min-height: 72px;
-  padding: 16px 24px;
-  border-top: 1px solid var(--agenthub-border);
+  gap: 14px;
+  min-height: 54px;
+  padding: 10px 18px;
   color: var(--agenthub-text-secondary);
-  font-size: 14px;
+  font-size: var(--agenthub-type-sm);
   font-weight: 700;
 }
-.agenthub-agent-settings-body > label:first-child,
-.agenthub-agent-settings-body > .agenthub-detail-section:first-child {
-  border-top: 0;
+.agenthub-agent-readonly-row > strong,
+.agenthub-agent-readonly-row > code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--agenthub-text);
+  font: 650 var(--agenthub-type-md)/1.45 var(--agenthub-font);
+}
+.agenthub-agent-readonly-row > code {
+  font-family: var(--agenthub-mono);
 }
 .agenthub-agent-editor label:has(textarea) {
   align-items: start;
 }
 .agenthub-agent-editor label:has(textarea) > span {
-  padding-top: 10px;
+  padding-top: 8px;
 }
 .agenthub-agent-editor input,
 .agenthub-agent-editor select,
@@ -1372,27 +1345,27 @@ body { overflow: hidden; }
   border-radius: var(--agenthub-radius);
   background: var(--agenthub-surface);
   color: var(--agenthub-text);
-  font: 600 14px/1.45 var(--agenthub-font);
-  padding: 10px 12px;
-  min-height: 40px;
+  font: 600 var(--agenthub-type-md)/1.45 var(--agenthub-font);
+  padding: 8px 10px;
+  min-height: 34px;
 }
 .agenthub-agent-editor .agenthub-antd-select.ant-select {
-  font-size: 14px;
+  font-size: var(--agenthub-type-md);
 }
 .agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selector {
   align-items: center;
   display: flex;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 10px;
 }
 .agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-content {
-  min-height: 38px;
+  min-height: 32px;
   display: flex;
   align-items: center;
 }
 .agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selector,
 .agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selection-item {
-  font: 600 14px/1.45 var(--agenthub-font);
+  font: 600 var(--agenthub-type-md)/1.45 var(--agenthub-font);
 }
 .agenthub-agent-editor .agenthub-antd-input.ant-input,
 .agenthub-agent-editor .agenthub-antd-input.ant-input-affix-wrapper,
@@ -1420,7 +1393,9 @@ body { overflow: hidden; }
 }
 .agenthub-agent-editor textarea,
 .agenthub-role-form textarea {
-  resize: vertical;
+  max-height: 150px;
+  overflow-y: auto;
+  resize: none;
   font-family: var(--agenthub-font);
   line-height: 1.5;
 }
@@ -1481,12 +1456,13 @@ body { overflow: hidden; }
     grid-template-columns: minmax(0, 1fr);
   }
   .agenthub-agent-editor label,
-  .agenthub-role-form label {
+  .agenthub-role-form label,
+  .agenthub-agent-readonly-row {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: 8px;
-    padding: 16px;
-    font-size: 14px;
+    padding: 12px 16px;
+    font-size: var(--agenthub-type-sm);
   }
   .agenthub-agent-editor label:has(textarea) > span {
     padding-top: 0;
@@ -1506,22 +1482,18 @@ body { overflow: hidden; }
     min-height: 280px;
   }
   .agenthub-agent-detail {
-    padding: 24px 18px 132px;
-  }
-  .agenthub-agent-save-dock {
-    right: 18px;
-    bottom: 18px;
+    --agenthub-agent-detail-x: 18px;
+    padding: 24px var(--agenthub-agent-detail-x) 132px;
   }
   .agenthub-agent-profile {
-    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-columns: 52px minmax(0, 1fr);
   }
   .agenthub-agent-profile-avatar {
-    width: 58px !important;
-    height: 58px !important;
-    font-size: 16px;
+    width: 52px !important;
+    height: 52px !important;
+    font-size: var(--agenthub-type-title);
   }
-  .agenthub-agent-template-grid,
-  .agenthub-agent-summary {
+  .agenthub-agent-template-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1590,9 +1562,88 @@ body { overflow: hidden; }
 .agenthub-chat-participant-tile-add {
   border-color: var(--agenthub-border);
   border-style: dashed;
+  padding: 0;
 }
 .agenthub-chat-agent-select.agenthub-antd-select {
   width: 100%;
+}
+.agenthub-chat-add-agent-button {
+  width: 100%;
+  min-height: 94px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 8px;
+}
+.agenthub-chat-add-agent-button:disabled {
+  color: var(--agenthub-text-muted);
+  cursor: not-allowed;
+}
+.agenthub-chat-add-agent-button .agenthub-icon {
+  width: 20px;
+  height: 20px;
+}
+.agenthub-chat-add-agent-button:not(:disabled):hover {
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-chat-add-agent-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--agenthub-accent);
+}
+.agenthub-chat-add-agent-dialog {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding-top: 4px;
+}
+.agenthub-chat-add-agent-modal .ant-modal-content {
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  border-radius: 8px;
+}
+.agenthub-chat-add-agent-modal .ant-modal-title {
+  color: var(--agenthub-text);
+}
+.agenthub-chat-add-agent-modal .ant-modal-close {
+  color: var(--agenthub-text-muted);
+}
+.agenthub-chat-add-agent-modal .ant-modal-close:hover {
+  color: var(--agenthub-text);
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-chat-add-agent-modal .ant-btn {
+  border-color: var(--agenthub-border);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  box-shadow: none;
+}
+.agenthub-chat-add-agent-modal .ant-btn:not(:disabled):not(.ant-btn-disabled):hover,
+.agenthub-chat-add-agent-modal .ant-btn:not(:disabled):not(.ant-btn-disabled):focus-visible {
+  border-color: var(--agenthub-border-strong);
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text);
+}
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled) {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+  color: var(--agenthub-accent-text);
+}
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled):hover,
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled):focus-visible {
+  border-color: var(--agenthub-accent);
+  background: color-mix(in srgb, var(--agenthub-accent) 88%, var(--agenthub-surface));
+  color: var(--agenthub-accent-text);
+}
+.agenthub-chat-add-agent-modal .agenthub-antd-select.ant-select-focused .ant-select-selector,
+.agenthub-chat-add-agent-modal .agenthub-antd-select.ant-select-open .ant-select-selector {
+  border-color: var(--agenthub-accent) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 24%, transparent) !important;
 }
 .agenthub-file-list {
   display: grid;
@@ -1708,6 +1759,7 @@ body { overflow: hidden; }
   height: 100dvh;
   box-shadow: 0 20px 70px rgba(0, 0, 0, .32);
 }
+.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel,
 .agenthub-workbench[data-layout="narrow"] .agenthub-motion-right-panel,
 .agenthub-workbench[data-layout="mobile-web"] .agenthub-motion-right-panel {
   position: fixed;

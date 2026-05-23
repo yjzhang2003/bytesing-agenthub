@@ -189,6 +189,11 @@ export const addConversationAgentRequestSchema = z.object({
   agentId: idSchema,
 });
 
+export const createAgentConversationRequestSchema = z.object({
+  workspaceId: idSchema,
+  agentId: idSchema,
+});
+
 export const runtimeCommandSchema = z.discriminatedUnion("type", [
   z.object({
     id: idSchema,
@@ -344,6 +349,9 @@ export const workbenchSnapshotSchema = z.object({
 
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
 export type AddConversationAgentRequestPayload = z.infer<typeof addConversationAgentRequestSchema>;
+export type CreateAgentConversationRequestPayload = z.infer<
+  typeof createAgentConversationRequestSchema
+>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type DiffMetadataPayload = z.infer<typeof diffMetadataSchema>;

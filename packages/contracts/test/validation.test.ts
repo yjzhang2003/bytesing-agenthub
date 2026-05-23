@@ -3,6 +3,7 @@ import {
   agentHubApiPaths,
   isDiffMetadataStale,
   validateAddConversationAgentRequest,
+  validateCreateAgentConversationRequest,
   validateCreateLocalRunRequest,
   validateCreateAgentRequest,
   validateRuntimeRegistrationPayload,
@@ -182,11 +183,19 @@ describe("contract validation", () => {
   it("accepts conversation membership contracts", () => {
     expect(validateAddConversationAgentRequest({ agentId: "agent_1" }).ok).toBe(true);
     expect(validateAddConversationAgentRequest({}).ok).toBe(false);
+    expect(
+      validateCreateAgentConversationRequest({
+        workspaceId: "workspace_1",
+        agentId: "agent_1",
+      }).ok,
+    ).toBe(true);
+    expect(validateCreateAgentConversationRequest({ workspaceId: "workspace_1" }).ok).toBe(false);
   });
 
   it("exposes local agent, provider status, and memory status API paths", () => {
     expect(agentHubApiPaths.agents).toBe("/agents");
     expect(agentHubApiPaths.conversations).toBe("/conversations");
+    expect(agentHubApiPaths.agentConversations("agent_1")).toBe("/agents/agent_1/conversations");
     expect(agentHubApiPaths.runtimeProviderStatus).toBe("/runtime/provider-status");
     expect(agentHubApiPaths.memoryStatus).toBe("/memory/status");
   });

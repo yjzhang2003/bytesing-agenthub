@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from "electron";
+import { logDesktopError, logDesktopInfo } from "./desktop-log.js";
 import { defaultDesktopShellConfig, type DesktopShellConfig } from "./shell-config.js";
 import { loadDesktopWebUrl } from "./window-loader.js";
 
@@ -26,15 +27,15 @@ export async function createAgentHubWindow(
   });
 
   window.once("ready-to-show", () => {
-    console.log("[desktop] window ready to show");
+    logDesktopInfo("[desktop] window ready to show");
     window.show();
     window.focus();
   });
   window.webContents.on("did-finish-load", () => {
-    console.log(`[desktop] loaded ${window.webContents.getURL()}`);
+    logDesktopInfo(`[desktop] loaded ${window.webContents.getURL()}`);
   });
 
-  console.log(`[desktop] loading ${config.webUrl}`);
+  logDesktopInfo(`[desktop] loading ${config.webUrl}`);
   await loadDesktopWebUrl(window, config);
   if (!window.isVisible()) {
     window.show();
@@ -44,9 +45,9 @@ export async function createAgentHubWindow(
 }
 
 export async function startDesktopApp(): Promise<void> {
-  console.log("[desktop] waiting for Electron app readiness");
+  logDesktopInfo("[desktop] waiting for Electron app readiness");
   await app.whenReady();
-  console.log("[desktop] Electron app ready");
+  logDesktopInfo("[desktop] Electron app ready");
   await createAgentHubWindow();
 
   app.on("activate", () => {
@@ -65,7 +66,7 @@ export async function startDesktopApp(): Promise<void> {
 if (process.env.AGENTHUB_ELECTRON_ENTRY === "1") {
   void startDesktopApp().catch((error: unknown) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    console.error(`[desktop] startup failed\n${message}`);
+    logDesktopError(`[desktop] startup failed\n${message}`);
     app.exit(1);
   });
 }

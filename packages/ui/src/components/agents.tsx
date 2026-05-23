@@ -1,4 +1,4 @@
-import { Bot, Plus, Save } from "lucide-react";
+import { Bot, MessageSquarePlus, Plus, Trash2 } from "lucide-react";
 import React from "react";
 import { type TranslationKey, useAgentHubI18n } from "../i18n.js";
 import type { AgentPageAgentViewModel, WorkbenchViewModel } from "../types.js";
@@ -10,7 +10,7 @@ import {
   AgentHubTextArea,
   AgentHubTextInput,
 } from "./antd-primitives.js";
-import { DetailSection, Icon, SidebarSearchField } from "./primitives.js";
+import { Icon, SidebarSearchField } from "./primitives.js";
 
 export interface AgentRoleMutationInput {
   readonly agentId?: string;
@@ -208,6 +208,7 @@ function AgentEditor(props: {
     input: AgentRoleMutationInput & { readonly agentId: string },
   ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
+  readonly onCreateAgentConversation?: (agentId: string) => void | Promise<void>;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const defaultTemplate = agentTemplatePresets[1];
@@ -229,6 +230,8 @@ function AgentEditor(props: {
     props.agent?.policyJson ?? JSON.stringify(defaultTemplate.policy, null, 2),
   );
   const [policyError, setPolicyError] = React.useState<string | null>(null);
+  const [conversationPending, setConversationPending] = React.useState(false);
+  const [conversationError, setConversationError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!props.agent) {
@@ -256,6 +259,7 @@ function AgentEditor(props: {
   }, [defaultTemplate, mode, props.agent, selectedTemplateId]);
 
   const editingExisting = mode === "edit" && props.agent;
+  const editingAgentId = editingExisting ? props.agent.id : null;
   const canSubmit = Boolean(displayName.trim() && systemPrompt.trim());
   const selectedTemplate =
     agentTemplatePresets.find((candidate) => candidate.id === selectedTemplateId) ??
@@ -271,10 +275,57 @@ function AgentEditor(props: {
     setPolicyError(null);
   };
 
+  const saveAgentRole = React.useCallback(() => {
+    if (!canSubmit) {
+      return;
+    }
+    const policy = parsePolicy(policyJson);
+    if (!policy.ok) {
+      setPolicyError(policy.error);
+      return;
+    }
+    const payload = {
+      displayName: displayName.trim(),
+      role,
+      systemPrompt: systemPrompt.trim(),
+      capabilityTags: parseTags(tags),
+      policy: policy.value,
+    };
+    if (editingExisting) {
+      props.onUpdateAgentRole?.({ ...payload, agentId: props.agent.id });
+    } else {
+      props.onCreateAgentRole?.(payload);
+    }
+  }, [
+    canSubmit,
+    displayName,
+    editingExisting,
+    policyJson,
+    props,
+    role,
+    systemPrompt,
+    tags,
+  ]);
+
+  const createAgentConversation = React.useCallback(() => {
+    if (!editingAgentId || !props.onCreateAgentConversation || conversationPending) {
+      return;
+    }
+    setConversationPending(true);
+    setConversationError(null);
+    void Promise.resolve(props.onCreateAgentConversation(editingAgentId))
+      .catch((error: unknown) => {
+        setConversationError(
+          error instanceof Error ? error.message : i18n.t("agents.newConversationFailed"),
+        );
+      })
+      .finally(() => setConversationPending(false));
+  }, [conversationPending, editingAgentId, i18n, props]);
+
   return (
     <section className="agenthub-agent-detail">
       <header className="agenthub-agent-profile">
-        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={76}>
+        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={52}>
           {mode === "new" ? (
             <Icon icon={Plus} />
           ) : (
@@ -294,28 +345,16 @@ function AgentEditor(props: {
       </header>
       <form
         className="agenthub-agent-editor"
+        onBlur={(event) => {
+          const nextFocused = event.relatedTarget;
+          if (nextFocused instanceof Node && event.currentTarget.contains(nextFocused)) {
+            return;
+          }
+          saveAgentRole();
+        }}
         onSubmit={(event) => {
           event.preventDefault();
-          if (!canSubmit) {
-            return;
-          }
-          const policy = parsePolicy(policyJson);
-          if (!policy.ok) {
-            setPolicyError(policy.error);
-            return;
-          }
-          const payload = {
-            displayName: displayName.trim(),
-            role,
-            systemPrompt: systemPrompt.trim(),
-            capabilityTags: parseTags(tags),
-            policy: policy.value,
-          };
-          if (editingExisting) {
-            props.onUpdateAgentRole?.({ ...payload, agentId: props.agent.id });
-          } else {
-            props.onCreateAgentRole?.(payload);
-          }
+          saveAgentRole();
         }}
       >
         {mode === "new" ? (
@@ -371,7 +410,7 @@ function AgentEditor(props: {
               <span>{i18n.t("agents.responsibilities")}</span>
               <AgentHubTextArea
                 aria-label={i18n.t("agents.responsibilities")}
-                rows={4}
+                autoSize={{ maxRows: 6, minRows: 1 }}
                 value={systemPrompt}
                 onChange={(event) => setSystemPrompt(event.currentTarget.value)}
               />
@@ -395,26 +434,22 @@ function AgentEditor(props: {
           </summary>
           <div className="agenthub-agent-settings-body agenthub-agent-advanced-grid">
             {mode === "edit" && props.agent ? (
-              <DetailSection title={i18n.t("agents.configurationSummary")}>
-                <dl className="agenthub-agent-summary">
-                  <div>
-                    <dt>{i18n.t("connections.mode")}</dt>
-                    <dd>{props.agent.providerLabel}</dd>
-                  </div>
-                  <div>
-                    <dt>{i18n.t("agents.memoryNamespace")}</dt>
-                    <dd>
-                      <code>{props.agent.memoryNamespace}</code>
-                    </dd>
-                  </div>
-                </dl>
-              </DetailSection>
+              <>
+                <div className="agenthub-agent-readonly-row">
+                  <span>{i18n.t("connections.mode")}</span>
+                  <strong>{props.agent.providerLabel}</strong>
+                </div>
+                <div className="agenthub-agent-readonly-row">
+                  <span>{i18n.t("agents.memoryNamespace")}</span>
+                  <code>{props.agent.memoryNamespace}</code>
+                </div>
+              </>
             ) : null}
             <label>
               <span>{i18n.t("agents.systemPrompt")}</span>
               <AgentHubTextArea
                 aria-label={i18n.t("agents.systemPrompt")}
-                rows={5}
+                autoSize={{ maxRows: 6, minRows: 1 }}
                 value={systemPrompt}
                 onChange={(event) => setSystemPrompt(event.currentTarget.value)}
               />
@@ -424,7 +459,7 @@ function AgentEditor(props: {
               <AgentHubTextArea
                 aria-label={i18n.t("agents.policyJson")}
                 aria-invalid={policyError ? "true" : undefined}
-                rows={5}
+                autoSize={{ maxRows: 6, minRows: 1 }}
                 value={policyJson}
                 onChange={(event) => {
                   setPolicyJson(event.currentTarget.value);
@@ -435,14 +470,33 @@ function AgentEditor(props: {
             </label>
           </div>
         </details>
-        <div className="agenthub-action-row agenthub-agent-save-dock">
-          <AgentHubButton
-            className="agenthub-agent-save-button"
-            htmlType="submit"
-          >
-            <Icon icon={Save} /> {i18n.t("actions.saveChanges")}
-          </AgentHubButton>
-        </div>
+        {editingAgentId ? (
+          <div className="agenthub-action-row agenthub-agent-form-actions">
+            <AgentHubButton
+              className="agenthub-agent-new-conversation-button"
+              disabled={!props.onCreateAgentConversation || conversationPending}
+              htmlType="button"
+              kind="primary"
+              loading={conversationPending}
+              onClick={createAgentConversation}
+            >
+              <Icon icon={MessageSquarePlus} /> {i18n.t("actions.newConversation")}
+            </AgentHubButton>
+            {props.onArchiveAgentRole ? (
+              <AgentHubButton
+                className="agenthub-agent-delete-button"
+                htmlType="button"
+                kind="danger"
+                onClick={() => props.onArchiveAgentRole?.(editingAgentId)}
+              >
+                <Icon icon={Trash2} /> {i18n.t("actions.deleteAgent")}
+              </AgentHubButton>
+            ) : null}
+            {conversationError ? (
+              <span className="agenthub-form-error">{conversationError}</span>
+            ) : null}
+          </div>
+        ) : null}
       </form>
     </section>
   );
@@ -456,6 +510,7 @@ export function AgentsPage(props: {
     input: AgentRoleMutationInput & { readonly agentId: string },
   ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
+  readonly onCreateAgentConversation?: (agentId: string) => void | Promise<void>;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const selected =
@@ -469,6 +524,9 @@ export function AgentsPage(props: {
         agent={props.selectedAgentId === null ? null : selected}
         key={props.selectedAgentId ?? "new"}
         {...(props.onArchiveAgentRole ? { onArchiveAgentRole: props.onArchiveAgentRole } : {})}
+        {...(props.onCreateAgentConversation
+          ? { onCreateAgentConversation: props.onCreateAgentConversation }
+          : {})}
         {...(props.onCreateAgentRole ? { onCreateAgentRole: props.onCreateAgentRole } : {})}
         {...(props.onUpdateAgentRole ? { onUpdateAgentRole: props.onUpdateAgentRole } : {})}
       />

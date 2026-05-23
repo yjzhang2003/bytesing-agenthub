@@ -312,6 +312,67 @@ describe("control plane registry", () => {
     });
   });
 
+  it("creates separate single-agent conversations for the same agent and routes runs there", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "Research carefully.",
+      capabilityTags: ["research"],
+      policy: {},
+    });
+
+    const first = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: agent.id,
+    });
+    const second = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: agent.id,
+    });
+
+    expect(first.conversation).toMatchObject({
+      kind: "single-agent",
+      workspaceId: "workspace_1",
+      title: "Researcher",
+    });
+    expect(second.conversation.id).not.toBe(first.conversation.id);
+    expect(first.participant.agentId).toBe(agent.id);
+    expect(second.participant.agentId).toBe(agent.id);
+
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    expect(snapshot.activeConversationId).toBe(second.conversation.id);
+    expect(
+      snapshot.conversations.filter((conversation) => conversation.kind === "single-agent"),
+    ).toHaveLength(2);
+    expect(
+      snapshot.conversationParticipants?.filter((participant) => participant.agentId === agent.id),
+    ).toHaveLength(2);
+
+    registry.setActiveConversation("user_1", first.conversation.id);
+    expect(registry.createWorkbenchSnapshot("user_1").activeConversationId).toBe(
+      first.conversation.id,
+    );
+
+    const run = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: second.conversation.id,
+      agentId: agent.id,
+      prompt: "new topic",
+    });
+
+    expect(run.conversationId).toBe(second.conversation.id);
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      type: "run.start",
+      payload: {
+        conversationId: second.conversation.id,
+        agentId: agent.id,
+        prompt: "new topic",
+      },
+    });
+  });
+
   it("updates and archives user agent roles", () => {
     const { registry } = createRegisteredRunLoopRegistry();
     const agent = registry.createAgent("user_1", {
@@ -512,6 +573,38 @@ describe("control plane HTTP local mode", () => {
         },
       );
       expect(removeMembershipResponse.status).toBe(200);
+
+      const createConversationResponse = await fetch(
+        `${baseUrl}/agents/${createdAgent.agent.id}/conversations`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            workspaceId: snapshotBody.activeWorkspaceId,
+            agentId: createdAgent.agent.id,
+          }),
+        },
+      );
+      expect(createConversationResponse.status).toBe(201);
+      const createdConversationBody = await createConversationResponse.json();
+      expect(createdConversationBody.conversation).toMatchObject({
+        kind: "single-agent",
+        title: "Researcher",
+      });
+      expect(createdConversationBody.participant.agentId).toBe(createdAgent.agent.id);
+
+      const activeConversationResponse = await fetch(
+        `${baseUrl}/conversations/${snapshotBody.activeConversationId}/active`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+      expect(activeConversationResponse.status).toBe(200);
+      const activeConversationSnapshot = await fetch(`${baseUrl}/workbench/snapshot`, { headers });
+      expect((await activeConversationSnapshot.json()).activeConversationId).toBe(
+        snapshotBody.activeConversationId,
+      );
 
       const agentsResponse = await fetch(`${baseUrl}/agents`, { headers });
       expect(

@@ -66,6 +66,10 @@ export function AgentMentionComposer(props: {
     command.label.slice(1).includes(commandQuery),
   );
 
+  React.useEffect(() => {
+    setTarget(props.selectedTarget);
+  }, [props.selectedTarget]);
+
   const updateMultilineState = React.useCallback(() => {
     const textarea = textareaRef.current?.resizableTextArea?.textArea;
     if (!textarea) {

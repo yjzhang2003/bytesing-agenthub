@@ -2,7 +2,9 @@ import type {
   Agent,
   AgentMemoryConfig,
   AgentHubProviderMode,
+  Conversation,
   ConversationParticipant,
+  CreateAgentConversationRequest,
   CreateAgentRequest,
   Id,
   MemoryHealth,
@@ -59,6 +61,8 @@ export class ControlPlaneRegistry {
   readonly #messages = new Map<Id, Message>();
   readonly #commands = new Map<Id, RuntimeCommand[]>();
   readonly #agents = new Map<Id, Agent>();
+  readonly #conversations = new Map<Id, Conversation>();
+  readonly #activeConversationIds = new Map<Id, Id>();
   readonly #archivedAgentIds = new Set<Id>();
   readonly #conversationParticipants = new Map<Id, ConversationParticipant>();
   readonly #providerHealth = new Map<Id, ProviderHealth>();
@@ -176,7 +180,8 @@ export class ControlPlaneRegistry {
     input: CreateRunInput,
     providerMode: AgentHubProviderMode = "smoke",
   ): Run {
-    if (input.conversationId !== agentHubLocalDefaults.conversationId) {
+    const conversation = this.#requireConversationAvailable(ownerUserId, input.conversationId);
+    if (conversation && conversation.workspaceId !== input.workspaceId) {
       throw new Error("Conversation is not available in this local workspace");
     }
     const binding = this.#workspaceBindings.get(input.workspaceId);
@@ -189,6 +194,12 @@ export class ControlPlaneRegistry {
       throw new Error("Workspace runtime is offline");
     }
     const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
+    if (conversation) {
+      const activeParticipants = this.listConversationParticipants(ownerUserId, conversation.id);
+      if (!activeParticipants.some((participant) => participant.agentId === agent.id)) {
+        throw new Error("Agent is not a participant in this conversation");
+      }
+    }
 
     const now = this.#now().toISOString();
     const userMessage: Message = {
@@ -259,6 +270,52 @@ export class ControlPlaneRegistry {
     return agent;
   }
 
+  createAgentConversation(
+    ownerUserId: Id,
+    input: CreateAgentConversationRequest,
+  ): {
+    readonly conversation: Conversation;
+    readonly participant: ConversationParticipant;
+  } {
+    this.#requireWorkspaceAvailable(ownerUserId, input.workspaceId);
+    const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
+    const now = this.#now().toISOString();
+    const conversation: Conversation = {
+      id: crypto.randomUUID(),
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      kind: "single-agent",
+      title: agent.displayName,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const participant: ConversationParticipant = {
+      id: crypto.randomUUID(),
+      ownerUserId,
+      conversationId: conversation.id,
+      agentId: agent.id,
+      addedByUserId: ownerUserId,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.#conversations.set(conversation.id, conversation);
+    this.#conversationParticipants.set(
+      this.#participantKey(conversation.id, agent.id),
+      participant,
+    );
+    this.#activeConversationIds.set(ownerUserId, conversation.id);
+    this.#publishMembershipChanged(participant, "added");
+    return { conversation, participant };
+  }
+
+  setActiveConversation(ownerUserId: Id, conversationId: Id): Conversation | null {
+    const conversation = this.#requireConversationAvailable(ownerUserId, conversationId);
+    this.#activeConversationIds.set(ownerUserId, conversationId);
+    return conversation;
+  }
+
   updateAgent(ownerUserId: Id, agentId: Id, input: UpdateAgentRequest): Agent {
     const existing = this.#requireOwnedAgent(ownerUserId, agentId);
     const updated: Agent = {
@@ -312,7 +369,7 @@ export class ControlPlaneRegistry {
     conversationId: Id,
     agentId: Id,
   ): ConversationParticipant {
-    this.#requireConversationAvailable(conversationId);
+    this.#requireConversationAvailable(ownerUserId, conversationId);
     const agent = this.#requireOwnedAgent(ownerUserId, agentId);
     const now = this.#now().toISOString();
     const key = this.#participantKey(conversationId, agent.id);
@@ -337,7 +394,7 @@ export class ControlPlaneRegistry {
     conversationId: Id,
     agentId: Id,
   ): ConversationParticipant {
-    this.#requireConversationAvailable(conversationId);
+    this.#requireConversationAvailable(ownerUserId, conversationId);
     this.#requireOwnedAgent(ownerUserId, agentId);
     this.#ensureDefaultConversationMembership(ownerUserId, conversationId);
     const key = this.#participantKey(conversationId, agentId);
@@ -498,11 +555,34 @@ export class ControlPlaneRegistry {
       updatedAt: now,
     };
 
+    const defaultConversation: Conversation = {
+      id: agentHubLocalDefaults.conversationId,
+      ownerUserId,
+      workspaceId: workspace.id,
+      kind: "group",
+      title: "AgentHub local runnable demo",
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.#ensureDefaultConversationMembership(ownerUserId, defaultConversation.id);
+    const conversations = [
+      defaultConversation,
+      ...[...this.#conversations.values()].filter(
+        (conversation) => conversation.ownerUserId === ownerUserId && !conversation.archivedAt,
+      ),
+    ];
+    const activeConversationId = conversations.some(
+      (conversation) => conversation.id === this.#activeConversationIds.get(ownerUserId),
+    )
+      ? (this.#activeConversationIds.get(ownerUserId) ?? defaultConversation.id)
+      : defaultConversation.id;
+
     return {
       authenticated: true,
       userId: ownerUserId,
       activeWorkspaceId: workspace.id,
-      activeConversationId: agentHubLocalDefaults.conversationId,
+      activeConversationId,
       workspaces: [workspace],
       runtimeDevices: [...this.#devices.values()].filter(
         (device) => device.ownerUserId === ownerUserId,
@@ -510,21 +590,9 @@ export class ControlPlaneRegistry {
       workspaceMetadata: metadata,
       providerHealth: this.latestProviderHealth(ownerUserId),
       memoryHealth: this.latestMemoryHealth(ownerUserId),
-      conversations: [
-        {
-          id: agentHubLocalDefaults.conversationId,
-          ownerUserId,
-          workspaceId: workspace.id,
-          kind: "group",
-          title: "AgentHub local runnable demo",
-          archivedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
-      conversationParticipants: this.listConversationParticipants(
-        ownerUserId,
-        agentHubLocalDefaults.conversationId,
+      conversations,
+      conversationParticipants: [...this.#conversationParticipants.values()].filter(
+        (participant) => participant.ownerUserId === ownerUserId && !participant.archivedAt,
       ),
       agents: this.listAgents(ownerUserId, workspace.id),
       runs: [...this.#runs.values()].filter((run) => run.ownerUserId === ownerUserId),
@@ -587,10 +655,15 @@ export class ControlPlaneRegistry {
     throw new Error("Workspace not found");
   }
 
-  #requireConversationAvailable(conversationId: Id): void {
-    if (conversationId !== agentHubLocalDefaults.conversationId) {
+  #requireConversationAvailable(ownerUserId: Id, conversationId: Id): Conversation | null {
+    if (conversationId === agentHubLocalDefaults.conversationId) {
+      return null;
+    }
+    const conversation = this.#conversations.get(conversationId);
+    if (!conversation || conversation.ownerUserId !== ownerUserId || conversation.archivedAt) {
       throw new Error("Conversation is not available in this local workspace");
     }
+    return conversation;
   }
 
   #deviceStatusEvent(device: RuntimeDevice): AgentHubEvent {

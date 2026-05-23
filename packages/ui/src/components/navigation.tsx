@@ -16,6 +16,7 @@ import { HoverButton, Icon, RuntimeStatusBadge, SidebarSearchField } from "./pri
 
 export function ConversationList(props: {
   readonly conversations: readonly ConversationListItem[];
+  readonly onSelectConversation: (conversationId: string) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   return (
@@ -33,6 +34,7 @@ export function ConversationList(props: {
           aria-current={conversation.active ? "page" : undefined}
           className="agenthub-nav-row agenthub-conversation-row"
           key={conversation.id}
+          onClick={() => props.onSelectConversation(conversation.id)}
           type="button"
         >
           <span className="agenthub-row-main">{conversation.title}</span>
@@ -88,6 +90,7 @@ export function LeftNavigation(props: {
   readonly model: WorkbenchViewModel;
   readonly onSelect: (selection: InspectorSelection) => void;
   readonly onOpenConversation: () => void;
+  readonly onSelectConversation: (conversationId: string) => void;
   readonly onOpenAgents: () => void;
   readonly onOpenConnections: () => void;
   readonly onOpenSettings: () => void;
@@ -231,7 +234,10 @@ export function LeftNavigation(props: {
           </header>
           <ScrollArea.Root className="agenthub-scroll-root">
             <ScrollArea.Viewport className="agenthub-scroll-viewport">
-              <ConversationList conversations={props.model.workspace.conversations} />
+              <ConversationList
+                conversations={props.model.workspace.conversations}
+                onSelectConversation={props.onSelectConversation}
+              />
             </ScrollArea.Viewport>
             <ScrollArea.Scrollbar className="agenthub-scrollbar" orientation="vertical">
               <ScrollArea.Thumb className="agenthub-scroll-thumb" />

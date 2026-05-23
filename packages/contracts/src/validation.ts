@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import {
   addConversationAgentRequestSchema,
+  createAgentConversationRequestSchema,
   createLocalRunRequestSchema,
   createAgentRequestSchema,
   diffMetadataSchema,
@@ -114,6 +115,12 @@ export function validateAddConversationAgentRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof addConversationAgentRequestSchema>> {
   return parseWithSchema(addConversationAgentRequestSchema, value);
+}
+
+export function validateCreateAgentConversationRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof createAgentConversationRequestSchema>> {
+  return parseWithSchema(createAgentConversationRequestSchema, value);
 }
 
 export function validateUpdateAgentRequest(

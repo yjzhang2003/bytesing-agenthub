@@ -93,8 +93,10 @@ describe("@agenthub/ui localization", () => {
     expect(settings).toContain("键盘");
     expect(settings).toContain("审查");
     expect(agents).toContain("智能体角色");
+    expect(agents).toContain("新对话");
     expect(agents).toContain("能力标签");
-    expect(agents).toContain("保存更改");
+    expect(agents).toContain("高级配置");
+    expect(agents).not.toContain("保存更改");
     expect(connections).toContain("连接");
     expect(connections).toContain("刷新状态");
     expect(narrow).toContain("打开工作区导航");
@@ -102,6 +104,7 @@ describe("@agenthub/ui localization", () => {
     expect(narrow).toContain("给智能体发送消息");
     expect(chatInfo).toContain("参与者");
     expect(chatInfo).toContain("添加智能体");
+    expect(chatInfo).not.toContain("选择要添加的智能体");
     expect(chatInfo).toContain("基本信息");
     expect(narrow).toContain("Implemented ");
     expect(narrow).toContain("<code>pnpm check</code>");

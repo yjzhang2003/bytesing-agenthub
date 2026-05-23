@@ -123,6 +123,11 @@ export interface AddConversationAgentRequest {
   readonly agentId: Id;
 }
 
+export interface CreateAgentConversationRequest {
+  readonly workspaceId: Id;
+  readonly agentId: Id;
+}
+
 export type RuntimeCommand =
   | {
       readonly id: Id;
@@ -177,5 +182,8 @@ export const agentHubApiPaths = {
   memoryStatus: "/memory/status",
   agents: "/agents",
   conversations: "/conversations",
+  activeConversation: (conversationId: Id) =>
+    `/conversations/${encodeURIComponent(conversationId)}/active`,
+  agentConversations: (agentId: Id) => `/agents/${encodeURIComponent(agentId)}/conversations`,
   runs: "/runs",
 } as const;

@@ -1,3 +1,4 @@
+import { logDesktopError } from "./desktop-log.js";
 import type { DesktopShellConfig } from "./shell-config.js";
 
 export interface LoadableDesktopWindow {
@@ -26,7 +27,7 @@ export async function loadDesktopWebUrl(
     await window.loadURL(config.webUrl);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[desktop] Failed to load ${config.webUrl}: ${message}`);
+    logDesktopError(`[desktop] Failed to load ${config.webUrl}: ${message}`);
     if (!window.loadDataURL) {
       throw error;
     }
@@ -45,7 +46,7 @@ export function installDesktopLoadFailureHandler(
     }
     showingDiagnostic = true;
     const reason = `${errorDescription} (${errorCode})`;
-    console.error(`[desktop] Failed to load ${validatedURL || config.webUrl}: ${reason}`);
+    logDesktopError(`[desktop] Failed to load ${validatedURL || config.webUrl}: ${reason}`);
     void window.loadDataURL?.(createDesktopLoadFailureDataUrl(config, reason));
   });
 }

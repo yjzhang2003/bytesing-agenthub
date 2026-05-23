@@ -13,7 +13,7 @@ import type {
 } from "../types.js";
 import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
-import { AgentHubAvatar, AgentHubSelect } from "./antd-primitives.js";
+import { AgentHubAvatar, AgentHubModal, AgentHubSelect } from "./antd-primitives.js";
 import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 export function ContextInspector(props: {
@@ -147,6 +147,7 @@ function ChatInfoDetail(props: {
   readonly onRemoveAgent?: (conversationId: string, agentId: string) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
+  const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [selectedAgentId, setSelectedAgentId] = React.useState(
     props.chat.availableAgents[0]?.id ?? "",
   );
@@ -167,33 +168,29 @@ function ChatInfoDetail(props: {
             </div>
           ))}
           <div className="agenthub-chat-participant-tile agenthub-chat-participant-tile-add">
-            <AgentHubAvatar shape="square">
+            <button
+              aria-label={i18n.t("chat.addAgent")}
+              className="agenthub-chat-add-agent-button"
+              disabled={props.chat.availableAgents.length === 0 || !props.onAddAgent}
+              onClick={() => setAddDialogOpen(true)}
+              type="button"
+            >
               <Icon icon={Plus} />
-            </AgentHubAvatar>
-            <span>{i18n.t("chat.addAgent")}</span>
-            {props.chat.availableAgents.length > 0 ? (
-              <>
-                <AgentHubSelect
-                  aria-label={i18n.t("chat.selectAgentToAdd")}
-                  className="agenthub-chat-agent-select"
-                  onChange={setSelectedAgentId}
-                  options={props.chat.availableAgents.map((agent) => ({
-                    label: agent.label,
-                    value: agent.id,
-                  }))}
-                  value={selectedAgentId}
-                />
-                <HoverButton
-                  disabled={!selectedAgentId || !props.onAddAgent}
-                  onClick={() => props.onAddAgent?.(props.chat.id, selectedAgentId)}
-                  type="button"
-                >
-                  {i18n.t("chat.add")}
-                </HoverButton>
-              </>
-            ) : null}
+            </button>
           </div>
         </div>
+        <AddChatAgentDialog
+          agents={props.chat.availableAgents}
+          conversationId={props.chat.id}
+          onAdd={(conversationId, agentId) => {
+            props.onAddAgent?.(conversationId, agentId);
+            setAddDialogOpen(false);
+          }}
+          onChangeSelectedAgent={setSelectedAgentId}
+          onClose={() => setAddDialogOpen(false)}
+          open={addDialogOpen}
+          selectedAgentId={selectedAgentId}
+        />
       </DetailSection>
       <DetailSection title={i18n.t("chat.basicInfo")}>
         <dl>
@@ -222,6 +219,58 @@ function ChatInfoDetail(props: {
         </DetailSection>
       ) : null}
     </div>
+  );
+}
+
+function AddChatAgentDialog(props: {
+  readonly agents: readonly ChatInfoViewModel["availableAgents"][number][];
+  readonly conversationId: string;
+  readonly onAdd: (conversationId: string, agentId: string) => void;
+  readonly onChangeSelectedAgent: (agentId: string) => void;
+  readonly onClose: () => void;
+  readonly open: boolean;
+  readonly selectedAgentId: string;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  return (
+    <AgentHubModal
+      className="agenthub-chat-add-agent-modal"
+      destroyOnHidden
+      getContainer={false}
+      okButtonProps={{
+        className: "agenthub-modal-confirm-button",
+        disabled: !props.selectedAgentId || props.agents.length === 0,
+        type: "default",
+      }}
+      okText={i18n.t("chat.add")}
+      onCancel={props.onClose}
+      onOk={() => props.onAdd(props.conversationId, props.selectedAgentId)}
+      open={props.open}
+      title={i18n.t("chat.addAgent")}
+      width={360}
+    >
+      <div className="agenthub-chat-add-agent-dialog">
+        {props.agents.length > 0 ? (
+          <>
+            <AgentHubAvatar shape="square">
+              <Icon icon={Plus} />
+            </AgentHubAvatar>
+            <AgentHubSelect
+              aria-label={i18n.t("chat.selectAgentToAdd")}
+              className="agenthub-chat-agent-select"
+              onChange={props.onChangeSelectedAgent}
+              options={props.agents.map((agent) => ({
+                label: agent.label,
+                value: agent.id,
+              }))}
+              value={props.selectedAgentId}
+            />
+          </>
+        ) : (
+          <p className="agenthub-muted">{i18n.t("state.noParticipants")}</p>
+        )}
+      </div>
+    </AgentHubModal>
   );
 }
 

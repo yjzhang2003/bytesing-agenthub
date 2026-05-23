@@ -7,6 +7,7 @@ export { agentHubApiPaths, agentHubLocalDefaults } from "./local-runtime.js";
 export {
   addConversationAgentRequestSchema,
   agentMemoryConfigSchema,
+  createAgentConversationRequestSchema,
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   diffMetadataSchema,
@@ -25,6 +26,7 @@ export {
 } from "./schemas.js";
 export type {
   AddConversationAgentRequestPayload,
+  CreateAgentConversationRequestPayload,
   CreateAgentRequestPayload,
   DiffMetadataPayload,
   MemoryHealthPayload,
@@ -41,6 +43,7 @@ export {
   isDiffMetadataStale,
   validateCreateAgentRequest,
   validateAddConversationAgentRequest,
+  validateCreateAgentConversationRequest,
   validateCreateLocalRunRequest,
   validateDiffMetadata,
   validateOrchestratorDispatchPlan,
