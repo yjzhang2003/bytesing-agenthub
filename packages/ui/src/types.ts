@@ -206,6 +206,7 @@ export interface TimelineItemViewModel {
   readonly body: readonly string[];
   readonly state: WorkbenchVisualState;
   readonly authorKind?: "agent" | "user" | "system";
+  readonly authorId?: string;
   readonly inspectorSelection?: InspectorSelection;
 }
 

@@ -237,6 +237,9 @@ describe("@agenthub/ui components", () => {
 
     expect(html).toContain("agenthub-message-bubble");
     expect(html).toContain('data-author="agent"');
+    expect(html).toContain("agenthub-message-avatar");
+    expect(html).toContain('aria-label="Open Implementer agent"');
+    expect(html).not.toContain("agent message");
     expect(html).toContain("Implemented the shell");
     expect(html).toContain("agenthub-event-pill");
     expect(html).toContain("Run running");

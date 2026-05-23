@@ -107,6 +107,7 @@ function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): rea
   }
 
   const messageItems = snapshot.messages.map((message) => ({
+    authorId: message.authorId,
     authorKind: message.authorKind,
     body: messageBody(message.parts),
     id: message.id,

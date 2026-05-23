@@ -2,18 +2,46 @@ import React from "react";
 import type { InspectorSelection, TimelineItemViewModel } from "../types.js";
 import { HoverButton } from "./primitives.js";
 
-function MessageBubble(props: { readonly item: TimelineItemViewModel }): React.ReactElement {
+function agentInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function MessageBubble(props: {
+  readonly item: TimelineItemViewModel;
+  readonly onOpenAgent?: (agentId: string) => void;
+}): React.ReactElement {
   const author = props.item.authorKind ?? "system";
+  const canOpenAgent = author === "agent" && props.item.authorId;
   return (
     <article className="agenthub-message-row" data-author={author}>
-      <div className="agenthub-message-meta">
-        <strong>{props.item.title}</strong>
-        <span>{props.item.subtitle}</span>
-      </div>
-      <div className="agenthub-message-bubble" data-author={author}>
-        {props.item.body.map((line, index) => (
-          <p key={index}>{line}</p>
-        ))}
+      <span aria-hidden="true" className="agenthub-message-avatar">
+        {agentInitials(props.item.title) || "A"}
+      </span>
+      <div className="agenthub-message-content">
+        {canOpenAgent ? (
+          <HoverButton
+            aria-label={`Open ${props.item.title} agent`}
+            className="agenthub-message-meta agenthub-message-agent-link"
+            onClick={() => props.onOpenAgent?.(props.item.authorId ?? "")}
+            type="button"
+          >
+            <strong>{props.item.title}</strong>
+          </HoverButton>
+        ) : (
+          <div className="agenthub-message-meta">
+            <strong>{props.item.title}</strong>
+          </div>
+        )}
+        <div className="agenthub-message-bubble" data-author={author}>
+          {props.item.body.map((line, index) => (
+            <p key={index}>{line}</p>
+          ))}
+        </div>
       </div>
     </article>
   );
@@ -63,6 +91,7 @@ export function ChatTimeline(props: {
   readonly items: readonly TimelineItemViewModel[] | readonly React.ReactNode[];
   readonly selected?: InspectorSelection | null;
   readonly onSelect?: (selection: InspectorSelection) => void;
+  readonly onOpenAgent?: (agentId: string) => void;
 }): React.ReactElement {
   const first = props.items[0];
   const viewModelItems =
@@ -83,7 +112,7 @@ export function ChatTimeline(props: {
       {viewModelItems.map((item) => (
         <li key={item.id} data-kind={item.kind}>
           {item.kind === "message" ? (
-            <MessageBubble item={item} />
+            <MessageBubble item={item} {...(props.onOpenAgent ? { onOpenAgent: props.onOpenAgent } : {})} />
           ) : item.kind === "run-event" || item.kind === "summary" || item.kind === "empty" ? (
             item.inspectorSelection ? (
               <CompactTimelineCard

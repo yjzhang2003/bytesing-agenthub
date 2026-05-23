@@ -395,7 +395,15 @@ export function AgentHubWorkbench(props: {
           />
         ) : (
           <>
-            <ChatTimeline items={model.timeline} selected={selection} onSelect={setSelection} />
+            <ChatTimeline
+              items={model.timeline}
+              selected={selection}
+              onSelect={setSelection}
+              onOpenAgent={(agentId) => {
+                setSelectedAgentId(agentId);
+                setCenterView("agents");
+              }}
+            />
             <AgentMentionComposer
               disabled={model.composer.disabled}
               disabledReason={model.composer.disabledReason}

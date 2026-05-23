@@ -377,20 +377,52 @@ body { overflow: hidden; }
 }
 .agenthub-chat-thread > li { display: grid; min-width: 0; }
 .agenthub-message-row {
-  max-width: min(76%, 760px);
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: start;
+  max-width: min(82%, 820px);
   display: grid;
-  gap: 4px;
+  gap: 10px;
   justify-self: start;
 }
-.agenthub-message-row[data-author="user"] { justify-self: end; }
+.agenthub-message-row[data-author="user"] {
+  justify-self: end;
+  direction: rtl;
+}
+.agenthub-message-row[data-author="user"] .agenthub-message-content {
+  direction: ltr;
+  align-items: end;
+}
 .agenthub-message-meta {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  width: fit-content;
   color: var(--agenthub-text-muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
 }
-.agenthub-message-row[data-author="user"] .agenthub-message-meta { justify-content: flex-end; }
+.agenthub-message-agent-link {
+  min-height: 18px;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.agenthub-message-content {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.agenthub-message-avatar {
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--agenthub-accent) 12%, var(--agenthub-surface-hover));
+  color: var(--agenthub-text);
+  font-size: 10px;
+  font-weight: 750;
+  margin-top: 17px;
+}
 .agenthub-message-bubble {
   border: 1px solid var(--agenthub-border);
   border-radius: var(--agenthub-bubble-radius);
