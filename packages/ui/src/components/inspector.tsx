@@ -10,6 +10,7 @@ import type {
   RuntimeSummaryViewModel,
   WorkbenchViewModel,
 } from "../types.js";
+import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
 import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 
@@ -21,6 +22,7 @@ export function ContextInspector(props: {
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   const selection = normalizeSelection(props.selection, {
     artifacts: props.model.inspector.artifacts,
     diff: props.model.inspector.diff,
@@ -30,17 +32,24 @@ export function ContextInspector(props: {
   });
 
   return (
-    <aside aria-label="Conversation details" className="agenthub-inspector">
+    <aside
+      aria-label={i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}
+      className="agenthub-inspector"
+    >
       <header>
-        <strong>Conversation details</strong>
+        <strong>{i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}</strong>
         <div className="agenthub-header-actions">
           {selection ? (
             <HoverButton onClick={() => props.onSelect(null)} type="button">
-              Clear
+              {i18n.t("actions.clear", { fallback: "Clear" })}
             </HoverButton>
           ) : null}
           <HoverButton
-            aria-label={props.collapsed ? "Expand Context Inspector" : "Collapse Context Inspector"}
+            aria-label={
+              props.collapsed
+                ? i18n.t("nav.expandInspector", { fallback: "Expand Context Inspector" })
+                : i18n.t("nav.collapseInspector", { fallback: "Collapse Context Inspector" })
+            }
             className="agenthub-icon-button"
             onClick={props.onToggleCollapsed}
             type="button"
@@ -83,18 +92,32 @@ function renderInspectorBody(
   }
 
   if (selection.mode === "permission") {
-    const permission = model.inspector.permissions.find((candidate) => candidate.id === selection.id);
-    return permission ? <PermissionDetail permission={permission} /> : <UnavailableDetail label="Permission unavailable" />;
+    const permission = model.inspector.permissions.find(
+      (candidate) => candidate.id === selection.id,
+    );
+    return permission ? (
+      <PermissionDetail permission={permission} />
+    ) : (
+      <UnavailableDetail label="Permission unavailable" />
+    );
   }
 
   if (selection.mode === "diff") {
     const diff = model.inspector.diff;
-    return diff ? <DiffDetail diff={diff} onOpenFullScreen={onOpenFullScreenDiff} /> : <UnavailableDetail label="Diff unavailable" />;
+    return diff ? (
+      <DiffDetail diff={diff} onOpenFullScreen={onOpenFullScreenDiff} />
+    ) : (
+      <UnavailableDetail label="Diff unavailable" />
+    );
   }
 
   if (selection.mode === "artifact") {
     const artifact = model.inspector.artifacts.find((candidate) => candidate.id === selection.id);
-    return artifact ? <ArtifactDetail artifact={artifact} /> : <UnavailableDetail label="Artifact unavailable" />;
+    return artifact ? (
+      <ArtifactDetail artifact={artifact} />
+    ) : (
+      <UnavailableDetail label="Artifact unavailable" />
+    );
   }
 
   const run = model.inspector.runs.find((candidate) => candidate.id === selection.id);
@@ -114,12 +137,19 @@ function PlanDetail(props: { readonly plan: PlanViewModel }): React.ReactElement
   return (
     <div className="agenthub-inspector-body">
       <h3>{props.plan.title}</h3>
-      <RuntimeStatusBadge status={props.plan.status === "failed" ? "degraded" : "online"} label={props.plan.status} />
+      <RuntimeStatusBadge
+        status={props.plan.status === "failed" ? "degraded" : "online"}
+        label={props.plan.status}
+      />
       <DetailSection title="Goal">
         <p>{props.plan.goal}</p>
       </DetailSection>
       <DetailSection title="Assumptions">
-        <ul>{props.plan.assumptions.map((item) => <li key={item}>{item}</li>)}</ul>
+        <ul>
+          {props.plan.assumptions.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </DetailSection>
       <DetailSection title="Steps">
         <ol>
@@ -167,7 +197,11 @@ function PermissionDetail(props: { readonly permission: PermissionViewModel }): 
       ) : null}
       {props.permission.paths.length > 0 ? (
         <DetailSection title="Paths">
-          <ul>{props.permission.paths.map((path) => <li key={path}>{path}</li>)}</ul>
+          <ul>
+            {props.permission.paths.map((path) => (
+              <li key={path}>{path}</li>
+            ))}
+          </ul>
         </DetailSection>
       ) : null}
       {props.permission.status === "pending" ? (
@@ -267,7 +301,9 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
           <dd>{props.run.completedAt}</dd>
         </dl>
       </DetailSection>
-      {props.run.failureReason ? <p className="agenthub-warning">{props.run.failureReason}</p> : null}
+      {props.run.failureReason ? (
+        <p className="agenthub-warning">{props.run.failureReason}</p>
+      ) : null}
     </div>
   );
 }

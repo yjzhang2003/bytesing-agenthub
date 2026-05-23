@@ -21,7 +21,7 @@ describe("MVP integration flow", () => {
     });
     const run = registry.createRun("user_1", {
       agentId: agentHubLocalDefaults.implementerAgentId,
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       workspaceId: "workspace_1",
     });
 
@@ -35,7 +35,7 @@ describe("MVP integration flow", () => {
   it("covers Orchestrator Plan Mode and worker assignment", () => {
     const collaboration = new CollaborationService();
     const plan = collaboration.createDraftPlan("user_1", {
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       goal: "Implement feature",
       id: "plan_1",
       status: "draft",
@@ -55,7 +55,7 @@ describe("MVP integration flow", () => {
       {
         agentId: "agent_1",
         completedAt: null,
-        conversationId: "conversation_1",
+        conversationId: agentHubLocalDefaults.conversationId,
         createdAt: "2026-05-21T00:00:00.000Z",
         failureReason: null,
         id: "run_1",
@@ -76,7 +76,7 @@ describe("MVP integration flow", () => {
     const request = permissions.createRequest({
       actionKind: "file.write",
       agentId: "agent_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       ownerUserId: "user_1",
       paths: ["src/index.ts"],
       risk: "medium",
@@ -94,7 +94,7 @@ describe("MVP integration flow", () => {
     const diffs = new DiffArtifactService();
     diffs.persistDiffMetadata({
       artifactId: "artifact_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       metadata: {
         baseCommit: "abc123",
         cacheExpiresAt: null,

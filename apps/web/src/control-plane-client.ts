@@ -1,12 +1,30 @@
 import {
   agentHubApiPaths,
   agentHubLocalDefaults,
+  type AgentHubEventType,
   type AgentHubEvent,
   type CreateAgentRequest,
   type CreateLocalRunRequest,
   type UpdateAgentRequest,
   type WorkbenchSnapshot,
 } from "@agenthub/contracts";
+
+const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
+  "runtime.device.status_changed",
+  "agent.run.started",
+  "agent.run.message_delta",
+  "agent.run.status_changed",
+  "agent.run.completed",
+  "agent.run.failed",
+  "dispatch.plan.created",
+  "dispatch.plan.status_changed",
+  "agent.task.assigned",
+  "permission.requested",
+  "permission.status_changed",
+  "artifact.created",
+  "artifact.updated",
+  "diff.metadata.updated",
+];
 
 export interface WebControlPlaneClientOptions {
   readonly baseUrl: string;
@@ -61,11 +79,14 @@ export class WebControlPlaneClient {
     const stream = new EventSource(
       `${this.#baseUrl}${agentHubApiPaths.events}?access_token=${encodeURIComponent(this.#accessToken)}`,
     );
-    stream.onmessage = (event) => {
+    const handleEvent = (event: MessageEvent<string>) => {
       if (event.data) {
         onEvent(JSON.parse(event.data) as AgentHubEvent);
       }
     };
+    for (const eventType of AGENTHUB_EVENT_TYPES) {
+      stream.addEventListener(eventType, handleEvent);
+    }
     return stream;
   }
 

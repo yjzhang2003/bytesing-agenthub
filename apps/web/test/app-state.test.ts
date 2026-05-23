@@ -42,6 +42,54 @@ describe("web app state", () => {
     expect(client).toBeTruthy();
   });
 
+  it("subscribes to named Control Plane event stream events", () => {
+    const listeners = new Map<string, (event: MessageEvent<string>) => void>();
+    class FakeEventSource {
+      readonly url: string;
+      onerror: ((event: Event) => void) | null = null;
+
+      constructor(url: string) {
+        this.url = url;
+      }
+
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        listeners.set(type, listener as (event: MessageEvent<string>) => void);
+      }
+
+      close() {
+        // Test fake.
+      }
+    }
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const client = createDefaultWebControlPlaneClient({
+      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
+      VITE_AGENTHUB_LOCAL_AUTH_TOKEN: agentHubLocalDefaults.authToken,
+    } as ImportMetaEnv);
+    const received: string[] = [];
+
+    client.openEvents((event) => received.push(event.type));
+    listeners.get("agent.run.message_delta")?.(
+      new MessageEvent("agent.run.message_delta", {
+        data: JSON.stringify({
+          id: "event_1",
+          type: "agent.run.message_delta",
+          ownerUserId: "user_1",
+          workspaceId: "workspace_1",
+          conversationId: "conversation_1",
+          runId: "run_1",
+          occurredAt: "2026-05-21T00:00:00.000Z",
+          payload: {
+            agentId: "agent_1",
+            delta: "done",
+          },
+        }),
+      }),
+    );
+
+    expect(received).toEqual(["agent.run.message_delta"]);
+    expect(listeners.has("agent.run.completed")).toBe(true);
+  });
+
   it("calls Control Plane agent role APIs", async () => {
     const requests: { url: string; init: RequestInit }[] = [];
     vi.stubGlobal(
@@ -140,16 +188,30 @@ describe("web app state", () => {
         delta: "hello",
       },
     });
+    const withMoreMessage = applyAgentHubEventToSnapshot(withMessage, {
+      id: "event_3",
+      type: "agent.run.message_delta",
+      ownerUserId: "user_1",
+      workspaceId: flow.activeWorkspace.id,
+      conversationId: flow.activeConversation.id,
+      runId: "run_live",
+      occurredAt: "2026-05-21T00:00:03.000Z",
+      payload: {
+        agentId: "agent_2",
+        delta: " world",
+      },
+    });
 
-    expect(withMessage.runs[0]).toMatchObject({
+    expect(withMoreMessage.runs[0]).toMatchObject({
       id: "run_live",
       status: "streaming",
       startedAt: "2026-05-21T00:00:01.000Z",
     });
-    expect(withMessage.messages[0]).toMatchObject({
+    expect(withMoreMessage.messages).toHaveLength(1);
+    expect(withMoreMessage.messages[0]).toMatchObject({
       authorKind: "agent",
       authorId: "agent_2",
-      parts: [{ type: "markdown", text: "hello", runId: "run_live" }],
+      parts: [{ type: "markdown", text: "hello world", runId: "run_live" }],
     });
   });
 });

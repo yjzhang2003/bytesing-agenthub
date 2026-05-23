@@ -201,26 +201,44 @@ export function applyAgentHubEventToSnapshot(
     };
   }
   if (event.type === "agent.run.message_delta") {
-    const message: Message = {
-      id: event.id,
-      ownerUserId: event.ownerUserId,
-      conversationId: event.conversationId ?? snapshot.activeConversationId,
-      authorKind: "agent",
-      authorId: event.payload.agentId,
-      parts: [
-        {
-          type: "markdown",
-          text: event.payload.delta,
-          ...(event.runId ? { runId: event.runId } : {}),
-        },
-      ],
-      replyToMessageId: null,
-      createdAt: event.occurredAt,
-      updatedAt: event.occurredAt,
-    };
+    const existing = snapshot.messages.find(
+      (message) =>
+        message.authorKind === "agent" &&
+        message.authorId === event.payload.agentId &&
+        message.parts.some((part) => part.runId === event.runId),
+    );
+    const message: Message = existing
+      ? {
+          ...existing,
+          parts: existing.parts.map((part, index) =>
+            index === 0
+              ? { ...part, text: `${part.text ?? ""}${event.payload.delta}` }
+              : part,
+          ),
+          updatedAt: event.occurredAt,
+        }
+      : {
+          id: event.id,
+          ownerUserId: event.ownerUserId,
+          conversationId: event.conversationId ?? snapshot.activeConversationId,
+          authorKind: "agent",
+          authorId: event.payload.agentId,
+          parts: [
+            {
+              type: "markdown",
+              text: event.payload.delta,
+              ...(event.runId ? { runId: event.runId } : {}),
+            },
+          ],
+          replyToMessageId: null,
+          createdAt: event.occurredAt,
+          updatedAt: event.occurredAt,
+        };
     return {
       ...snapshot,
-      messages: [...snapshot.messages, message],
+      messages: existing
+        ? snapshot.messages.map((candidate) => (candidate.id === existing.id ? message : candidate))
+        : [...snapshot.messages, message],
     };
   }
   return snapshot;

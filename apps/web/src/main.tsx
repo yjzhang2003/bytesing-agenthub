@@ -11,8 +11,10 @@ function AgentHubWebApp(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const client = React.useMemo(() => createDefaultWebControlPlaneClient(), []);
 
-  const loadSnapshot = React.useCallback(async () => {
-    setLoading(true);
+  const loadSnapshot = React.useCallback(async (options: { readonly showLoading?: boolean } = {}) => {
+    if (options.showLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       setSnapshot(await client.getSnapshot());
@@ -24,7 +26,7 @@ function AgentHubWebApp(): React.ReactElement {
   }, [client]);
 
   React.useEffect(() => {
-    void loadSnapshot();
+    void loadSnapshot({ showLoading: true });
     const stream = client.openEvents((event) => {
       setSnapshot((current) => (current ? applyAgentHubEventToSnapshot(current, event) : current));
     });
@@ -39,7 +41,7 @@ function AgentHubWebApp(): React.ReactElement {
     <AgentHubWorkbench
       error={error}
       loading={loading}
-      onRetry={() => void loadSnapshot()}
+      onRetry={() => void loadSnapshot({ showLoading: true })}
       onSend={(message, target) => {
         const active = snapshot;
         if (!active) {

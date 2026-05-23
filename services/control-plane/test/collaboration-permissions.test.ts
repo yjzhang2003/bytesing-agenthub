@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, Run } from "@agenthub/contracts";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { CollaborationService, PermissionService } from "../src/index.js";
 
 function agent(role: Agent["role"]): Agent {
@@ -30,7 +31,7 @@ describe("CollaborationService", () => {
     const plan = service.createDraftPlan("user_1", {
       id: "plan_1",
       workspaceId: "workspace_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       goal: "Build UI",
       assumptions: [],
       status: "draft",
@@ -50,7 +51,7 @@ describe("CollaborationService", () => {
       id: "run_1",
       ownerUserId: "user_1",
       workspaceId: "workspace_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       agentId: "agent_1",
       planId: "plan_1",
       status: "completed",
@@ -75,7 +76,7 @@ describe("PermissionService", () => {
     const request = service.createRequest({
       ownerUserId: "user_1",
       workspaceId: "workspace_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       runId: "run_1",
       agentId: "agent_1",
       actionKind: "command.run",
@@ -101,7 +102,7 @@ describe("PermissionService", () => {
     service.createRequest({
       ownerUserId: "user_1",
       workspaceId: "workspace_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       runId: "run_1",
       agentId: "agent_1",
       actionKind: "file.write",
@@ -113,4 +114,3 @@ describe("PermissionService", () => {
     expect(service.expireTimedOutRequests()[0]?.status).toBe("expired");
   });
 });
-

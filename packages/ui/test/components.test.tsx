@@ -1,8 +1,4 @@
-import type {
-  Artifact,
-  PermissionRequest,
-  WorkbenchSnapshot,
-} from "@agenthub/contracts";
+import type { Artifact, PermissionRequest, WorkbenchSnapshot } from "@agenthub/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
@@ -22,7 +18,9 @@ import {
 
 const now = "2026-05-21T00:00:00.000Z";
 
-function snapshot(status: "online" | "offline" | "degraded" | "active-running" = "online"): WorkbenchSnapshot {
+function snapshot(
+  status: "online" | "offline" | "degraded" | "active-running" = "online",
+): WorkbenchSnapshot {
   return {
     activeConversationId: "conversation_1",
     activeWorkspaceId: "workspace_1",
@@ -89,7 +87,9 @@ function snapshot(status: "online" | "offline" | "degraded" | "active-running" =
         createdAt: now,
         id: "message_1",
         ownerUserId: "user_1",
-        parts: [{ text: "Implemented the shell", type: "text" }],
+        parts: [
+          { text: "Implemented **the shell**\n\n## Details\n- `pnpm check`", type: "markdown" },
+        ],
         replyToMessageId: null,
         updatedAt: now,
       },
@@ -238,7 +238,10 @@ describe("@agenthub/ui components", () => {
 
   it("renders diff summary and workbench", () => {
     const diff = renderToStaticMarkup(
-      <DiffCard files={[{ path: "a.ts", status: "modified", insertions: 1, deletions: 2 }]} state="stale" />,
+      <DiffCard
+        files={[{ path: "a.ts", status: "modified", insertions: 1, deletions: 2 }]}
+        state="stale"
+      />,
     );
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
     expect(diff).toContain("1 files changed");
@@ -252,7 +255,7 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("Switch to light mode");
   });
 
-  it("renders conversation messages as IM bubbles with compact event surfaces", () => {
+  it("renders conversation messages as IM bubbles and active agent replies as loading bubbles", () => {
     const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
     expect(html).toContain("agenthub-message-bubble");
@@ -260,9 +263,14 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("agenthub-message-avatar");
     expect(html).toContain('aria-label="Open Implementer agent"');
     expect(html).not.toContain("agent message");
-    expect(html).toContain("Implemented the shell");
-    expect(html).toContain("agenthub-event-pill");
-    expect(html).toContain("Run running");
+    expect(html).toContain("Implemented ");
+    expect(html).toContain("<strong>the shell</strong>");
+    expect(html).toContain("<h2>Details</h2>");
+    expect(html).toContain("<code>pnpm check</code>");
+    expect(html).toContain("agenthub-message-loading");
+    expect(html).toContain("Writing a reply");
+    expect(html).not.toContain("Run completed");
+    expect(html).not.toContain("Claude Code process completed");
   });
 
   it("keeps hover-border controls transparent until interactive states", () => {
@@ -278,7 +286,7 @@ describe("@agenthub/ui components", () => {
     const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
     expect(html).toContain("agenthub-conversation-row");
-    expect(html).toContain(".agenthub-conversation-row[aria-current=\"page\"]");
+    expect(html).toContain('.agenthub-conversation-row[aria-current="page"]');
     expect(html).toContain("grid-template-areas:");
     expect(html).toContain("min-height: 64px");
     expect(html).toContain("border-radius: 0");
@@ -291,9 +299,19 @@ describe("@agenthub/ui components", () => {
     const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
     expect(html).toContain("grid-template-rows: 64px minmax(0, 1fr) auto");
+    expect(html).toContain("height: 100dvh");
     expect(html).toContain("min-height: 64px");
     expect(html).toContain("font-size: 14px");
     expect(html).toContain("max-height: calc(100dvh - 64px)");
+  });
+
+  it("keeps the timeline scrollable while the composer stays anchored", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).toContain("overflow-y: auto");
+    expect(html).toContain("overscroll-behavior: contain");
+    expect(html).toContain("position: sticky");
+    expect(html).toContain("bottom: 0");
   });
 
   it("adds restrained motion for hover controls, composer growth, and side panels", () => {
@@ -310,7 +328,10 @@ describe("@agenthub/ui components", () => {
 
   it("renders the composer as a compact rounded input with trigger-based suggestions", () => {
     const html = renderToStaticMarkup(
-      <AgentMentionComposer selectedTarget="@Orchestrator" targets={["@Orchestrator", "@Implementer"]} />,
+      <AgentMentionComposer
+        selectedTarget="@Orchestrator"
+        targets={["@Orchestrator", "@Implementer"]}
+      />,
     );
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
@@ -332,8 +353,44 @@ describe("@agenthub/ui components", () => {
     expect(html).not.toContain("agenthub-composer-footer");
   });
 
+  it("renders shared workbench chrome in Simplified Chinese when requested", () => {
+    const model = createWorkbenchViewModel(snapshot(), { pendingPermissions: [pendingPermission] });
+    const workbench = renderToStaticMarkup(
+      <AgentHubWorkbench locale="zh-CN" snapshot={snapshot()} />,
+    );
+    const settings = renderToStaticMarkup(
+      <SettingsPage
+        enterToSend
+        locale="zh-CN"
+        model={model}
+        onSelect={() => undefined}
+        onToggleEnterToSend={() => undefined}
+        onToggleTheme={() => undefined}
+        theme="dark"
+      />,
+    );
+    const composer = renderToStaticMarkup(
+      <AgentMentionComposer
+        locale="zh-CN"
+        selectedTarget="@Orchestrator"
+        targets={["@Orchestrator", "@Implementer"]}
+      />,
+    );
+
+    expect(workbench).toContain("工作区导航");
+    expect(workbench).toContain("上下文检查器");
+    expect(workbench).toContain("切换到浅色模式");
+    expect(settings).toContain("工作区");
+    expect(settings).toContain("回车发送消息");
+    expect(settings).toContain("权限");
+    expect(composer).toContain("给智能体发送消息");
+    expect(composer).toContain("发送消息");
+  });
+
   it("keeps chat primary in narrow layouts with side panel toggles", () => {
-    const html = renderToStaticMarkup(<AgentHubWorkbench layoutMode="narrow" snapshot={snapshot()} />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench layoutMode="narrow" snapshot={snapshot()} />,
+    );
 
     expect(html).toContain('data-layout="narrow"');
     expect(html).toContain('data-mobile-left-open="false"');
@@ -344,15 +401,21 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("agenthub-chat-thread");
     expect(html).toContain(".agenthub-mobile-panel-actions { display: none;");
     expect(html).toContain('.agenthub-workbench[data-layout="narrow"] .agenthub-motion-left-panel');
-    expect(html).toContain('.agenthub-workbench[data-layout="narrow"] .agenthub-motion-right-panel');
+    expect(html).toContain(
+      '.agenthub-workbench[data-layout="narrow"] .agenthub-motion-right-panel',
+    );
   });
 
   it("hides mobile panel controls in standard desktop layouts", () => {
-    const html = renderToStaticMarkup(<AgentHubWorkbench layoutMode="standard" snapshot={snapshot()} />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench layoutMode="standard" snapshot={snapshot()} />,
+    );
 
     expect(html).toContain('data-layout="standard"');
     expect(html).toContain(".agenthub-mobile-panel-actions { display: none;");
-    expect(html).not.toContain('.agenthub-workbench[data-layout="standard"] .agenthub-mobile-panel-actions { display: inline-flex; }');
+    expect(html).not.toContain(
+      '.agenthub-workbench[data-layout="standard"] .agenthub-mobile-panel-actions { display: inline-flex; }',
+    );
   });
 
   it("keeps workspace metadata out of the left navigation chrome", () => {
@@ -381,9 +444,18 @@ describe("@agenthub/ui components", () => {
 
   it("pins settings to the bottom navigation and renders a real settings page", () => {
     const model = createWorkbenchViewModel(snapshot(), { pendingPermissions: [pendingPermission] });
-    const workbench = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="settings" viewModel={model} />);
+    const workbench = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="settings" viewModel={model} />,
+    );
     const settings = renderToStaticMarkup(
-      <SettingsPage model={model} onSelect={() => undefined} onToggleTheme={() => undefined} theme="dark" />,
+      <SettingsPage
+        enterToSend
+        model={model}
+        onSelect={() => undefined}
+        onToggleEnterToSend={() => undefined}
+        onToggleTheme={() => undefined}
+        theme="dark"
+      />,
     );
 
     expect(workbench).toContain("agenthub-nav-bottom");
@@ -393,6 +465,9 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("~/IdeaProjects/agenthub");
     expect(settings).toContain("Workspace");
     expect(settings).toContain("Runtime");
+    expect(settings).toContain("Keyboard");
+    expect(settings).toContain("Enter sends message");
+    expect(settings).toContain("Shift+Enter inserts a new line.");
     expect(settings).toContain("Appearance");
     expect(settings).toContain("agenthub-antd-switch");
     expect(settings).toContain("Permissions");
@@ -404,7 +479,9 @@ describe("@agenthub/ui components", () => {
 
   it("renders a dedicated agents page with list, editor, and archive protections", () => {
     const model = createWorkbenchViewModel(snapshot());
-    const html = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="agents" viewModel={model} />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="agents" viewModel={model} />,
+    );
 
     expect(html).toContain('data-center-view="agents"');
     expect(html).toContain("--agenthub-directory-column:316px");
@@ -432,7 +509,9 @@ describe("@agenthub/ui components", () => {
 
   it("renders a dedicated connections page for Claude Code, memory, and future Codex", () => {
     const model = createWorkbenchViewModel(snapshot());
-    const html = renderToStaticMarkup(<AgentHubWorkbench initialCenterView="connections" viewModel={model} />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="connections" viewModel={model} />,
+    );
 
     expect(html).toContain('data-center-view="connections"');
     expect(html).toContain('data-view="connections"');
@@ -461,11 +540,15 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Resize conversation list"');
     expect(html).toContain("lucide-message-square");
     expect(html).toContain("lucide-cable");
-    expect(html).toMatch(/aria-label="Search conversations"[\s\S]*aria-label="Collapse workspace navigation"/);
+    expect(html).toMatch(
+      /aria-label="Search conversations"[\s\S]*aria-label="Collapse workspace navigation"/,
+    );
   });
 
   it("keeps the left rail visible when conversation navigation is collapsed", () => {
-    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} initialLeftCollapsed />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench snapshot={snapshot()} initialLeftCollapsed />,
+    );
 
     expect(html).toContain('data-left-collapsed="true"');
     expect(html).toContain('aria-label="Workspace tools"');
@@ -477,7 +560,9 @@ describe("@agenthub/ui components", () => {
     const model = createWorkbenchViewModel(snapshot(), {
       activeDiff: {
         baseCommit: "abc123",
-        files: [{ path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 }],
+        files: [
+          { path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 },
+        ],
         id: "diff_1",
         runId: "run_1",
         state: "metadata-only",
@@ -493,16 +578,59 @@ describe("@agenthub/ui components", () => {
     expect(model.runtime.providerStatusLabel).toBe("Claude Code connected");
     expect(model.runtime.memoryStatusLabel).toBe("Memory connected");
     expect(model.agentsPage.agents.map((agent) => agent.label)).toContain("Researcher");
-    expect(model.connections.providers.map((provider) => provider.label)).toEqual(["Claude Code", "Codex"]);
+    expect(model.connections.providers.map((provider) => provider.label)).toEqual([
+      "Claude Code",
+      "Codex",
+    ]);
     expect(model.timeline.map((item) => item.kind)).toEqual([
       "message",
-      "run-event",
+      "message",
       "permission",
       "diff",
       "artifact",
     ]);
     expect(model.workspace.pendingPermissionCount).toBe(1);
     expect(model.inspector.selection?.mode).toBe("permission");
+  });
+
+  it("hides only active loading placeholders after a run message starts", () => {
+    const base = snapshot();
+    const withRunMessage = {
+      ...base,
+      messages: [
+        ...base.messages,
+        {
+          authorId: "agent_2",
+          authorKind: "agent" as const,
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "message_run_1",
+          ownerUserId: "user_1",
+          parts: [{ text: "partial output", type: "markdown" as const, runId: "run_1" }],
+          replyToMessageId: null,
+          updatedAt: now,
+        },
+      ],
+    };
+    const failedAfterOutput = {
+      ...withRunMessage,
+      runs: withRunMessage.runs.map((run) => ({
+        ...run,
+        failureReason: "Command failed",
+        status: "failed" as const,
+      })),
+    };
+
+    expect(createWorkbenchViewModel(withRunMessage).timeline.map((item) => item.id)).not.toContain("run-message-run_1");
+    expect(createWorkbenchViewModel(failedAfterOutput).timeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          body: ["Command failed"],
+          id: "run-message-run_1",
+          state: "error",
+        }),
+      ]),
+    );
   });
 
   it("maps offline runtime to disabled composer state while preserving navigation", () => {
@@ -546,7 +674,9 @@ describe("@agenthub/ui components", () => {
       },
       activeDiff: {
         baseCommit: "abc123",
-        files: [{ path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 }],
+        files: [
+          { path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 },
+        ],
         id: "diff_1",
         runId: "run_1",
         state: "metadata-only",
@@ -556,54 +686,80 @@ describe("@agenthub/ui components", () => {
       pendingPermissions: [pendingPermission],
     });
 
-    expect(renderToStaticMarkup(<AgentHubWorkbench initialInspectorSelection={null} viewModel={model} />)).toContain(
-      "Runtime details",
-    );
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "plan_1", mode: "plan" }} viewModel={model} />,
+        <AgentHubWorkbench initialInspectorSelection={null} viewModel={model} />,
+      ),
+    ).toContain("Runtime details");
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "plan_1", mode: "plan" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Ask to revise");
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "permission_1", mode: "permission" }} viewModel={model} />,
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "permission_1", mode: "permission" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Allow once");
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "diff_1", mode: "diff" }} viewModel={model} />,
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "diff_1", mode: "diff" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Open full-screen diff review");
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "runtime", mode: "runtime" }} viewModel={model} />,
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "runtime", mode: "runtime" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Capabilities");
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "artifact_1", mode: "artifact" }} viewModel={model} />,
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "artifact_1", mode: "artifact" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Updated shared UI");
     expect(
       renderToStaticMarkup(
-        <AgentHubWorkbench initialInspectorSelection={{ id: "run_1", mode: "run" }} viewModel={model} />,
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "run_1", mode: "run" }}
+          viewModel={model}
+        />,
       ),
     ).toContain("Run running");
-    expect(renderToStaticMarkup(<AgentHubWorkbench initialFullScreenDiffId="diff_1" viewModel={model} />)).toContain(
-      "Return to conversation",
-    );
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench initialFullScreenDiffId="diff_1" viewModel={model} />,
+      ),
+    ).toContain("Return to conversation");
   });
 
   it("renders Control Plane offline and loading states", () => {
     expect(
-      renderToStaticMarkup(<AgentHubWorkbench error="Control plane request failed" loading={false} />),
+      renderToStaticMarkup(
+        <AgentHubWorkbench error="Control plane request failed" loading={false} />,
+      ),
     ).toContain("Control Plane offline");
     expect(renderToStaticMarkup(<AgentHubWorkbench loading />)).toContain("Loading AgentHub");
   });
 
   it("renders empty conversation and narrow layout verification surfaces", () => {
     const emptySnapshot = { ...snapshot(), messages: [], runs: [] };
-    const html = renderToStaticMarkup(<AgentHubWorkbench layoutMode="narrow" snapshot={emptySnapshot} />);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench layoutMode="narrow" snapshot={emptySnapshot} />,
+    );
     expect(html).toContain("Empty conversation");
     expect(html).toContain('data-layout="narrow"');
   });

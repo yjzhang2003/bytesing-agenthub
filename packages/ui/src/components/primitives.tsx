@@ -1,6 +1,7 @@
 import type { RuntimeDeviceStatus } from "@agenthub/contracts";
 import type { LucideIcon } from "lucide-react";
 import React from "react";
+import { useAgentHubI18n } from "../i18n.js";
 
 export type IconComponent = LucideIcon;
 
@@ -13,8 +14,16 @@ export function RuntimeStatusBadge(props: {
   readonly status: RuntimeDeviceStatus;
   readonly label?: string;
 }): React.ReactElement {
+  const i18n = useAgentHubI18n();
   return (
-    <span className="agenthub-status-badge" data-status={props.status} aria-label={`Runtime ${props.status}`}>
+    <span
+      className="agenthub-status-badge"
+      data-status={props.status}
+      aria-label={i18n.t("connections.statusRuntime", {
+        fallback: `Runtime ${props.status}`,
+        status: props.status,
+      })}
+    >
       <span aria-hidden="true" className="agenthub-status-dot" />
       {props.label ?? props.status}
     </span>
@@ -44,5 +53,10 @@ export function HoverButton(
   },
 ): React.ReactElement {
   const { className, ...buttonProps } = props;
-  return <button className={["agenthub-hover-control", className].filter(Boolean).join(" ")} {...buttonProps} />;
+  return (
+    <button
+      className={["agenthub-hover-control", className].filter(Boolean).join(" ")}
+      {...buttonProps}
+    />
+  );
 }

@@ -168,6 +168,9 @@ export class ControlPlaneRegistry {
     input: CreateRunInput,
     providerMode: AgentHubProviderMode = "smoke",
   ): Run {
+    if (input.conversationId !== agentHubLocalDefaults.conversationId) {
+      throw new Error("Conversation is not available in this local workspace");
+    }
     const binding = this.#workspaceBindings.get(input.workspaceId);
     if (!binding || binding.ownerUserId !== ownerUserId) {
       throw new Error("Workspace is not bound to this user runtime");
@@ -180,6 +183,17 @@ export class ControlPlaneRegistry {
     const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
 
     const now = this.#now().toISOString();
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      ownerUserId,
+      conversationId: input.conversationId,
+      authorKind: "user",
+      authorId: ownerUserId,
+      parts: [{ type: "text", text: input.prompt ?? "Run AgentHub local smoke task" }],
+      replyToMessageId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
     const run: Run = {
       id: crypto.randomUUID(),
       ownerUserId,
@@ -194,6 +208,7 @@ export class ControlPlaneRegistry {
       createdAt: now,
       updatedAt: now,
     };
+    this.#messages.set(userMessage.id, userMessage);
     this.#runs.set(run.id, run);
     this.#publishRunStatus(run, "agent.run.status_changed");
     this.#enqueueCommand(binding.runtimeDeviceId, {
@@ -322,17 +337,34 @@ export class ControlPlaneRegistry {
 
     if (event.type === "message.delta") {
       const now = this.#now().toISOString();
-      const message: Message = {
-        id: crypto.randomUUID(),
-        ownerUserId,
-        conversationId: run.conversationId,
-        authorKind: "agent",
-        authorId: event.agentId,
-        parts: [{ type: "markdown", text: event.delta, runId: event.runId }],
-        replyToMessageId: null,
-        createdAt: now,
-        updatedAt: now,
-      };
+      const existing = [...this.#messages.values()].find(
+        (message) =>
+          message.ownerUserId === ownerUserId &&
+          message.authorKind === "agent" &&
+          message.authorId === event.agentId &&
+          message.parts.some((part) => part.runId === event.runId),
+      );
+      const message: Message = existing
+        ? {
+            ...existing,
+            parts: existing.parts.map((part, index) =>
+              index === 0
+                ? { ...part, text: `${part.text ?? ""}${event.delta}` }
+                : part,
+            ),
+            updatedAt: now,
+          }
+        : {
+            id: crypto.randomUUID(),
+            ownerUserId,
+            conversationId: run.conversationId,
+            authorKind: "agent",
+            authorId: event.agentId,
+            parts: [{ type: "markdown", text: event.delta, runId: event.runId }],
+            replyToMessageId: null,
+            createdAt: now,
+            updatedAt: now,
+          };
       this.#messages.set(message.id, message);
       this.#events.publish({
         id: crypto.randomUUID(),

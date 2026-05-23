@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { DiffArtifactService } from "../src/index.js";
 
 const metadata = {
@@ -22,7 +23,7 @@ describe("DiffArtifactService", () => {
     const service = new DiffArtifactService();
     const artifact = service.persistDiffMetadata({
       ownerUserId: "user_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       artifactId: "artifact_1",
       title: "Code changes",
       summary: "1 file changed",
@@ -37,7 +38,7 @@ describe("DiffArtifactService", () => {
     const service = new DiffArtifactService();
     service.persistDiffMetadata({
       ownerUserId: "user_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       artifactId: "artifact_1",
       title: "Code changes",
       summary: "1 file changed",
@@ -54,7 +55,7 @@ describe("DiffArtifactService", () => {
     const service = new DiffArtifactService();
     service.persistDiffMetadata({
       ownerUserId: "user_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       artifactId: "artifact_1",
       title: "Code changes",
       summary: "1 file changed",
@@ -77,7 +78,7 @@ describe("DiffArtifactService", () => {
     const service = new DiffArtifactService();
     service.persistDiffMetadata({
       ownerUserId: "user_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       artifactId: "artifact_1",
       title: "Code changes",
       summary: "1 file changed",
@@ -91,4 +92,3 @@ describe("DiffArtifactService", () => {
     });
   });
 });
-

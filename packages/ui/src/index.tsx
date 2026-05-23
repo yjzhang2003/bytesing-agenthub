@@ -19,6 +19,8 @@ export type {
 } from "./types.js";
 
 export { createWorkbenchViewModel, workbenchLayoutForWidth } from "./view-model.js";
+export { AgentHubI18nProvider, createAgentHubI18n } from "./i18n.js";
+export type { AgentHubLocale } from "./i18n.js";
 export { AgentHubWorkbench } from "./components/workbench.js";
 export { AgentMentionComposer } from "./components/composer.js";
 export { ChatTimeline } from "./components/timeline.js";

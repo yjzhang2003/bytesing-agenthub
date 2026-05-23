@@ -92,6 +92,47 @@ function messageTitle(message: Message, agents: readonly Agent[]): string {
   return "System";
 }
 
+function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewModel | null {
+  const title = agentName(run.agentId, agents);
+  if (run.status === "completed" || run.status === "cancelled") {
+    return null;
+  }
+  if (run.status === "failed") {
+    return {
+      authorId: run.agentId,
+      authorKind: "agent",
+      body: [run.failureReason ?? "The run failed before the agent could finish replying."],
+      id: `run-message-${run.id}`,
+      kind: "message",
+      state: "error",
+      subtitle: "agent message",
+      title,
+    };
+  }
+  if (run.status === "blocked") {
+    return {
+      authorId: run.agentId,
+      authorKind: "agent",
+      body: ["Waiting for approval before continuing."],
+      id: `run-message-${run.id}`,
+      kind: "message",
+      state: "warning",
+      subtitle: "agent message",
+      title,
+    };
+  }
+  return {
+    authorId: run.agentId,
+    authorKind: "agent",
+    body: ["Writing a reply..."],
+    id: `run-message-${run.id}`,
+    kind: "message",
+    state: "loading",
+    subtitle: "agent message",
+    title,
+  };
+}
+
 function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly TimelineItemViewModel[] {
   if (!snapshot) {
     return [
@@ -117,15 +158,16 @@ function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): rea
     title: messageTitle(message, snapshot.agents),
   }));
 
-  const runItems = snapshot.runs.map((run) => ({
-    body: [run.failureReason ?? `Run ${run.status}`],
-    id: run.id,
-    inspectorSelection: { id: run.id, mode: "run" as const },
-    kind: "run-event" as const,
-    state: run.status === "blocked" ? ("blocked" as const) : run.status === "failed" ? ("error" as const) : ("success" as const),
-    subtitle: agentName(run.agentId, snapshot.agents),
-    title: `Run ${run.status}`,
-  }));
+  const runIdsWithMessages = new Set(
+    snapshot.messages.flatMap((message) =>
+      message.parts.map((part) => part.runId).filter((runId): runId is string => Boolean(runId)),
+    ),
+  );
+  const runItems = snapshot.runs
+    .map((run) => ({ item: activeRunMessage(run, snapshot.agents), run }))
+    .filter(({ item, run }) => item !== null && !(item.state === "loading" && runIdsWithMessages.has(run.id)))
+    .map(({ item }) => item)
+    .filter((item): item is TimelineItemViewModel => item !== null);
 
   const items = [...messageItems, ...runItems];
   if (items.length > 0) {

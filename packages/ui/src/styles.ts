@@ -116,6 +116,8 @@ body { overflow: hidden; }
 .agenthub-center {
   display: grid;
   grid-template-rows: 64px minmax(0, 1fr) auto;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   min-height: 100dvh;
   min-width: 0;
@@ -435,17 +437,20 @@ body { overflow: hidden; }
 .agenthub-chat-thread {
   list-style: none;
   margin: 0;
-  padding: 22px 28px;
-  display: grid;
-  align-content: end;
+  padding: 22px 28px 12px;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   min-width: 0;
   min-height: 0;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--agenthub-bg) 92%, var(--agenthub-surface)) 0%, var(--agenthub-bg) 100%);
 }
 .agenthub-chat-thread > li { display: grid; min-width: 0; }
+.agenthub-chat-thread > li:first-child { margin-top: auto; }
 .agenthub-message-row {
   grid-template-columns: 26px minmax(0, 1fr);
   align-items: start;
@@ -510,7 +515,114 @@ body { overflow: hidden; }
   background: var(--agenthub-accent);
   color: var(--agenthub-accent-text);
 }
+.agenthub-message-row[data-author="agent"] .agenthub-message-bubble:has(.agenthub-message-loading) {
+  min-width: 148px;
+}
+.agenthub-message-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
+  margin-bottom: 6px;
+}
+.agenthub-message-loading-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--agenthub-text-muted);
+  animation: agenthub-message-loading 1s infinite ease-in-out;
+}
+.agenthub-message-loading-dot:nth-child(2) { animation-delay: .16s; }
+.agenthub-message-loading-dot:nth-child(3) { animation-delay: .32s; }
 .agenthub-message-bubble p { margin: 0; }
+.agenthub-markdown {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.agenthub-markdown > :first-child { margin-top: 0; }
+.agenthub-markdown > :last-child { margin-bottom: 0; }
+.agenthub-markdown p,
+.agenthub-markdown h1,
+.agenthub-markdown h2,
+.agenthub-markdown h3,
+.agenthub-markdown h4,
+.agenthub-markdown ul,
+.agenthub-markdown ol,
+.agenthub-markdown blockquote,
+.agenthub-markdown pre {
+  margin: 0;
+}
+.agenthub-markdown h1,
+.agenthub-markdown h2,
+.agenthub-markdown h3,
+.agenthub-markdown h4 {
+  font-size: 1em;
+  line-height: 1.35;
+  font-weight: 750;
+}
+.agenthub-markdown ul,
+.agenthub-markdown ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+}
+.agenthub-markdown li > p { display: inline; }
+.agenthub-markdown code {
+  border: 1px solid color-mix(in srgb, var(--agenthub-border) 82%, transparent);
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: color-mix(in srgb, var(--agenthub-bg) 72%, var(--agenthub-surface));
+  font-family: var(--agenthub-mono);
+  font-size: .92em;
+}
+.agenthub-markdown pre {
+  overflow-x: auto;
+  border: 1px solid var(--agenthub-border);
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: color-mix(in srgb, var(--agenthub-bg) 86%, #000);
+}
+.agenthub-markdown pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  white-space: pre;
+}
+.agenthub-markdown blockquote {
+  border-left: 2px solid var(--agenthub-border-strong);
+  padding-left: 10px;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-markdown a {
+  color: var(--agenthub-accent);
+  text-decoration: none;
+}
+.agenthub-markdown a:hover { text-decoration: underline; }
+.agenthub-markdown hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--agenthub-border);
+}
+.agenthub-markdown-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.agenthub-markdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+}
+.agenthub-markdown th,
+.agenthub-markdown td {
+  border: 1px solid var(--agenthub-border);
+  padding: 5px 7px;
+  text-align: left;
+}
+@keyframes agenthub-message-loading {
+  0%, 80%, 100% { opacity: .36; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
 .agenthub-event-pill {
   justify-self: center;
   display: inline-flex;
@@ -548,7 +660,10 @@ body { overflow: hidden; }
   min-width: 0;
 }
 .agenthub-composer {
-  padding: 10px 16px 14px;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 16px 14px;
   background: var(--agenthub-bg);
 }
 .agenthub-composer-box {
@@ -556,11 +671,12 @@ body { overflow: hidden; }
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: "input actions";
-  align-items: end;
+  align-items: center;
   gap: 8px;
   border: 1px solid var(--agenthub-border);
   border-radius: 18px;
-  padding: 10px 10px 10px 14px;
+  min-height: 46px;
+  padding: 7px 10px 7px 14px;
   background: var(--agenthub-surface);
   box-shadow: 0 1px 0 rgba(17, 24, 39, .04);
   transition:
@@ -570,10 +686,12 @@ body { overflow: hidden; }
     min-height var(--agenthub-motion-medium);
 }
 .agenthub-composer-box[data-multiline="true"] {
+  align-items: end;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "input"
     "actions";
+  padding-block: 10px;
 }
 .agenthub-composer-box:focus-within {
   border-color: var(--agenthub-border-strong);
@@ -585,21 +703,30 @@ body { overflow: hidden; }
   gap: 10px;
   flex-wrap: wrap;
 }
+.agenthub-composer .agenthub-antd-input.ant-input,
 .agenthub-composer textarea {
   grid-area: input;
   width: 100%;
-  min-height: 22px;
+  min-height: 28px;
   max-height: 128px;
   resize: none;
   overflow-y: auto;
   border: 0;
   border-radius: 0;
-  padding: 7px 0;
+  padding: 3px 0;
   background: transparent;
   color: var(--agenthub-text);
   font: inherit;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 22px;
   transition: height var(--agenthub-motion-medium);
+}
+.agenthub-composer .agenthub-antd-input.ant-input,
+.agenthub-composer .agenthub-antd-input.ant-input:hover,
+.agenthub-composer .agenthub-antd-input.ant-input:focus {
+  border-color: transparent;
+  box-shadow: none;
+  outline: 0;
 }
 .agenthub-composer textarea:focus-visible {
   outline: 0;
@@ -693,9 +820,19 @@ body { overflow: hidden; }
 .agenthub-settings-switch {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   color: var(--agenthub-text-secondary);
   font-size: 12px;
+}
+.agenthub-settings-switch small {
+  display: block;
+  margin-top: 2px;
+  color: var(--agenthub-text-muted);
+}
+.agenthub-settings-stack {
+  display: grid;
+  gap: 10px;
 }
 .agenthub-agents-page {
   min-width: 0;

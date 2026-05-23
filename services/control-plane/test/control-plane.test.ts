@@ -96,7 +96,7 @@ describe("control plane registry", () => {
     expect(() =>
       registry.createRun("user_1", {
         workspaceId: "workspace_1",
-        conversationId: "conversation_1",
+        conversationId: agentHubLocalDefaults.conversationId,
         agentId: "agent_1",
       }),
     ).toThrow("Workspace runtime is offline");
@@ -115,7 +115,7 @@ describe("control plane registry", () => {
     expect(() =>
       registry.createRun("user_1", {
         workspaceId: "workspace_missing",
-        conversationId: "conversation_1",
+        conversationId: agentHubLocalDefaults.conversationId,
         agentId: "agent_1",
         prompt: "hello",
       }),
@@ -140,7 +140,7 @@ describe("control plane registry", () => {
 
     const run = registry.createRun("user_1", {
       workspaceId: "workspace_1",
-      conversationId: "conversation_1",
+      conversationId: agentHubLocalDefaults.conversationId,
       agentId: agentHubLocalDefaults.implementerAgentId,
     });
     const cancelled = registry.cancelRun("user_1", run.id);
@@ -165,9 +165,37 @@ describe("control plane registry", () => {
       agentId: agentHubLocalDefaults.implementerAgentId,
       delta: "done",
     });
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "message.delta",
+      runId: run.id,
+      agentId: agentHubLocalDefaults.implementerAgentId,
+      delta: " now",
+    });
 
     const snapshot = registry.createWorkbenchSnapshot("user_1");
-    expect(snapshot.messages[0]?.parts[0]?.text).toBe("done");
+    expect(snapshot.messages[0]).toMatchObject({
+      authorKind: "user",
+      authorId: "user_1",
+      parts: [{ type: "text", text: "hello" }],
+    });
+    expect(snapshot.messages[1]).toMatchObject({
+      authorKind: "agent",
+      authorId: agentHubLocalDefaults.implementerAgentId,
+      parts: [{ type: "markdown", text: "done now", runId: run.id }],
+    });
+  });
+
+  it("rejects runs for conversations outside the local workspace", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+
+    expect(() =>
+      registry.createRun("user_1", {
+        workspaceId: "workspace_1",
+        conversationId: "conversation_other",
+        agentId: agentHubLocalDefaults.implementerAgentId,
+        prompt: "hello",
+      }),
+    ).toThrow("Conversation is not available");
   });
 
   it("normalizes provider terminal statuses into AgentHub terminal events", () => {
