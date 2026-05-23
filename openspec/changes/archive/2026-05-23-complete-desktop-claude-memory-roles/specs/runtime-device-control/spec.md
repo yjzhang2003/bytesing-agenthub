@@ -11,7 +11,7 @@ The system SHALL provide a Claude Code adapter that launches Claude Code as a lo
 - **WHEN** Control Plane has provider health from Desktop Runtime
 - **THEN** the workbench snapshot includes that health so Desktop/Web can show whether local Claude Code is connected or why it is unavailable
 
-### Requirement: Runtime device registration
+### Requirement: Local runtime registration visibility
 The system SHALL let Desktop Runtime register local device and workspace metadata with Control Plane.
 
 #### Scenario: Runtime registers provider and memory health

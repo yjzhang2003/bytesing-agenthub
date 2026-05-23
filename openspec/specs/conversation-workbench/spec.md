@@ -1,8 +1,6 @@
 ## Purpose
 Define the Desktop and Web conversation workbench structure, runtime-backed snapshot behavior, timeline composition, composer targeting, and Context Inspector interaction model.
-
 ## Requirements
-
 ### Requirement: Desktop Web three-column workbench
 Desktop and Web clients SHALL use a three-column workbench layout by default.
 
@@ -25,22 +23,26 @@ The conversation timeline SHALL display user messages, agent messages, Orchestra
 - **THEN** the timeline shows the plan summary, each agent's visible progress, relevant run events, artifacts, and final summary in order
 
 ### Requirement: Agent mention composer
-The composer SHALL support addressing specific agents and Orchestrator through mentions or equivalent explicit target selection.
+The composer SHALL support targeted messages to runnable agent roles.
 
-#### Scenario: User targets Orchestrator
-- **WHEN** the user mentions Orchestrator or selects coordinated execution
-- **THEN** the composer makes it clear the message will start Plan Mode instead of direct worker-agent chat
-
-#### Scenario: User targets a worker agent
-- **WHEN** the user mentions a non-Orchestrator agent
-- **THEN** the composer makes it clear the message will route to that agent without implicit Orchestrator dispatch
+#### Scenario: User-created role appears as target
+- **WHEN** the snapshot includes a user-created non-archived agent role
+- **THEN** the composer can target that role and run creation uses that role id
 
 ### Requirement: Context Inspector
-The workbench SHALL use the right Context Inspector as the default detail surface for selected plans, permissions, diffs, artifacts, and runtime details.
+The workbench SHALL use the right Context Inspector as the default detail surface for selected chats, plans, permissions, diffs, artifacts, and runtime details.
 
 #### Scenario: User selects a plan card
 - **WHEN** the user selects a plan card in the timeline
 - **THEN** the Context Inspector displays the full plan, plan state, assigned agents, risk notes, and available actions
+
+#### Scenario: User opens chat information from the title
+- **WHEN** the user activates the active chat title or equivalent chat header affordance
+- **THEN** the Context Inspector displays the active chat information surface without replacing the conversation timeline
+
+#### Scenario: User returns from chat information to timeline context
+- **WHEN** the chat information surface is open and the user selects a timeline item with detail
+- **THEN** the Context Inspector switches to the selected item detail while preserving the active chat and composer state
 
 ### Requirement: Responsive workbench behavior
 The workbench SHALL degrade predictably when horizontal space is limited.
@@ -52,13 +54,9 @@ The workbench SHALL degrade predictably when horizontal space is limited.
 ### Requirement: Control Plane-backed workbench snapshot
 Desktop and Web workbenches SHALL load their primary workspace, conversation, runtime status, and timeline snapshot from Control Plane in runnable local development.
 
-#### Scenario: Client opens with Control Plane online
-- **WHEN** Web or Desktop opens and Control Plane is reachable
-- **THEN** the workbench displays the Control Plane-provided workspace, conversation timeline, runtime status, and available actions
-
-#### Scenario: Client opens with Control Plane offline
-- **WHEN** Web or Desktop opens and Control Plane is unreachable
-- **THEN** the workbench displays a connection error state with retry affordance instead of silently showing stale static demo data
+#### Scenario: Snapshot includes connection and memory status
+- **WHEN** the workbench loads a Control Plane snapshot
+- **THEN** it can display local Claude Code provider health, agentmemory health, and available agent roles without a separate reload
 
 ### Requirement: Workbench runtime state updates
 Desktop and Web workbenches SHALL reflect runtime online, offline, and heartbeat changes from Control Plane.
@@ -136,3 +134,101 @@ The Agents and Connections center views SHALL use Ant Design-backed controls whi
 #### Scenario: User views provider status
 - **WHEN** the migrated Connections page renders Claude Code, Codex placeholder, runtime status, or memory status
 - **THEN** status badges, detail rows, refresh controls, empty states, and diagnostics use shared controls while preserving current provider and memory snapshot data
+
+### Requirement: Modern Agents directory surface
+The Desktop/Web Agents center view SHALL present agents through a compact side-list and a contact-style configuration detail that prioritizes readable identity, role, responsibilities, and capabilities over raw technical configuration.
+
+#### Scenario: User opens an existing agent
+- **WHEN** the user selects an agent from the Agents side-list
+- **THEN** the detail surface displays the agent name, role, provider, responsibility summary, capability tags, and configuration summary before any raw advanced fields
+
+#### Scenario: User changes agent configuration
+- **WHEN** the user edits agent configuration fields
+- **THEN** the page provides one primary save action for committing the changes through the existing update workflow
+
+#### Scenario: User views default agent status
+- **WHEN** the selected agent is a default agent
+- **THEN** the detail surface shows default-agent status without making destructive management actions the primary focus
+
+### Requirement: Template-assisted single-interface agent creation
+The Desktop/Web Agents center view SHALL support template-assisted agent creation inside one create interface, without navigating to a separate template selection page.
+
+#### Scenario: User starts creating an agent
+- **WHEN** the user activates the Agents sidebar create affordance
+- **THEN** the detail surface switches to a single create interface that includes compact template presets and editable basic fields
+
+#### Scenario: User chooses a template preset
+- **WHEN** the user selects a template preset in the create interface
+- **THEN** the interface populates friendly defaults for role, responsibility, capability tags, system prompt, and policy while keeping the user on the same screen
+
+#### Scenario: User creates from customized defaults
+- **WHEN** the user saves a new agent after selecting or modifying a template preset
+- **THEN** the page creates the agent through the existing create workflow using the selected and edited values
+
+### Requirement: Agents advanced configuration disclosure
+The Desktop/Web Agents center view SHALL place raw system prompt and policy JSON controls in an advanced configuration section that is collapsed by default.
+
+#### Scenario: User opens a standard agent configuration
+- **WHEN** the Agents detail surface renders for an existing agent or create flow
+- **THEN** raw system prompt and policy JSON controls are hidden behind a collapsed advanced configuration disclosure by default
+
+#### Scenario: Advanced configuration has validation errors
+- **WHEN** an advanced configuration field contains invalid data during save
+- **THEN** the page shows the validation error and makes the affected advanced section discoverable
+
+#### Scenario: Power user edits advanced configuration
+- **WHEN** the user expands advanced configuration
+- **THEN** the page exposes raw system prompt and policy JSON controls without replacing the basic configuration fields
+
+### Requirement: Workbench starts local agent runs
+Desktop and Web workbenches SHALL let the user start a direct local agent run when the active workspace has an online Desktop Runtime.
+
+#### Scenario: Runtime is online
+- **WHEN** the user sends a prompt to a worker agent in a workspace with an online bound Desktop Runtime
+- **THEN** the workbench submits a run request to Control Plane and shows the resulting run in the active conversation context
+
+#### Scenario: Runtime is offline
+- **WHEN** the user attempts to start a run while the active workspace runtime is offline or unavailable
+- **THEN** the workbench prevents execution and keeps the prompt available for retry when runtime availability returns
+
+### Requirement: Workbench reflects live run events
+Desktop and Web workbenches SHALL merge Control Plane snapshots and live AgentHub events into the conversation timeline.
+
+#### Scenario: Run status event arrives
+- **WHEN** the workbench receives a run status event for the active conversation
+- **THEN** the timeline and inspector update the matching run state without requiring a page reload
+
+#### Scenario: Message delta event arrives
+- **WHEN** the workbench receives a provider-backed message delta for the active conversation
+- **THEN** the timeline displays the agent output in chronological context with the associated run and agent identity
+
+#### Scenario: Live event stream disconnects
+- **WHEN** the workbench loses the Control Plane event stream
+- **THEN** it can reload the workbench snapshot to recover the latest known runs and messages
+
+### Requirement: Chat information inspector
+The Desktop and Web workbench SHALL provide an IM-style chat information detail surface for the active conversation.
+
+#### Scenario: User opens group chat details
+- **WHEN** the active conversation is a group chat and the user opens chat information
+- **THEN** the inspector shows participating agent avatars at the top, followed by chat name, chat kind, workspace context, runtime context, timestamps, and membership summary
+
+#### Scenario: User opens single-agent chat details
+- **WHEN** the active conversation is a single-agent chat and the user opens chat information
+- **THEN** the inspector shows the single participating agent and the same basic chat information rows without rendering group-only copy as required content
+
+#### Scenario: Chat metadata is unavailable
+- **WHEN** optional chat announcement, note, or timestamp data is missing
+- **THEN** the inspector omits or marks only those rows as unavailable without hiding required chat title, kind, workspace, runtime, or participants
+
+### Requirement: Chat title activation
+The active chat title SHALL be an accessible activation target for opening chat information.
+
+#### Scenario: Mouse user clicks chat title
+- **WHEN** the user clicks the active chat title in the center workbench header
+- **THEN** the right Context Inspector opens the chat information surface for that conversation
+
+#### Scenario: Keyboard user activates chat title
+- **WHEN** keyboard focus is on the active chat title affordance and the user presses Enter or Space
+- **THEN** the right Context Inspector opens the chat information surface for that conversation
+

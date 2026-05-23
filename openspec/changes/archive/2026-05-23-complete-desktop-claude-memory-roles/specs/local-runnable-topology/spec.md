@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Local smoke verification
+### Requirement: Local run loop smoke verification
 The repository SHALL provide local smoke verification for the runnable topology.
 
 #### Scenario: Fake Claude Code smoke

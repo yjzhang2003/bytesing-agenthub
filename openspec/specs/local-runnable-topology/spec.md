@@ -1,8 +1,6 @@
 ## Purpose
 Define the local development topology, health checks, root commands, configuration, and Electron startup diagnostics for running AgentHub locally.
-
 ## Requirements
-
 ### Requirement: Local development process topology
 The system SHALL provide a documented local development topology that starts Control Plane API, Desktop Runtime, Web client, and Desktop client as separate processes.
 
@@ -53,3 +51,26 @@ The Desktop client SHALL detect common Electron startup failures and provide act
 #### Scenario: Desktop starts successfully
 - **WHEN** Electron is available and the Control Plane URL is configured
 - **THEN** the Desktop app launches and loads the AgentHub workbench shell connected to the configured Control Plane
+
+### Requirement: Local run loop smoke verification
+The repository SHALL provide local smoke verification for the runnable topology.
+
+#### Scenario: Fake Claude Code smoke
+- **WHEN** the fake Claude Code smoke verifier runs
+- **THEN** it proves provider preflight, run command delivery, fake provider output, and terminal run state without requiring a real Claude Code installation
+
+#### Scenario: Agentmemory smoke
+- **WHEN** the memory smoke verifier runs with a stub agentmemory service
+- **THEN** it proves memory context injection and observation writes while keeping provider execution deterministic
+
+### Requirement: Claude Code mode configuration
+The local development documentation SHALL explain how to enable real Claude Code provider execution.
+
+#### Scenario: Developer enables Claude Code mode
+- **WHEN** a developer sets `AGENTHUB_PROVIDER_MODE=claude-code` and configures `AGENTHUB_CLAUDE_CODE_BIN`
+- **THEN** Desktop Runtime uses the Claude Code provider adapter for new run commands
+
+#### Scenario: Claude Code binary is unavailable
+- **WHEN** Claude Code mode is configured but the binary cannot be executed
+- **THEN** the runtime or verification path reports the setup problem without silently falling back to smoke output
+

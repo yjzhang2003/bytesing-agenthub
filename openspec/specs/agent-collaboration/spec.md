@@ -1,8 +1,6 @@
 ## Purpose
 Define AgentHub's agent identity model, IM-style conversation behavior, Orchestrator planning flow, run lifecycle, and result aggregation.
-
 ## Requirements
-
 ### Requirement: Agent identity model
 The system SHALL model agents as product identities separate from their execution provider.
 
@@ -11,11 +9,27 @@ The system SHALL model agents as product identities separate from their executio
 - **THEN** each agent retains its own name, role, prompt, capabilities, and policy while using the same provider adapter
 
 ### Requirement: IM-style conversations
-The system SHALL support single-agent and group conversations with ordered messages and typed participants.
+The system SHALL support single-agent and group conversations with ordered messages, typed participants, and explicit agent membership.
 
 #### Scenario: User opens a group conversation
 - **WHEN** a user opens a group conversation
 - **THEN** the client displays user messages, agent messages, Orchestrator messages, run events, plans, permissions, and artifacts in chronological context
+
+#### Scenario: User views group participants
+- **WHEN** a user opens chat information for a group conversation
+- **THEN** the system exposes the participating agents for that conversation separately from all workspace agents
+
+#### Scenario: User adds an agent to a group conversation
+- **WHEN** a user adds an eligible workspace agent to the active group conversation
+- **THEN** the agent becomes available for future targeting in that conversation without changing historical messages or completed run records
+
+#### Scenario: User removes an agent from a group conversation
+- **WHEN** a user removes an agent from the active group conversation
+- **THEN** the agent is removed from future participant and targeting lists for that conversation while historical messages and run records remain visible
+
+#### Scenario: Conversation membership is missing in a legacy snapshot
+- **WHEN** a client receives a conversation snapshot without explicit membership data
+- **THEN** the client falls back to the existing compatible participant behavior and remains usable
 
 ### Requirement: Explicit Orchestrator invocation
 The system SHALL start orchestrated dispatch only when the user explicitly mentions Orchestrator or chooses an Orchestrator coordination action.
@@ -78,3 +92,30 @@ The runnable demo SHALL use provider adapter outputs rather than hardcoded clien
 #### Scenario: Client displays demo run output
 - **WHEN** Web or Desktop displays output from a local demo run
 - **THEN** the displayed messages and run states originate from Control Plane events produced by Desktop Runtime provider adapters
+
+### Requirement: Direct agent runs publish provider-backed output
+The system SHALL make direct worker-agent runs visible in the owning conversation using normalized provider events from the Desktop Runtime.
+
+#### Scenario: Worker run streams output
+- **WHEN** a user starts a direct run for a worker agent and the provider emits message output
+- **THEN** the conversation timeline receives agent-authored output associated with that run and agent
+
+#### Scenario: Worker run reaches terminal state
+- **WHEN** the provider reports that the direct run completed or failed
+- **THEN** the run record and conversation-visible run state reflect the terminal status for the same run id
+
+#### Scenario: Provider output is normalized
+- **WHEN** the configured provider is smoke mode or Claude Code mode
+- **THEN** the conversation uses the same AgentHub run and message event model without exposing provider-specific output formats to the client
+
+### Requirement: Conversation membership persistence
+The system SHALL persist agent membership for each conversation so Desktop, Web, and future clients can render the same participants.
+
+#### Scenario: Membership snapshot is loaded
+- **WHEN** Control Plane returns a workbench snapshot for a conversation with explicit agent membership
+- **THEN** the snapshot includes enough membership data for clients to distinguish participating agents from other workspace agents
+
+#### Scenario: Membership changes are synchronized
+- **WHEN** an agent is added to or removed from a conversation
+- **THEN** connected clients receive updated conversation membership through snapshot refresh or event stream updates
+
