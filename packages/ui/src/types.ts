@@ -37,7 +37,15 @@ export type TimelineItemKind =
   | "summary"
   | "empty";
 
-export type InspectorMode = "empty" | "plan" | "permission" | "diff" | "runtime" | "artifact" | "run";
+export type InspectorMode =
+  | "empty"
+  | "chat-info"
+  | "plan"
+  | "permission"
+  | "diff"
+  | "runtime"
+  | "artifact"
+  | "run";
 
 export interface ConversationListItem {
   readonly id: string;
@@ -171,7 +179,14 @@ export interface DiffViewModel {
   readonly id: string;
   readonly runId: string;
   readonly files: readonly DiffFileSummary[];
-  readonly state: "metadata-only" | "loading-full-diff" | "available" | "offline" | "stale" | "cached" | "error";
+  readonly state:
+    | "metadata-only"
+    | "loading-full-diff"
+    | "available"
+    | "offline"
+    | "stale"
+    | "cached"
+    | "error";
   readonly baseCommit: string | null;
   readonly warning: string | null;
 }
@@ -191,6 +206,25 @@ export interface RunViewModel {
   readonly startedAt: string;
   readonly completedAt: string;
   readonly failureReason: string | null;
+}
+
+export interface ChatInfoParticipantViewModel extends AgentTargetViewModel {
+  readonly initials: string;
+}
+
+export interface ChatInfoViewModel {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: "single-agent" | "group";
+  readonly workspaceName: string;
+  readonly runtimeLabel: string;
+  readonly createdAtLabel: string;
+  readonly updatedAtLabel: string;
+  readonly participantCount: number;
+  readonly participants: readonly ChatInfoParticipantViewModel[];
+  readonly availableAgents: readonly ChatInfoParticipantViewModel[];
+  readonly announcement: string | null;
+  readonly note: string | null;
 }
 
 export interface InspectorSelection {
@@ -224,6 +258,7 @@ export interface WorkbenchViewModel {
     readonly diff: DiffViewModel | null;
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
+    readonly chatInfo: ChatInfoViewModel | null;
   };
   readonly states: readonly WorkbenchVisualState[];
   readonly activeConversationTitle: string;

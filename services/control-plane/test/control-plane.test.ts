@@ -273,6 +273,43 @@ describe("control plane registry", () => {
       systemPrompt: "You are a research-focused coding agent.",
       capabilityTags: ["research"],
     });
+    expect(
+      snapshot.conversationParticipants?.map((participant) => participant.agentId),
+    ).not.toContain(agent.id);
+  });
+
+  it("persists conversation agent membership in snapshots", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "You research context.",
+      capabilityTags: ["research"],
+      policy: {},
+    });
+
+    const initial = registry.createWorkbenchSnapshot("user_1");
+    expect(initial.conversationParticipants?.map((participant) => participant.agentId)).toEqual([
+      agentHubLocalDefaults.orchestratorAgentId,
+      agentHubLocalDefaults.implementerAgentId,
+    ]);
+
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+    const added = registry.createWorkbenchSnapshot("user_1");
+    expect(added.conversationParticipants?.map((participant) => participant.agentId)).toContain(
+      agent.id,
+    );
+
+    registry.removeAgentFromConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+    const removed = registry.createWorkbenchSnapshot("user_1");
+    expect(
+      removed.conversationParticipants?.map((participant) => participant.agentId),
+    ).not.toContain(agent.id);
+    expect(registry.events.snapshot().at(-1)).toMatchObject({
+      type: "conversation.membership_changed",
+      payload: { action: "removed", agentId: agent.id },
+    });
   });
 
   it("updates and archives user agent roles", () => {
@@ -291,7 +328,9 @@ describe("control plane registry", () => {
       systemPrompt: "Updated prompt",
     });
     expect(
-      registry.createWorkbenchSnapshot("user_1").agents.find((candidate) => candidate.id === agent.id),
+      registry
+        .createWorkbenchSnapshot("user_1")
+        .agents.find((candidate) => candidate.id === agent.id),
     ).toMatchObject({
       displayName: "Senior Researcher",
       systemPrompt: "Updated prompt",
@@ -299,7 +338,9 @@ describe("control plane registry", () => {
 
     registry.archiveAgent("user_1", agent.id);
     expect(
-      registry.createWorkbenchSnapshot("user_1").agents.some((candidate) => candidate.id === agent.id),
+      registry
+        .createWorkbenchSnapshot("user_1")
+        .agents.some((candidate) => candidate.id === agent.id),
     ).toBe(false);
     expect(() =>
       registry.createRun("user_1", {
@@ -445,10 +486,39 @@ describe("control plane HTTP local mode", () => {
       const createdAgent = await createAgentResponse.json();
       expect(createdAgent.agent.displayName).toBe("Researcher");
 
-      const agentsResponse = await fetch(`${baseUrl}/agents`, { headers });
-      expect((await agentsResponse.json()).agents.map((agent: { displayName: string }) => agent.displayName)).toContain(
-        "Researcher",
+      const addMembershipResponse = await fetch(
+        `${baseUrl}/conversations/${snapshotBody.activeConversationId}/agents`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ agentId: createdAgent.agent.id }),
+        },
       );
+      expect(addMembershipResponse.status).toBe(200);
+
+      const membershipSnapshot = await fetch(`${baseUrl}/workbench/snapshot`, { headers });
+      const membershipSnapshotBody = await membershipSnapshot.json();
+      expect(
+        membershipSnapshotBody.conversationParticipants.map(
+          (participant: { agentId: string }) => participant.agentId,
+        ),
+      ).toContain(createdAgent.agent.id);
+
+      const removeMembershipResponse = await fetch(
+        `${baseUrl}/conversations/${snapshotBody.activeConversationId}/agents/${createdAgent.agent.id}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
+      expect(removeMembershipResponse.status).toBe(200);
+
+      const agentsResponse = await fetch(`${baseUrl}/agents`, { headers });
+      expect(
+        (await agentsResponse.json()).agents.map(
+          (agent: { displayName: string }) => agent.displayName,
+        ),
+      ).toContain("Researcher");
 
       const updateAgentResponse = await fetch(`${baseUrl}/agents/${createdAgent.agent.id}`, {
         method: "PATCH",

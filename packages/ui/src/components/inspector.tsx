@@ -1,7 +1,8 @@
-import { PanelRightClose } from "lucide-react";
+import { PanelRightClose, Plus } from "lucide-react";
 import React from "react";
 import type {
   ArtifactViewModel,
+  ChatInfoViewModel,
   DiffViewModel,
   InspectorSelection,
   PermissionViewModel,
@@ -12,12 +13,15 @@ import type {
 } from "../types.js";
 import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
+import { AgentHubAvatar, AgentHubSelect } from "./antd-primitives.js";
 import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 export function ContextInspector(props: {
   readonly model: WorkbenchViewModel;
   readonly selection: InspectorSelection | null;
   readonly onSelect: (selection: InspectorSelection | null) => void;
+  readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
+  readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onOpenFullScreenDiff: () => void;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
@@ -29,6 +33,7 @@ export function ContextInspector(props: {
     permissions: props.model.inspector.permissions,
     plan: props.model.inspector.plan,
     runs: props.model.inspector.runs,
+    chatInfo: props.model.inspector.chatInfo,
   });
 
   return (
@@ -39,7 +44,7 @@ export function ContextInspector(props: {
       <header>
         <strong>{i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}</strong>
         <div className="agenthub-header-actions">
-          {selection ? (
+          {selection && selection.mode !== "chat-info" ? (
             <HoverButton onClick={() => props.onSelect(null)} type="button">
               {i18n.t("actions.clear", { fallback: "Clear" })}
             </HoverButton>
@@ -58,7 +63,14 @@ export function ContextInspector(props: {
           </HoverButton>
         </div>
       </header>
-      {renderInspectorBody(props.model, selection, props.onSelect, props.onOpenFullScreenDiff)}
+      {renderInspectorBody(
+        props.model,
+        selection,
+        props.onSelect,
+        props.onOpenFullScreenDiff,
+        props.onAddAgentToChat,
+        props.onRemoveAgentFromChat,
+      )}
     </aside>
   );
 }
@@ -68,6 +80,8 @@ function renderInspectorBody(
   selection: InspectorSelection | null,
   onSelect: (selection: InspectorSelection | null) => void,
   onOpenFullScreenDiff: () => void,
+  onAddAgentToChat?: (conversationId: string, agentId: string) => void,
+  onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void,
 ): React.ReactNode {
   if (!selection) {
     return <EmptyDetail model={model} onSelect={onSelect} />;
@@ -75,6 +89,18 @@ function renderInspectorBody(
 
   if (selection.mode === "runtime") {
     return <RuntimeDetail runtime={model.runtime} />;
+  }
+
+  if (selection.mode === "chat-info") {
+    return model.inspector.chatInfo ? (
+      <ChatInfoDetail
+        chat={model.inspector.chatInfo}
+        {...(onAddAgentToChat ? { onAddAgent: onAddAgentToChat } : {})}
+        {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
+      />
+    ) : (
+      <UnavailableDetail label="Chat unavailable" />
+    );
   }
 
   if (selection.mode === "plan") {
@@ -113,6 +139,90 @@ function renderInspectorBody(
 
   const run = model.inspector.runs.find((candidate) => candidate.id === selection.id);
   return run ? <RunDetail run={run} /> : <UnavailableDetail label="Run unavailable" />;
+}
+
+function ChatInfoDetail(props: {
+  readonly chat: ChatInfoViewModel;
+  readonly onAddAgent?: (conversationId: string, agentId: string) => void;
+  readonly onRemoveAgent?: (conversationId: string, agentId: string) => void;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  const [selectedAgentId, setSelectedAgentId] = React.useState(
+    props.chat.availableAgents[0]?.id ?? "",
+  );
+
+  React.useEffect(() => {
+    setSelectedAgentId(props.chat.availableAgents[0]?.id ?? "");
+  }, [props.chat.id, props.chat.availableAgents]);
+
+  return (
+    <div className="agenthub-inspector-body">
+      <h3>{props.chat.title}</h3>
+      <DetailSection title={i18n.t("chat.participants")}>
+        <div className="agenthub-chat-participant-grid">
+          {props.chat.participants.map((participant) => (
+            <div className="agenthub-chat-participant-tile" key={participant.id}>
+              <AgentHubAvatar shape="square">{participant.initials}</AgentHubAvatar>
+              <span title={participant.label}>{participant.label}</span>
+            </div>
+          ))}
+          <div className="agenthub-chat-participant-tile agenthub-chat-participant-tile-add">
+            <AgentHubAvatar shape="square">
+              <Icon icon={Plus} />
+            </AgentHubAvatar>
+            <span>{i18n.t("chat.addAgent")}</span>
+            {props.chat.availableAgents.length > 0 ? (
+              <>
+                <AgentHubSelect
+                  aria-label={i18n.t("chat.selectAgentToAdd")}
+                  className="agenthub-chat-agent-select"
+                  onChange={setSelectedAgentId}
+                  options={props.chat.availableAgents.map((agent) => ({
+                    label: agent.label,
+                    value: agent.id,
+                  }))}
+                  value={selectedAgentId}
+                />
+                <HoverButton
+                  disabled={!selectedAgentId || !props.onAddAgent}
+                  onClick={() => props.onAddAgent?.(props.chat.id, selectedAgentId)}
+                  type="button"
+                >
+                  {i18n.t("chat.add")}
+                </HoverButton>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </DetailSection>
+      <DetailSection title={i18n.t("chat.basicInfo")}>
+        <dl>
+          <dt>{i18n.t("chat.chatName")}</dt>
+          <dd>{props.chat.title}</dd>
+          <dt>{i18n.t("chat.chatKind")}</dt>
+          <dd>{props.chat.kind}</dd>
+          <dt>{i18n.t("chat.workspace")}</dt>
+          <dd>{props.chat.workspaceName}</dd>
+          <dt>{i18n.t("chat.runtime")}</dt>
+          <dd>{props.chat.runtimeLabel}</dd>
+          <dt>{i18n.t("chat.created")}</dt>
+          <dd>{props.chat.createdAtLabel}</dd>
+          <dt>{i18n.t("chat.updated")}</dt>
+          <dd>{props.chat.updatedAtLabel}</dd>
+        </dl>
+      </DetailSection>
+      {props.chat.announcement ? (
+        <DetailSection title={i18n.t("chat.announcement")}>
+          <p>{props.chat.announcement}</p>
+        </DetailSection>
+      ) : null}
+      {props.chat.note ? (
+        <DetailSection title={i18n.t("chat.note")}>
+          <p>{props.chat.note}</p>
+        </DetailSection>
+      ) : null}
+    </div>
+  );
 }
 
 function EmptyDetail(props: {

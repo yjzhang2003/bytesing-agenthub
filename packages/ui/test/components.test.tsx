@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   AgentMentionComposer,
+  AgentsPage,
   AgentHubWorkbench,
   AgentHubTextInput,
   AgentHubThemeProvider,
@@ -433,7 +434,7 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("agenthub-chat-list-panel");
     expect(html).toContain("agenthub-chat-list-header");
     expect(html).toContain('aria-label="Search conversations"');
-    expect(html).toContain("agenthub-conversation-search");
+    expect(html).toContain("agenthub-sidebar-search");
     expect(html).toContain("agenthub-rail-button");
     expect(html).toContain("grid-template-columns: 58px minmax(0, 1fr)");
     expect(html).toContain("--agenthub-left-column: clamp(300px, 24vw, 340px)");
@@ -463,6 +464,13 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain('data-view="settings"');
     expect(workbench).toContain('aria-label="Settings page"');
     expect(workbench).toContain("~/IdeaProjects/agenthub");
+    expect(settings).toContain("agenthub-settings-sidebar");
+    expect(settings).toContain("agenthub-settings-nav-item");
+    expect(settings).toContain("agenthub-settings-content");
+    expect(settings).toContain("agenthub-settings-group");
+    expect(settings).toContain("agenthub-settings-row");
+    expect(settings).toContain("Account &amp; storage");
+    expect(settings).toContain("General");
     expect(settings).toContain("Workspace");
     expect(settings).toContain("Runtime");
     expect(settings).toContain("Keyboard");
@@ -477,7 +485,7 @@ describe("@agenthub/ui components", () => {
     expect(settings).not.toContain("Create agent role");
   });
 
-  it("renders a dedicated agents page with list, editor, and archive protections", () => {
+  it("renders a dedicated agents page with a shared search field and readable configuration", () => {
     const model = createWorkbenchViewModel(snapshot());
     const html = renderToStaticMarkup(
       <AgentHubWorkbench initialCenterView="agents" viewModel={model} />,
@@ -490,21 +498,64 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Agent directory"');
     expect(html).toContain('aria-label="Resize agent directory"');
     expect(html).toContain('aria-label="Search agents"');
-    expect(html).toContain("agenthub-antd-input");
+    expect(html).toContain("agenthub-sidebar-search");
+    expect(html).not.toMatch(/agenthub-conversation-search[\s\S]*agenthub-antd-input/);
     expect(html).toContain("agenthub-antd-avatar");
     expect(html).toContain("agenthub-antd-badge");
     expect(html).toContain("agenthub-antd-select");
     expect(html).toContain("Researcher");
     expect(html).toContain("Plan work");
+    expect(html).toContain("Responsibilities");
     expect(html).toContain("Capability tags");
-    expect(html).toContain("Policy JSON");
-    expect(html).toContain("New agent");
+    expect(html).toContain("Basic information");
+    expect(html).toContain("Configuration summary");
+    expect(html).toContain("Advanced configuration");
+    expect(html).toContain("agenthub-agent-settings-group");
+    expect(html).toContain("agenthub-agent-settings-body");
+    expect(html).toContain("<summary");
+    const agentProfileCss = html.match(/\.agenthub-agent-profile \{[^}]*\}/)?.[0] ?? "";
+    expect(agentProfileCss).toContain(".agenthub-agent-profile");
+    expect(agentProfileCss).not.toContain("border-bottom");
+    const saveDockCss = html.match(/\.agenthub-agent-save-dock \{[^}]*\}/)?.[0] ?? "";
+    expect(saveDockCss).toContain("position: absolute");
+    expect(saveDockCss).not.toContain("box-shadow");
+    const saveButtonCss = html.match(/\.agenthub-antd-button\.ant-btn\.agenthub-agent-save-button \{[^}]*\}/)?.[0] ?? "";
+    expect(saveButtonCss).toContain("border-color: transparent");
+    const agentEditorLabelCss = html.match(/\.agenthub-agent-editor label,[\s\S]*?\.agenthub-role-form label \{[^}]*\}/)?.[0] ?? "";
+    expect(agentEditorLabelCss).toContain("grid-template-columns: minmax(150px, 28%) minmax(0, 1fr)");
+    const agentEditorInputCss = html.match(/\.agenthub-agent-editor input,[\s\S]*?\.agenthub-role-form textarea \{[^}]*\}/)?.[0] ?? "";
+    expect(agentEditorInputCss).toContain("border: 1px solid transparent");
+    expect(html).toContain(".agenthub-agent-editor .agenthub-antd-input.ant-input:hover");
+    expect(html).toContain(".agenthub-workbench textarea {\n  resize: none;");
+    expect(html).toContain(".agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-content");
+    expect(html).not.toMatch(/agenthub-agent-profile-actions[\s\S]*New agent/);
+    expect(html).toContain("agenthub-agent-save-dock");
+    expect(html).toContain("agenthub-agent-save-button");
     expect(html).toContain("Save changes");
-    expect(html).toContain("Archive");
+    expect(html).not.toMatch(/agenthub-agent-save-button[^>]*disabled/);
     expect(html).toContain("Default agent");
     expect(html).toContain('disabled="" type="button"');
     expect(html).not.toContain('aria-label="Conversation navigation"');
     expect(html).not.toContain("Conversation details");
+  });
+
+  it("renders template-assisted agent creation inside one create interface", () => {
+    const model = createWorkbenchViewModel(snapshot());
+    const html = renderToStaticMarkup(<AgentsPage model={model} selectedAgentId={null} />);
+
+    expect(html).toContain("Start from a template");
+    expect(html).toContain("agenthub-agent-settings-group");
+    expect(html).toContain("agenthub-agent-settings-body");
+    expect(html).toContain("Orchestrator");
+    expect(html).toContain("Implementer");
+    expect(html).toContain("Reviewer");
+    expect(html).toContain("Researcher");
+    expect(html).toContain("Responsibilities");
+    expect(html).toContain("Advanced configuration");
+    expect(html).toContain("<summary");
+    expect(html).toContain("Policy JSON");
+    expect(html).toContain("Save changes");
+    expect(html).not.toContain("Choose template");
   });
 
   it("renders a dedicated connections page for Claude Code, memory, and future Codex", () => {
@@ -621,7 +672,9 @@ describe("@agenthub/ui components", () => {
       })),
     };
 
-    expect(createWorkbenchViewModel(withRunMessage).timeline.map((item) => item.id)).not.toContain("run-message-run_1");
+    expect(createWorkbenchViewModel(withRunMessage).timeline.map((item) => item.id)).not.toContain(
+      "run-message-run_1",
+    );
     expect(createWorkbenchViewModel(failedAfterOutput).timeline).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -652,7 +705,7 @@ describe("@agenthub/ui components", () => {
     expect(model.inspector.selection).toBeNull();
   });
 
-  it("renders inspector modes for permission, diff, runtime, artifact, run, and empty states", () => {
+  it("renders inspector modes for chat info, permission, diff, runtime, artifact, run, and empty states", () => {
     const model = createWorkbenchViewModel(snapshot(), {
       activePlan: {
         assumptions: ["Runtime is online"],
@@ -702,6 +755,14 @@ describe("@agenthub/ui components", () => {
     expect(
       renderToStaticMarkup(
         <AgentHubWorkbench
+          initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+          viewModel={model}
+        />,
+      ),
+    ).toContain("Basic information");
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench
           initialInspectorSelection={{ id: "permission_1", mode: "permission" }}
           viewModel={model}
         />,
@@ -744,6 +805,94 @@ describe("@agenthub/ui components", () => {
         <AgentHubWorkbench initialFullScreenDiffId="diff_1" viewModel={model} />,
       ),
     ).toContain("Return to conversation");
+  });
+
+  it("derives chat info membership from explicit participants with legacy fallback", () => {
+    const explicitSnapshot: WorkbenchSnapshot = {
+      ...snapshot(),
+      conversationParticipants: [
+        {
+          agentId: "agent_1",
+          archivedAt: null,
+          addedByUserId: "user_1",
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "participant_1",
+          ownerUserId: "user_1",
+          updatedAt: now,
+        },
+        {
+          agentId: "agent_2",
+          archivedAt: null,
+          addedByUserId: "user_1",
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "participant_2",
+          ownerUserId: "user_1",
+          updatedAt: now,
+        },
+      ],
+    };
+    const explicitModel = createWorkbenchViewModel(explicitSnapshot);
+    expect(explicitModel.inspector.chatInfo?.participants.map((agent) => agent.label)).toEqual([
+      "Orchestrator",
+      "Implementer",
+    ]);
+    expect(explicitModel.inspector.chatInfo?.availableAgents.map((agent) => agent.label)).toEqual([
+      "Researcher",
+    ]);
+    expect(explicitModel.composer.targets.map((target) => target.label)).toEqual([
+      "Orchestrator",
+      "Implementer",
+    ]);
+
+    const legacyModel = createWorkbenchViewModel(snapshot());
+    expect(legacyModel.inspector.chatInfo?.participants).toHaveLength(3);
+    expect(legacyModel.inspector.chatInfo?.availableAgents).toHaveLength(0);
+  });
+
+  it("renders chat title activation and participant management states", () => {
+    const explicitSnapshot: WorkbenchSnapshot = {
+      ...snapshot(),
+      conversationParticipants: [
+        {
+          agentId: "agent_1",
+          archivedAt: null,
+          addedByUserId: "user_1",
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "participant_1",
+          ownerUserId: "user_1",
+          updatedAt: now,
+        },
+      ],
+    };
+    const model = createWorkbenchViewModel(explicitSnapshot);
+    const withoutCallbacks = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        viewModel={model}
+      />,
+    );
+    const withCallbacks = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        onAddAgentToChat={() => undefined}
+        onRemoveAgentFromChat={() => undefined}
+        viewModel={model}
+      />,
+    );
+
+    expect(withoutCallbacks).toContain("Open chat information for MVP workbench");
+    expect(withoutCallbacks).toContain("Participants");
+    expect(withoutCallbacks).toContain("Add agent");
+    expect(withoutCallbacks).toContain("Implementer");
+    expect(withoutCallbacks).toContain("disabled");
+    expect(withoutCallbacks).not.toContain("agent participant");
+    expect(withoutCallbacks).not.toContain("<small>orchestrator</small>");
+    expect(withoutCallbacks).not.toContain("<small>worker</small>");
+    expect(withoutCallbacks).not.toContain(">Clear<");
+    expect(withCallbacks).not.toContain("Remove Orchestrator from chat");
   });
 
   it("renders Control Plane offline and loading states", () => {

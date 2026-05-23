@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import {
   agentHubApiPaths,
   agentHubLocalDefaults,
+  addConversationAgentRequestSchema,
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   updateAgentRequestSchema,
@@ -36,7 +37,7 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, {
     "access-control-allow-headers": "authorization, content-type",
-    "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "access-control-allow-origin": "*",
     "content-type": "application/json",
   });
@@ -83,7 +84,9 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
 
       if (url.pathname === agentHubApiPaths.health) {
         registry.markExpiredDevicesOffline();
-        const runtime = registry.latestRuntimeStatus(options.localUserId ?? agentHubLocalDefaults.userId);
+        const runtime = registry.latestRuntimeStatus(
+          options.localUserId ?? agentHubLocalDefaults.userId,
+        );
         const body: ServiceHealth = {
           ok: true,
           service: "@agenthub/control-plane",
@@ -159,6 +162,35 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
+      const conversationAgentMatch = url.pathname.match(/^\/conversations\/([^/]+)\/agents$/);
+      if (request.method === "POST" && conversationAgentMatch?.[1]) {
+        const body = addConversationAgentRequestSchema.parse(await readJson(request));
+        const participant = registry.addAgentToConversation(
+          auth.userId,
+          conversationAgentMatch[1],
+          body.agentId,
+        );
+        sendJson(response, 200, { participant });
+        return;
+      }
+
+      const removeConversationAgentMatch = url.pathname.match(
+        /^\/conversations\/([^/]+)\/agents\/([^/]+)$/,
+      );
+      if (
+        request.method === "DELETE" &&
+        removeConversationAgentMatch?.[1] &&
+        removeConversationAgentMatch[2]
+      ) {
+        const participant = registry.removeAgentFromConversation(
+          auth.userId,
+          removeConversationAgentMatch[1],
+          removeConversationAgentMatch[2],
+        );
+        sendJson(response, 200, { participant });
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === agentHubApiPaths.runtimeRegister) {
         const parsed = runtimeRegistrationPayloadSchema.parse(await readJson(request));
         const device = registry.registerRuntimeDevice(auth.userId, {
@@ -194,7 +226,9 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         if (!runtimeDeviceId) {
           throw new Error("deviceId query parameter is required");
         }
-        sendJson(response, 200, { commands: registry.takeRuntimeCommands(auth.userId, runtimeDeviceId) });
+        sendJson(response, 200, {
+          commands: registry.takeRuntimeCommands(auth.userId, runtimeDeviceId),
+        });
         return;
       }
 

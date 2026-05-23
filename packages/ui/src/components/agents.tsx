@@ -1,17 +1,16 @@
-import { Archive, Bot, Plus, Save } from "lucide-react";
+import { Bot, Plus, Save } from "lucide-react";
 import React from "react";
-import { useAgentHubI18n } from "../i18n.js";
+import { type TranslationKey, useAgentHubI18n } from "../i18n.js";
 import type { AgentPageAgentViewModel, WorkbenchViewModel } from "../types.js";
 import {
   AgentHubAvatar,
   AgentHubBadge,
   AgentHubButton,
-  AgentHubSearchInput,
   AgentHubSelect,
   AgentHubTextArea,
   AgentHubTextInput,
 } from "./antd-primitives.js";
-import { DetailSection, Icon } from "./primitives.js";
+import { DetailSection, Icon, SidebarSearchField } from "./primitives.js";
 
 export interface AgentRoleMutationInput {
   readonly agentId?: string;
@@ -47,6 +46,65 @@ function parsePolicy(
     };
   }
 }
+
+interface AgentTemplatePreset {
+  readonly id: string;
+  readonly labelKey: TranslationKey;
+  readonly descriptionKey: TranslationKey;
+  readonly displayName: string;
+  readonly role: AgentPageAgentViewModel["role"];
+  readonly systemPrompt: string;
+  readonly capabilityTags: readonly string[];
+  readonly policy: Record<string, unknown>;
+}
+
+const agentTemplatePresets: readonly [
+  AgentTemplatePreset,
+  AgentTemplatePreset,
+  AgentTemplatePreset,
+  AgentTemplatePreset,
+] = [
+  {
+    id: "orchestrator",
+    labelKey: "agents.templateOrchestrator",
+    descriptionKey: "agents.templateOrchestratorDescription",
+    displayName: "Orchestrator",
+    role: "orchestrator",
+    systemPrompt: "Coordinate multi-agent work, create plans, assign tasks, and summarize outcomes.",
+    capabilityTags: ["planning", "coordination"],
+    policy: {},
+  },
+  {
+    id: "implementer",
+    labelKey: "agents.templateImplementer",
+    descriptionKey: "agents.templateImplementerDescription",
+    displayName: "Implementer",
+    role: "worker",
+    systemPrompt: "Implement scoped code changes, keep edits focused, and report validation results.",
+    capabilityTags: ["code", "implementation"],
+    policy: {},
+  },
+  {
+    id: "reviewer",
+    labelKey: "agents.templateReviewer",
+    descriptionKey: "agents.templateReviewerDescription",
+    displayName: "Reviewer",
+    role: "worker",
+    systemPrompt: "Review code for correctness, regressions, missing tests, and maintainability risks.",
+    capabilityTags: ["review", "quality"],
+    policy: {},
+  },
+  {
+    id: "researcher",
+    labelKey: "agents.templateResearcher",
+    descriptionKey: "agents.templateResearcherDescription",
+    displayName: "Researcher",
+    role: "worker",
+    systemPrompt: "Research context, compare options, and summarize findings before implementation.",
+    capabilityTags: ["research", "analysis"],
+    policy: { network: "ask" },
+  },
+];
 
 function AgentListRow(props: {
   readonly agent: AgentPageAgentViewModel;
@@ -113,15 +171,12 @@ export function AgentDirectory(props: {
       className="agenthub-chat-list-panel agenthub-agent-directory-sidebar"
     >
       <header className="agenthub-chat-list-header">
-        <label className="agenthub-conversation-search">
-          <AgentHubSearchInput
-            aria-label={i18n.t("agents.searchAgents")}
-            onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder={i18n.t("agents.searchAgents")}
-            type="search"
-            value={query}
-          />
-        </label>
+        <SidebarSearchField
+          label={i18n.t("agents.searchAgents")}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder={i18n.t("agents.searchAgents")}
+          value={query}
+        />
         <AgentHubButton
           aria-label={i18n.t("actions.newAgent")}
           className="agenthub-icon-button"
@@ -155,19 +210,38 @@ function AgentEditor(props: {
   readonly onArchiveAgentRole?: (agentId: string) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
-  const [mode, setMode] = React.useState<"edit" | "new">("edit");
-  const [displayName, setDisplayName] = React.useState(props.agent?.label ?? "");
-  const [role, setRole] = React.useState<AgentPageAgentViewModel["role"]>(
-    props.agent?.role ?? "worker",
+  const defaultTemplate = agentTemplatePresets[1];
+  const [mode, setMode] = React.useState<"edit" | "new">(props.agent ? "edit" : "new");
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(defaultTemplate.id);
+  const [displayName, setDisplayName] = React.useState(
+    props.agent?.label ?? defaultTemplate.displayName,
   );
-  const [systemPrompt, setSystemPrompt] = React.useState(props.agent?.systemPrompt ?? "");
-  const [tags, setTags] = React.useState(props.agent?.capabilityTags.join(", ") ?? "");
-  const [policyJson, setPolicyJson] = React.useState(props.agent?.policyJson ?? "{}");
+  const [role, setRole] = React.useState<AgentPageAgentViewModel["role"]>(
+    props.agent?.role ?? defaultTemplate.role,
+  );
+  const [systemPrompt, setSystemPrompt] = React.useState(
+    props.agent?.systemPrompt ?? defaultTemplate.systemPrompt,
+  );
+  const [tags, setTags] = React.useState(
+    props.agent?.capabilityTags.join(", ") ?? defaultTemplate.capabilityTags.join(", "),
+  );
+  const [policyJson, setPolicyJson] = React.useState(
+    props.agent?.policyJson ?? JSON.stringify(defaultTemplate.policy, null, 2),
+  );
   const [policyError, setPolicyError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!props.agent) {
       setMode("new");
+      const template =
+        agentTemplatePresets.find((candidate) => candidate.id === selectedTemplateId) ??
+        defaultTemplate;
+      setDisplayName(template.displayName);
+      setRole(template.role);
+      setSystemPrompt(template.systemPrompt);
+      setTags(template.capabilityTags.join(", "));
+      setPolicyJson(JSON.stringify(template.policy, null, 2));
+      setPolicyError(null);
       return;
     }
     if (mode === "new") {
@@ -179,15 +253,28 @@ function AgentEditor(props: {
     setTags(props.agent?.capabilityTags.join(", ") ?? "");
     setPolicyJson(props.agent?.policyJson ?? "{}");
     setPolicyError(null);
-  }, [props.agent, mode]);
+  }, [defaultTemplate, mode, props.agent, selectedTemplateId]);
 
   const editingExisting = mode === "edit" && props.agent;
-  const canSubmit = displayName.trim() && systemPrompt.trim();
+  const canSubmit = Boolean(displayName.trim() && systemPrompt.trim());
+  const selectedTemplate =
+    agentTemplatePresets.find((candidate) => candidate.id === selectedTemplateId) ??
+    defaultTemplate;
+
+  const applyTemplate = (template: AgentTemplatePreset) => {
+    setSelectedTemplateId(template.id);
+    setDisplayName(template.displayName);
+    setRole(template.role);
+    setSystemPrompt(template.systemPrompt);
+    setTags(template.capabilityTags.join(", "));
+    setPolicyJson(JSON.stringify(template.policy, null, 2));
+    setPolicyError(null);
+  };
 
   return (
     <section className="agenthub-agent-detail">
       <header className="agenthub-agent-profile">
-        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={92}>
+        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={76}>
           {mode === "new" ? (
             <Icon icon={Plus} />
           ) : (
@@ -200,29 +287,9 @@ function AgentEditor(props: {
               ? i18n.t("actions.newAgent")
               : (props.agent?.label ?? i18n.t("agents.agent"))}
           </strong>
-          <p className="agenthub-muted">
-            {mode === "new"
-              ? i18n.t("agents.configuration")
-              : `${props.agent?.role ?? "worker"} · ${props.agent?.providerLabel ?? "Claude Code"}`}
-          </p>
           {props.agent?.defaultAgent ? (
-            <span className="agenthub-agent-default">{i18n.t("agents.defaultAgent")}</span>
+            <span className="agenthub-agent-status-pill">{i18n.t("agents.defaultAgent")}</span>
           ) : null}
-        </div>
-        <div className="agenthub-agent-profile-actions">
-          <AgentHubButton
-            htmlType="button"
-            onClick={() => {
-              setMode("new");
-              setDisplayName("");
-              setRole("worker");
-              setSystemPrompt("");
-              setTags("");
-              setPolicyJson("{}");
-            }}
-          >
-            <Icon icon={Plus} /> {i18n.t("actions.newAgent")}
-          </AgentHubButton>
         </div>
       </header>
       <form
@@ -251,77 +318,129 @@ function AgentEditor(props: {
           }
         }}
       >
-        <label>
-          <span>{i18n.t("agents.name")}</span>
-          <AgentHubTextInput
-            aria-label={i18n.t("agents.agentName")}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.currentTarget.value)}
-          />
-        </label>
-        <label>
-          <span>{i18n.t("agents.role")}</span>
-          <AgentHubSelect
-            aria-label={i18n.t("agents.agentRole")}
-            value={role}
-            onChange={(value) => setRole(value)}
-            options={[
-              { label: "orchestrator", value: "orchestrator" },
-              { label: "worker", value: "worker" },
-            ]}
-          />
-        </label>
-        <label className="agenthub-agent-editor-wide">
-          <span>{i18n.t("agents.systemPrompt")}</span>
-          <AgentHubTextArea
-            aria-label={i18n.t("agents.systemPrompt")}
-            rows={7}
-            value={systemPrompt}
-            onChange={(event) => setSystemPrompt(event.currentTarget.value)}
-          />
-        </label>
-        <label>
-          <span>{i18n.t("agents.capabilityTags")}</span>
-          <AgentHubTextInput
-            aria-label={i18n.t("agents.capabilityTags")}
-            value={tags}
-            onChange={(event) => setTags(event.currentTarget.value)}
-          />
-        </label>
-        <label className="agenthub-agent-editor-wide">
-          <span>{i18n.t("agents.policyJson")}</span>
-          <AgentHubTextArea
-            aria-label={i18n.t("agents.policyJson")}
-            aria-invalid={policyError ? "true" : undefined}
-            rows={5}
-            value={policyJson}
-            onChange={(event) => {
-              setPolicyJson(event.currentTarget.value);
-              setPolicyError(null);
-            }}
-          />
-          {policyError ? <span className="agenthub-form-error">{policyError}</span> : null}
-        </label>
-        {props.agent ? (
-          <DetailSection title={i18n.t("agents.memoryNamespace")}>
-            <code>{props.agent.memoryNamespace}</code>
-          </DetailSection>
+        {mode === "new" ? (
+          <section className="agenthub-agent-settings-group agenthub-agent-template-section">
+            <header className="agenthub-section-heading">
+              <h3>{i18n.t("agents.startFromTemplate")}</h3>
+              <small>{i18n.t("agents.startFromTemplateDescription")}</small>
+            </header>
+            <div className="agenthub-agent-settings-body">
+              <div className="agenthub-agent-template-grid">
+                {agentTemplatePresets.map((template) => (
+                  <AgentHubButton
+                    aria-pressed={template.id === selectedTemplate.id}
+                    className="agenthub-agent-template-option"
+                    htmlType="button"
+                    key={template.id}
+                    onClick={() => applyTemplate(template)}
+                  >
+                    <span>{i18n.t(template.labelKey)}</span>
+                    <small>{i18n.t(template.descriptionKey)}</small>
+                  </AgentHubButton>
+                ))}
+              </div>
+            </div>
+          </section>
         ) : null}
-        <div className="agenthub-action-row agenthub-agent-editor-wide">
-          <AgentHubButton disabled={!canSubmit} htmlType="submit">
-            <Icon icon={Save} /> {i18n.t("actions.saveChanges")}
-          </AgentHubButton>
+        <section className="agenthub-agent-settings-group">
+          <header>
+            <h3>{i18n.t("agents.basicInformation")}</h3>
+          </header>
+          <div className="agenthub-agent-settings-body">
+            <label>
+              <span>{i18n.t("agents.name")}</span>
+              <AgentHubTextInput
+                aria-label={i18n.t("agents.agentName")}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              <span>{i18n.t("agents.role")}</span>
+              <AgentHubSelect
+                aria-label={i18n.t("agents.agentRole")}
+                value={role}
+                onChange={(value) => setRole(value)}
+                options={[
+                  { label: "orchestrator", value: "orchestrator" },
+                  { label: "worker", value: "worker" },
+                ]}
+              />
+            </label>
+            <label className="agenthub-agent-editor-wide">
+              <span>{i18n.t("agents.responsibilities")}</span>
+              <AgentHubTextArea
+                aria-label={i18n.t("agents.responsibilities")}
+                rows={4}
+                value={systemPrompt}
+                onChange={(event) => setSystemPrompt(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              <span>{i18n.t("agents.capabilityTags")}</span>
+              <AgentHubTextInput
+                aria-label={i18n.t("agents.capabilityTags")}
+                value={tags}
+                onChange={(event) => setTags(event.currentTarget.value)}
+              />
+            </label>
+          </div>
+        </section>
+        <details
+          className="agenthub-agent-settings-group agenthub-agent-advanced"
+          open={policyError ? true : undefined}
+        >
+          <summary>
+            <h3>{i18n.t("agents.advancedConfiguration")}</h3>
+          </summary>
+          <div className="agenthub-agent-settings-body agenthub-agent-advanced-grid">
+            {mode === "edit" && props.agent ? (
+              <DetailSection title={i18n.t("agents.configurationSummary")}>
+                <dl className="agenthub-agent-summary">
+                  <div>
+                    <dt>{i18n.t("connections.mode")}</dt>
+                    <dd>{props.agent.providerLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>{i18n.t("agents.memoryNamespace")}</dt>
+                    <dd>
+                      <code>{props.agent.memoryNamespace}</code>
+                    </dd>
+                  </div>
+                </dl>
+              </DetailSection>
+            ) : null}
+            <label>
+              <span>{i18n.t("agents.systemPrompt")}</span>
+              <AgentHubTextArea
+                aria-label={i18n.t("agents.systemPrompt")}
+                rows={5}
+                value={systemPrompt}
+                onChange={(event) => setSystemPrompt(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              <span>{i18n.t("agents.policyJson")}</span>
+              <AgentHubTextArea
+                aria-label={i18n.t("agents.policyJson")}
+                aria-invalid={policyError ? "true" : undefined}
+                rows={5}
+                value={policyJson}
+                onChange={(event) => {
+                  setPolicyJson(event.currentTarget.value);
+                  setPolicyError(null);
+                }}
+              />
+              {policyError ? <span className="agenthub-form-error">{policyError}</span> : null}
+            </label>
+          </div>
+        </details>
+        <div className="agenthub-action-row agenthub-agent-save-dock">
           <AgentHubButton
-            disabled={!props.agent || props.agent.defaultAgent}
-            htmlType="button"
-            kind="danger"
-            onClick={() => {
-              if (props.agent && !props.agent.defaultAgent) {
-                props.onArchiveAgentRole?.(props.agent.id);
-              }
-            }}
+            className="agenthub-agent-save-button"
+            htmlType="submit"
           >
-            <Icon icon={Archive} /> {i18n.t("actions.archive")}
+            <Icon icon={Save} /> {i18n.t("actions.saveChanges")}
           </AgentHubButton>
         </div>
       </form>

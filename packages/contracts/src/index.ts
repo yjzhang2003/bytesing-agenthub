@@ -5,6 +5,7 @@ export type * from "./events.js";
 export type * from "./local-runtime.js";
 export { agentHubApiPaths, agentHubLocalDefaults } from "./local-runtime.js";
 export {
+  addConversationAgentRequestSchema,
   agentMemoryConfigSchema,
   createAgentRequestSchema,
   createLocalRunRequestSchema,
@@ -23,6 +24,7 @@ export {
   updateAgentRequestSchema,
 } from "./schemas.js";
 export type {
+  AddConversationAgentRequestPayload,
   CreateAgentRequestPayload,
   DiffMetadataPayload,
   MemoryHealthPayload,
@@ -38,6 +40,7 @@ export type {
 export {
   isDiffMetadataStale,
   validateCreateAgentRequest,
+  validateAddConversationAgentRequest,
   validateCreateLocalRunRequest,
   validateDiffMetadata,
   validateOrchestratorDispatchPlan,

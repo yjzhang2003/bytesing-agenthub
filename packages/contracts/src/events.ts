@@ -22,7 +22,8 @@ export type AgentHubEventType =
   | "permission.status_changed"
   | "artifact.created"
   | "artifact.updated"
-  | "diff.metadata.updated";
+  | "diff.metadata.updated"
+  | "conversation.membership_changed";
 
 export interface AgentHubEventBase {
   readonly id: Id;
@@ -98,6 +99,14 @@ export interface DiffMetadataUpdatedEvent extends AgentHubEventBase {
   readonly payload: DiffMetadata;
 }
 
+export interface ConversationMembershipChangedEvent extends AgentHubEventBase {
+  readonly type: "conversation.membership_changed";
+  readonly payload: {
+    readonly agentId: Id;
+    readonly action: "added" | "removed";
+  };
+}
+
 export type AgentHubEvent =
   | RuntimeDeviceStatusChangedEvent
   | AgentRunStatusEvent
@@ -106,5 +115,5 @@ export type AgentHubEvent =
   | AgentTaskAssignedEvent
   | PermissionEvent
   | ArtifactEvent
-  | DiffMetadataUpdatedEvent;
-
+  | DiffMetadataUpdatedEvent
+  | ConversationMembershipChangedEvent;

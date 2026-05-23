@@ -23,6 +23,7 @@ describe("@agenthub/ui localization", () => {
     const zh = createAgentHubI18n("zh-CN");
 
     expect(agentHubTranslationKeys).toContain("language.language");
+    expect(agentHubTranslationKeys).toContain("chat.addAgent");
     expect(agentHubTranslationKeys).toContain("settings.permissions");
     expect(agentHubTranslationKeys).toContain("composer.placeholder");
     for (const key of agentHubTranslationKeys) {
@@ -64,6 +65,27 @@ describe("@agenthub/ui localization", () => {
     const narrow = renderToStaticMarkup(
       <AgentHubWorkbench layoutMode="narrow" locale="zh-CN" snapshot={snapshot()} />,
     );
+    const chatInfo = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        locale="zh-CN"
+        snapshot={{
+          ...snapshot(),
+          conversationParticipants: [
+            {
+              agentId: "agent_1",
+              archivedAt: null,
+              addedByUserId: "user_1",
+              conversationId: "conversation_1",
+              createdAt: "2026-05-21T00:00:00.000Z",
+              id: "participant_1",
+              ownerUserId: "user_1",
+              updatedAt: "2026-05-21T00:00:00.000Z",
+            },
+          ],
+        }}
+      />,
+    );
 
     expect(settings).toContain("语言");
     expect(settings).toContain("English");
@@ -78,6 +100,9 @@ describe("@agenthub/ui localization", () => {
     expect(narrow).toContain("打开工作区导航");
     expect(narrow).toContain("打开会话详情");
     expect(narrow).toContain("给智能体发送消息");
+    expect(chatInfo).toContain("参与者");
+    expect(chatInfo).toContain("添加智能体");
+    expect(chatInfo).toContain("基本信息");
     expect(narrow).toContain("Implemented ");
     expect(narrow).toContain("<code>pnpm check</code>");
   });

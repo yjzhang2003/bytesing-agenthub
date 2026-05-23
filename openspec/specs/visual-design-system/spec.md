@@ -167,3 +167,28 @@ AgentHub Ant Design-backed controls SHALL support localized labels, placeholders
 - **WHEN** a product-owned validation message appears while Simplified Chinese is selected
 - **THEN** the message uses Simplified Chinese and retains the same compact spacing and error styling as English
 
+### Requirement: Settings panel visual structure
+The Desktop/Web Settings surface SHALL use a focused settings-panel layout with category navigation and grouped preference rows instead of generic stacked detail sections.
+
+#### Scenario: User opens Settings on desktop
+- **WHEN** the user opens Settings at desktop width
+- **THEN** the UI presents a left category list and a right scrollable content area with rounded grouped setting panels, large readable row labels, compact controls, and clear separators between rows
+
+#### Scenario: Settings contains operational metadata
+- **WHEN** Settings shows workspace, runtime, permissions, language, keyboard, or appearance information
+- **THEN** interactive preferences render as row controls while read-only technical values remain secondary text inside grouped rows rather than taking primary visual focus
+
+#### Scenario: Settings is viewed in a narrow layout
+- **WHEN** available width cannot support the desktop split layout
+- **THEN** the category navigation collapses into a horizontal scrollable strip above the grouped settings content without overlapping controls or clipping localized labels
+
+### Requirement: Grouped configuration editors
+Desktop/Web configuration editors SHALL place related editable settings inside shared rounded groups rather than leaving fields as unbounded page content.
+
+#### Scenario: User edits an agent role
+- **WHEN** the Agents page renders editable role fields
+- **THEN** name, role, responsibilities, and capability tags are grouped inside one rounded basic-information panel as row-based label/control pairs, while advanced metadata and policy fields are grouped inside a separate rounded advanced panel using the same row-based pattern where space allows
+
+#### Scenario: User creates an agent from a template
+- **WHEN** the Agents page renders template-assisted creation
+- **THEN** template options are grouped inside their own rounded panel above the basic-information panel without navigating away from the create form

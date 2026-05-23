@@ -6,14 +6,13 @@ import {
   MessageSquare,
   PanelLeftClose,
   Play,
-  Search,
   Settings,
 } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
 import type { ConversationListItem, InspectorSelection, WorkbenchViewModel } from "../types.js";
 import { AgentDirectory } from "./agents.js";
-import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
+import { HoverButton, Icon, RuntimeStatusBadge, SidebarSearchField } from "./primitives.js";
 
 export function ConversationList(props: {
   readonly conversations: readonly ConversationListItem[];
@@ -208,14 +207,10 @@ export function LeftNavigation(props: {
           className="agenthub-chat-list-panel"
         >
           <header className="agenthub-chat-list-header">
-            <label className="agenthub-conversation-search">
-              <Icon icon={Search} />
-              <input
-                aria-label={i18n.t("nav.searchConversations", { fallback: "Search conversations" })}
-                placeholder={i18n.t("nav.search", { fallback: "Search" })}
-                type="search"
-              />
-            </label>
+            <SidebarSearchField
+              label={i18n.t("nav.searchConversations", { fallback: "Search conversations" })}
+              placeholder={i18n.t("nav.search", { fallback: "Search" })}
+            />
             <HoverButton
               aria-label={
                 props.collapsed

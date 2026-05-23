@@ -185,6 +185,10 @@ export const updateAgentRequestSchema = z
     message: "At least one agent field must be provided",
   });
 
+export const addConversationAgentRequestSchema = z.object({
+  agentId: idSchema,
+});
+
 export const runtimeCommandSchema = z.discriminatedUnion("type", [
   z.object({
     id: idSchema,
@@ -246,6 +250,17 @@ const conversationSchema = z.object({
   workspaceId: idSchema,
   kind: z.enum(["single-agent", "group"]),
   title: z.string().min(1),
+  archivedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+const conversationParticipantSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  conversationId: idSchema,
+  agentId: idSchema,
+  addedByUserId: idSchema.nullable(),
   archivedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -320,6 +335,7 @@ export const workbenchSnapshotSchema = z.object({
   providerHealth: providerHealthSchema.nullable().optional(),
   memoryHealth: memoryHealthSchema.nullable().optional(),
   conversations: z.array(conversationSchema),
+  conversationParticipants: z.array(conversationParticipantSchema).optional(),
   agents: z.array(agentSchema),
   runs: z.array(runSchema),
   messages: z.array(messageSchema),
@@ -327,6 +343,7 @@ export const workbenchSnapshotSchema = z.object({
 });
 
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
+export type AddConversationAgentRequestPayload = z.infer<typeof addConversationAgentRequestSchema>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type DiffMetadataPayload = z.infer<typeof diffMetadataSchema>;

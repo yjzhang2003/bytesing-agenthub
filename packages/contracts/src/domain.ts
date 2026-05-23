@@ -90,6 +90,13 @@ export interface Conversation extends UserOwned {
   readonly archivedAt: ISODateTime | null;
 }
 
+export interface ConversationParticipant extends UserOwned {
+  readonly conversationId: Id;
+  readonly agentId: Id;
+  readonly addedByUserId: Id | null;
+  readonly archivedAt: ISODateTime | null;
+}
+
 export interface MessagePart {
   readonly type: "text" | "markdown" | "code" | "artifact-ref" | "run-event";
   readonly text?: string;
@@ -165,4 +172,3 @@ export interface AuditLog extends UserOwned {
   readonly eventType: string;
   readonly payload: Record<string, unknown>;
 }
-

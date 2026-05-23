@@ -1,5 +1,5 @@
 import type { RuntimeDeviceStatus } from "@agenthub/contracts";
-import type { LucideIcon } from "lucide-react";
+import { Search, type LucideIcon } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
 
@@ -32,6 +32,20 @@ export function RuntimeStatusBadge(props: {
 
 export function ParticipantChip(props: { readonly label: string }): React.ReactElement {
   return <span className="agenthub-participant-chip">{props.label}</span>;
+}
+
+export function SidebarSearchField(
+  props: React.InputHTMLAttributes<HTMLInputElement> & {
+    readonly label: string;
+  },
+): React.ReactElement {
+  const { className, label, ...inputProps } = props;
+  return (
+    <label className={["agenthub-sidebar-search", className].filter(Boolean).join(" ")}>
+      <Icon icon={Search} />
+      <input {...inputProps} aria-label={label} type="search" />
+    </label>
+  );
 }
 
 export function DetailSection(props: {

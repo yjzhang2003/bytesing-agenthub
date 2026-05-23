@@ -2,6 +2,7 @@ import type {
   Agent,
   AgentMemoryConfig,
   AgentHubProviderMode,
+  ConversationParticipant,
   CreateAgentRequest,
   Id,
   MemoryHealth,
@@ -59,14 +60,17 @@ export class ControlPlaneRegistry {
   readonly #commands = new Map<Id, RuntimeCommand[]>();
   readonly #agents = new Map<Id, Agent>();
   readonly #archivedAgentIds = new Set<Id>();
+  readonly #conversationParticipants = new Map<Id, ConversationParticipant>();
   readonly #providerHealth = new Map<Id, ProviderHealth>();
   readonly #memoryHealth = new Map<Id, MemoryHealth>();
 
-  constructor(options: {
-    readonly events?: ControlPlaneEventBus;
-    readonly now?: () => Date;
-    readonly offlineTimeoutMs?: number;
-  } = {}) {
+  constructor(
+    options: {
+      readonly events?: ControlPlaneEventBus;
+      readonly now?: () => Date;
+      readonly offlineTimeoutMs?: number;
+    } = {},
+  ) {
     this.#events = options.events ?? new ControlPlaneEventBus();
     this.#now = options.now ?? (() => new Date());
     this.#offlineTimeoutMs = options.offlineTimeoutMs ?? 45_000;
@@ -148,7 +152,11 @@ export class ControlPlaneRegistry {
       }
       const ageMs = now - Date.parse(device.lastHeartbeatAt);
       if (ageMs > this.#offlineTimeoutMs) {
-        const updated = { ...device, status: "offline" as const, updatedAt: this.#now().toISOString() };
+        const updated = {
+          ...device,
+          status: "offline" as const,
+          updatedAt: this.#now().toISOString(),
+        };
         this.#devices.set(updated.id, updated);
         changed.push(updated);
         this.#events.publish(this.#deviceStatusEvent(updated));
@@ -269,12 +277,82 @@ export class ControlPlaneRegistry {
   archiveAgent(ownerUserId: Id, agentId: Id): Agent {
     const agent = this.#requireOwnedAgent(ownerUserId, agentId);
     this.#archivedAgentIds.add(agent.id);
+    for (const participant of this.#conversationParticipants.values()) {
+      if (
+        participant.ownerUserId === ownerUserId &&
+        participant.agentId === agent.id &&
+        !participant.archivedAt
+      ) {
+        this.removeAgentFromConversation(ownerUserId, participant.conversationId, agent.id);
+      }
+    }
     return { ...agent, updatedAt: this.#now().toISOString() };
   }
 
   listAgents(ownerUserId: Id, workspaceId?: Id): readonly Agent[] {
     const agents = this.#allAgents(ownerUserId, workspaceId);
     return agents.filter((agent) => !this.#archivedAgentIds.has(agent.id));
+  }
+
+  listConversationParticipants(
+    ownerUserId: Id,
+    conversationId: Id,
+  ): readonly ConversationParticipant[] {
+    this.#ensureDefaultConversationMembership(ownerUserId, conversationId);
+    return [...this.#conversationParticipants.values()].filter(
+      (participant) =>
+        participant.ownerUserId === ownerUserId &&
+        participant.conversationId === conversationId &&
+        !participant.archivedAt,
+    );
+  }
+
+  addAgentToConversation(
+    ownerUserId: Id,
+    conversationId: Id,
+    agentId: Id,
+  ): ConversationParticipant {
+    this.#requireConversationAvailable(conversationId);
+    const agent = this.#requireOwnedAgent(ownerUserId, agentId);
+    const now = this.#now().toISOString();
+    const key = this.#participantKey(conversationId, agent.id);
+    const existing = this.#conversationParticipants.get(key);
+    const participant: ConversationParticipant = {
+      id: existing?.id ?? crypto.randomUUID(),
+      ownerUserId,
+      conversationId,
+      agentId: agent.id,
+      addedByUserId: ownerUserId,
+      archivedAt: null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    this.#conversationParticipants.set(key, participant);
+    this.#publishMembershipChanged(participant, "added");
+    return participant;
+  }
+
+  removeAgentFromConversation(
+    ownerUserId: Id,
+    conversationId: Id,
+    agentId: Id,
+  ): ConversationParticipant {
+    this.#requireConversationAvailable(conversationId);
+    this.#requireOwnedAgent(ownerUserId, agentId);
+    this.#ensureDefaultConversationMembership(ownerUserId, conversationId);
+    const key = this.#participantKey(conversationId, agentId);
+    const existing = this.#conversationParticipants.get(key);
+    if (!existing || existing.ownerUserId !== ownerUserId || existing.archivedAt) {
+      throw new Error("Conversation participant not found");
+    }
+    const updated: ConversationParticipant = {
+      ...existing,
+      archivedAt: this.#now().toISOString(),
+      updatedAt: this.#now().toISOString(),
+    };
+    this.#conversationParticipants.set(key, updated);
+    this.#publishMembershipChanged(updated, "removed");
+    return updated;
   }
 
   latestProviderHealth(ownerUserId: Id): ProviderHealth | null {
@@ -293,7 +371,9 @@ export class ControlPlaneRegistry {
       status,
       startedAt: run.startedAt ?? (status === "running" || status === "streaming" ? now : null),
       completedAt:
-        status === "completed" || status === "failed" || status === "cancelled" ? now : run.completedAt,
+        status === "completed" || status === "failed" || status === "cancelled"
+          ? now
+          : run.completedAt,
       failureReason: failureReason ?? run.failureReason,
       updatedAt: now,
     };
@@ -348,9 +428,7 @@ export class ControlPlaneRegistry {
         ? {
             ...existing,
             parts: existing.parts.map((part, index) =>
-              index === 0
-                ? { ...part, text: `${part.text ?? ""}${event.delta}` }
-                : part,
+              index === 0 ? { ...part, text: `${part.text ?? ""}${event.delta}` } : part,
             ),
             updatedAt: now,
           }
@@ -388,7 +466,9 @@ export class ControlPlaneRegistry {
     readonly lastHeartbeatAt: string | null;
     readonly capabilities: readonly string[];
   } {
-    const devices = [...this.#devices.values()].filter((device) => device.ownerUserId === ownerUserId);
+    const devices = [...this.#devices.values()].filter(
+      (device) => device.ownerUserId === ownerUserId,
+    );
     const latest = devices.at(-1);
     return {
       online: latest?.status === "online" || latest?.status === "active-running",
@@ -424,7 +504,9 @@ export class ControlPlaneRegistry {
       activeWorkspaceId: workspace.id,
       activeConversationId: agentHubLocalDefaults.conversationId,
       workspaces: [workspace],
-      runtimeDevices: [...this.#devices.values()].filter((device) => device.ownerUserId === ownerUserId),
+      runtimeDevices: [...this.#devices.values()].filter(
+        (device) => device.ownerUserId === ownerUserId,
+      ),
       workspaceMetadata: metadata,
       providerHealth: this.latestProviderHealth(ownerUserId),
       memoryHealth: this.latestMemoryHealth(ownerUserId),
@@ -440,9 +522,15 @@ export class ControlPlaneRegistry {
           updatedAt: now,
         },
       ],
+      conversationParticipants: this.listConversationParticipants(
+        ownerUserId,
+        agentHubLocalDefaults.conversationId,
+      ),
       agents: this.listAgents(ownerUserId, workspace.id),
       runs: [...this.#runs.values()].filter((run) => run.ownerUserId === ownerUserId),
-      messages: [...this.#messages.values()].filter((message) => message.ownerUserId === ownerUserId),
+      messages: [...this.#messages.values()].filter(
+        (message) => message.ownerUserId === ownerUserId,
+      ),
       availableActions: runtimeDeviceId ? ["run.start"] : [],
     };
   }
@@ -466,9 +554,11 @@ export class ControlPlaneRegistry {
   #requireOwnedAgent(ownerUserId: Id, agentId: Id): Agent {
     const agent =
       this.#agents.get(agentId) ??
-      this.#defaultAgents(ownerUserId, agentHubLocalDefaults.workspaceId, this.#now().toISOString()).find(
-        (candidate) => candidate.id === agentId,
-      );
+      this.#defaultAgents(
+        ownerUserId,
+        agentHubLocalDefaults.workspaceId,
+        this.#now().toISOString(),
+      ).find((candidate) => candidate.id === agentId);
     if (!agent || agent.ownerUserId !== ownerUserId || this.#archivedAgentIds.has(agent.id)) {
       throw new Error("Agent not found");
     }
@@ -476,7 +566,9 @@ export class ControlPlaneRegistry {
   }
 
   #requireRunnableAgent(ownerUserId: Id, workspaceId: Id, agentId: Id): Agent {
-    const agent = this.#allAgents(ownerUserId, workspaceId).find((candidate) => candidate.id === agentId);
+    const agent = this.#allAgents(ownerUserId, workspaceId).find(
+      (candidate) => candidate.id === agentId,
+    );
     if (!agent) {
       throw new Error("Agent not found");
     }
@@ -493,6 +585,12 @@ export class ControlPlaneRegistry {
       return;
     }
     throw new Error("Workspace not found");
+  }
+
+  #requireConversationAvailable(conversationId: Id): void {
+    if (conversationId !== agentHubLocalDefaults.conversationId) {
+      throw new Error("Conversation is not available in this local workspace");
+    }
   }
 
   #deviceStatusEvent(device: RuntimeDevice): AgentHubEvent {
@@ -536,6 +634,62 @@ export class ControlPlaneRegistry {
   #enqueueCommand(runtimeDeviceId: Id, command: RuntimeCommand): void {
     const current = this.#commands.get(runtimeDeviceId) ?? [];
     this.#commands.set(runtimeDeviceId, [...current, command]);
+  }
+
+  #participantKey(conversationId: Id, agentId: Id): Id {
+    return `${conversationId}:${agentId}`;
+  }
+
+  #ensureDefaultConversationMembership(ownerUserId: Id, conversationId: Id): void {
+    if (conversationId !== agentHubLocalDefaults.conversationId) {
+      return;
+    }
+    const hasMembership = [...this.#conversationParticipants.values()].some(
+      (participant) =>
+        participant.ownerUserId === ownerUserId && participant.conversationId === conversationId,
+    );
+    if (hasMembership) {
+      return;
+    }
+    const now = this.#now().toISOString();
+    for (const agent of this.#defaultAgents(ownerUserId, agentHubLocalDefaults.workspaceId, now)) {
+      if (this.#archivedAgentIds.has(agent.id)) {
+        continue;
+      }
+      const participant: ConversationParticipant = {
+        id: crypto.randomUUID(),
+        ownerUserId,
+        conversationId,
+        agentId: agent.id,
+        addedByUserId: ownerUserId,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.#conversationParticipants.set(
+        this.#participantKey(conversationId, agent.id),
+        participant,
+      );
+    }
+  }
+
+  #publishMembershipChanged(
+    participant: ConversationParticipant,
+    action: "added" | "removed",
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "conversation.membership_changed",
+      ownerUserId: participant.ownerUserId,
+      workspaceId: agentHubLocalDefaults.workspaceId,
+      conversationId: participant.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        agentId: participant.agentId,
+        action,
+      },
+    });
   }
 
   #runEventTypeForStatus(
@@ -594,7 +748,9 @@ export class ControlPlaneRegistry {
         !this.#archivedAgentIds.has(agent.id),
     );
     const defaultAgents = this.#defaultAgents(ownerUserId, targetWorkspaceId, now).filter(
-      (agent) => !this.#archivedAgentIds.has(agent.id) && !customAgents.some((custom) => custom.id === agent.id),
+      (agent) =>
+        !this.#archivedAgentIds.has(agent.id) &&
+        !customAgents.some((custom) => custom.id === agent.id),
     );
     return [...defaultAgents, ...customAgents];
   }

@@ -47,6 +47,8 @@ export function AgentHubWorkbench(props: {
     input: AgentRoleMutationInput & { readonly agentId: string },
   ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
+  readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
+  readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onRefreshConnections?: () => void;
 }): React.ReactElement {
   const [storedLocale, setStoredLocale] = React.useState<AgentHubLocale>(() => {
@@ -71,7 +73,7 @@ export function AgentHubWorkbench(props: {
     props.initialCenterView ?? "conversation",
   );
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(
-    model.agentsPage.selectedAgentId,
+    model.agentsPage.selectedAgentId ?? model.agentsPage.agents[0]?.id ?? null,
   );
   const [theme, setTheme] = React.useState<"light" | "dark">(() => {
     if (typeof window === "undefined") {
@@ -121,6 +123,12 @@ export function AgentHubWorkbench(props: {
     }
     setStoredLocale(props.locale);
   }, [props.locale]);
+  React.useEffect(() => {
+    const firstAgentId = model.agentsPage.agents[0]?.id;
+    if (selectedAgentId === null && centerView !== "agents" && firstAgentId) {
+      setSelectedAgentId(firstAgentId);
+    }
+  }, [centerView, model.agentsPage.agents, selectedAgentId]);
   const setLocale = React.useCallback((nextLocale: AgentHubLocale) => {
     setStoredLocale(nextLocale);
     if (typeof window !== "undefined") {
@@ -141,6 +149,18 @@ export function AgentHubWorkbench(props: {
   const renderMobileInspector = !managementPage && mobileLayout && mobileRightOpen;
   const fullScreenDiff =
     fullScreenDiffId && model.inspector.diff?.id === fullScreenDiffId ? model.inspector.diff : null;
+  const openChatInfo = React.useCallback(() => {
+    if (!model.inspector.chatInfo) {
+      return;
+    }
+    setCenterView("conversation");
+    setSelection({ id: model.inspector.chatInfo.id, mode: "chat-info" });
+    setRightCollapsed(false);
+    if (mobileLayout) {
+      setMobileRightOpen(true);
+      setMobileLeftOpen(false);
+    }
+  }, [mobileLayout, model.inspector.chatInfo]);
   const beginHorizontalResize = React.useCallback(
     (
       event: React.PointerEvent,
@@ -390,18 +410,30 @@ export function AgentHubWorkbench(props: {
                       <Icon icon={PanelLeftClose} />
                     </HoverButton>
                   ) : null}
-                  <div>
-                    <strong>
-                      {centerView === "settings"
-                        ? i18n.t("nav.settings", { fallback: "Settings" })
-                        : centerView === "agents"
-                          ? i18n.t("agents.agents")
-                          : centerView === "connections"
-                            ? i18n.t("connections.connections")
-                            : model.activeConversationTitle}
-                    </strong>
-                    <small>{model.workspace.workspaceName}</small>
-                  </div>
+                  {centerView === "conversation" ? (
+                    <button
+                      aria-label={i18n.t("chat.openChatInfo", {
+                        title: model.activeConversationTitle,
+                      })}
+                      className="agenthub-chat-title-button"
+                      onClick={openChatInfo}
+                      type="button"
+                    >
+                      <strong>{model.activeConversationTitle}</strong>
+                      <small>{model.workspace.workspaceName}</small>
+                    </button>
+                  ) : (
+                    <div>
+                      <strong>
+                        {centerView === "settings"
+                          ? i18n.t("nav.settings", { fallback: "Settings" })
+                          : centerView === "agents"
+                            ? i18n.t("agents.agents")
+                            : i18n.t("connections.connections")}
+                      </strong>
+                      <small>{model.workspace.workspaceName}</small>
+                    </div>
+                  )}
                 </div>
                 <div className="agenthub-header-actions">
                   <div
@@ -543,6 +575,10 @@ export function AgentHubWorkbench(props: {
                 <ContextInspector
                   collapsed={rightCollapsed}
                   model={model}
+                  {...(props.onAddAgentToChat ? { onAddAgentToChat: props.onAddAgentToChat } : {})}
+                  {...(props.onRemoveAgentFromChat
+                    ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
+                    : {})}
                   onOpenFullScreenDiff={() => {
                     if (model.inspector.diff) {
                       setFullScreenDiffId(model.inspector.diff.id);
@@ -569,6 +605,12 @@ export function AgentHubWorkbench(props: {
                   <ContextInspector
                     collapsed={rightCollapsed}
                     model={model}
+                    {...(props.onAddAgentToChat
+                      ? { onAddAgentToChat: props.onAddAgentToChat }
+                      : {})}
+                    {...(props.onRemoveAgentFromChat
+                      ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
+                      : {})}
                     onOpenFullScreenDiff={() => {
                       if (model.inspector.diff) {
                         setFullScreenDiffId(model.inspector.diff.id);

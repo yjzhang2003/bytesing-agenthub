@@ -1,6 +1,7 @@
 import type {
   Agent,
   Conversation,
+  ConversationParticipant,
   Id,
   ISODateTime,
   Message,
@@ -86,6 +87,7 @@ export interface WorkbenchSnapshot {
   readonly providerHealth?: ProviderHealth | null;
   readonly memoryHealth?: MemoryHealth | null;
   readonly conversations: readonly Conversation[];
+  readonly conversationParticipants?: readonly ConversationParticipant[];
   readonly agents: readonly Agent[];
   readonly runs: readonly Run[];
   readonly messages: readonly Message[];
@@ -115,6 +117,10 @@ export interface UpdateAgentRequest {
   readonly systemPrompt?: string | undefined;
   readonly capabilityTags?: readonly string[] | undefined;
   readonly policy?: Record<string, unknown> | undefined;
+}
+
+export interface AddConversationAgentRequest {
+  readonly agentId: Id;
 }
 
 export type RuntimeCommand =
@@ -170,5 +176,6 @@ export const agentHubApiPaths = {
   runtimeEvents: "/runtime/events",
   memoryStatus: "/memory/status",
   agents: "/agents",
+  conversations: "/conversations",
   runs: "/runs",
 } as const;

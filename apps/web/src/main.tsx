@@ -11,19 +11,22 @@ function AgentHubWebApp(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const client = React.useMemo(() => createDefaultWebControlPlaneClient(), []);
 
-  const loadSnapshot = React.useCallback(async (options: { readonly showLoading?: boolean } = {}) => {
-    if (options.showLoading) {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      setSnapshot(await client.getSnapshot());
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to reach Control Plane");
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
+  const loadSnapshot = React.useCallback(
+    async (options: { readonly showLoading?: boolean } = {}) => {
+      if (options.showLoading) {
+        setLoading(true);
+      }
+      setError(null);
+      try {
+        setSnapshot(await client.getSnapshot());
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Unable to reach Control Plane");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [client],
+  );
 
   React.useEffect(() => {
     void loadSnapshot({ showLoading: true });
@@ -80,6 +83,12 @@ function AgentHubWebApp(): React.ReactElement {
       }}
       onArchiveAgentRole={(agentId) => {
         void client.archiveAgent(agentId).then(() => loadSnapshot());
+      }}
+      onAddAgentToChat={(conversationId, agentId) => {
+        void client.addAgentToConversation(conversationId, agentId).then(() => loadSnapshot());
+      }}
+      onRemoveAgentFromChat={(conversationId, agentId) => {
+        void client.removeAgentFromConversation(conversationId, agentId).then(() => loadSnapshot());
       }}
       onRefreshConnections={() => void loadSnapshot()}
       {...(snapshot ? { snapshot } : {})}

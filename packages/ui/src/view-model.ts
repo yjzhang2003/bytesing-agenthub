@@ -1,6 +1,8 @@
 import type {
   Agent,
   Artifact,
+  Conversation,
+  ConversationParticipant,
   Message,
   MessagePart,
   PermissionRequest,
@@ -13,6 +15,8 @@ import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { OrchestratorDispatchPlan } from "@agenthub/contracts";
 import type {
   ArtifactViewModel,
+  ChatInfoParticipantViewModel,
+  ChatInfoViewModel,
   DiffViewModel,
   InspectorSelection,
   PermissionViewModel,
@@ -49,11 +53,32 @@ function agentName(agentId: string, agents: readonly Agent[]): string {
   return agents.find((agent) => agent.id === agentId)?.displayName ?? "Unknown agent";
 }
 
-function firstWorkspace(snapshot: WorkbenchSnapshot | undefined): Workspace | undefined {
-  return snapshot?.workspaces.find((workspace) => workspace.id === snapshot.activeWorkspaceId) ?? snapshot?.workspaces[0];
+function agentInitials(displayName: string): string {
+  const words = displayName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return "?";
+  }
+  if (words.length === 1) {
+    return words[0]?.slice(0, 2).toUpperCase() ?? "?";
+  }
+  return words
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
 }
 
-function firstRuntime(snapshot: WorkbenchSnapshot | undefined, workspace: Workspace | undefined): RuntimeDevice | undefined {
+function firstWorkspace(snapshot: WorkbenchSnapshot | undefined): Workspace | undefined {
+  return (
+    snapshot?.workspaces.find((workspace) => workspace.id === snapshot.activeWorkspaceId) ??
+    snapshot?.workspaces[0]
+  );
+}
+
+function firstRuntime(
+  snapshot: WorkbenchSnapshot | undefined,
+  workspace: Workspace | undefined,
+): RuntimeDevice | undefined {
   return (
     snapshot?.runtimeDevices.find((runtime) => runtime.id === workspace?.runtimeDeviceId) ??
     snapshot?.runtimeDevices[0]
@@ -62,9 +87,57 @@ function firstRuntime(snapshot: WorkbenchSnapshot | undefined, workspace: Worksp
 
 function activeConversationTitle(snapshot: WorkbenchSnapshot | undefined): string {
   return (
-    snapshot?.conversations.find((conversation) => conversation.id === snapshot.activeConversationId)?.title ??
-    "No active conversation"
+    snapshot?.conversations.find(
+      (conversation) => conversation.id === snapshot.activeConversationId,
+    )?.title ?? "No active conversation"
   );
+}
+
+function activeConversation(snapshot: WorkbenchSnapshot | undefined): Conversation | undefined {
+  return (
+    snapshot?.conversations.find(
+      (conversation) => conversation.id === snapshot.activeConversationId,
+    ) ?? snapshot?.conversations[0]
+  );
+}
+
+function conversationParticipants(
+  snapshot: WorkbenchSnapshot | undefined,
+  conversationId: string | undefined,
+): readonly ConversationParticipant[] | null {
+  if (!snapshot?.conversationParticipants || !conversationId) {
+    return null;
+  }
+  return snapshot.conversationParticipants.filter(
+    (participant) => participant.conversationId === conversationId && !participant.archivedAt,
+  );
+}
+
+function participantAgents(
+  snapshot: WorkbenchSnapshot | undefined,
+  conversationId: string | undefined,
+): readonly Agent[] {
+  if (!snapshot) {
+    return [];
+  }
+  const participants = conversationParticipants(snapshot, conversationId);
+  if (!participants) {
+    return snapshot.agents;
+  }
+  const participantIds = new Set(participants.map((participant) => participant.agentId));
+  return snapshot.agents.filter((agent) => participantIds.has(agent.id));
+}
+
+function toChatParticipant(agent: Agent): ChatInfoParticipantViewModel {
+  return {
+    capabilityTags: agent.capabilityTags,
+    id: agent.id,
+    initials: agentInitials(agent.displayName),
+    label: agent.displayName,
+    providerLabel: "Claude Code",
+    role: agent.role,
+    target: `@${agent.displayName}`,
+  };
 }
 
 function messageBody(parts: readonly MessagePart[]): readonly string[] {
@@ -133,7 +206,9 @@ function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewM
   };
 }
 
-function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly TimelineItemViewModel[] {
+function timelineItemsFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+): readonly TimelineItemViewModel[] {
   if (!snapshot) {
     return [
       {
@@ -165,7 +240,10 @@ function timelineItemsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): rea
   );
   const runItems = snapshot.runs
     .map((run) => ({ item: activeRunMessage(run, snapshot.agents), run }))
-    .filter(({ item, run }) => item !== null && !(item.state === "loading" && runIdsWithMessages.has(run.id)))
+    .filter(
+      ({ item, run }) =>
+        item !== null && !(item.state === "loading" && runIdsWithMessages.has(run.id)),
+    )
     .map(({ item }) => item)
     .filter((item): item is TimelineItemViewModel => item !== null);
 
@@ -215,7 +293,9 @@ function navigationFromSnapshot(
         active: conversation.id === snapshot?.activeConversationId,
         ...(activeRunStatus ? { activeRunStatus } : {}),
         id: conversation.id,
-        participants: (snapshot?.agents ?? []).map((agent) => agent.displayName),
+        participants: participantAgents(snapshot, conversation.id).map(
+          (agent) => agent.displayName,
+        ),
         pendingPermissions: 0,
         title: conversation.title,
       };
@@ -248,9 +328,7 @@ function runtimeFromSnapshot(
     label: runtime?.displayName ?? "No Desktop Runtime",
     lastHeartbeatLabel: shortDate(runtime?.lastHeartbeatAt ?? null),
     memoryHealth,
-    memoryStatusLabel: memoryHealth
-      ? `Memory ${memoryHealth.status}`
-      : "Memory unknown",
+    memoryStatusLabel: memoryHealth ? `Memory ${memoryHealth.status}` : "Memory unknown",
     platform: runtime?.platform ?? "unknown",
     providerHealth,
     providerStatusLabel: providerHealth
@@ -264,7 +342,7 @@ function composerFromSnapshot(
   snapshot: WorkbenchSnapshot | undefined,
   runtimeSummary: RuntimeSummaryViewModel,
 ): WorkbenchViewModel["composer"] {
-  const targets = (snapshot?.agents ?? []).map((agent) => ({
+  const targets = participantAgents(snapshot, snapshot?.activeConversationId).map((agent) => ({
     capabilityTags: agent.capabilityTags,
     id: agent.id,
     label: agent.displayName,
@@ -272,14 +350,15 @@ function composerFromSnapshot(
     role: agent.role,
     target: `@${agent.displayName}`,
   }));
-  const selected = targets.find((target) => target.role === "orchestrator") ?? targets[0] ?? {
-    capabilityTags: [],
-    id: "target-unavailable",
-    label: "Orchestrator",
-    providerLabel: "Unavailable",
-    role: "orchestrator" as const,
-    target: "@Orchestrator",
-  };
+  const selected = targets.find((target) => target.role === "orchestrator") ??
+    targets[0] ?? {
+      capabilityTags: [],
+      id: "target-unavailable",
+      label: "Orchestrator",
+      providerLabel: "Unavailable",
+      role: "orchestrator" as const,
+      target: "@Orchestrator",
+    };
   return {
     disabled: !runtimeSummary.canExecute,
     disabledReason: runtimeSummary.canExecute ? null : runtimeSummary.explanation,
@@ -287,6 +366,34 @@ function composerFromSnapshot(
     selectedRole: selected.role,
     selectedTarget: selected.target,
     targets,
+  };
+}
+
+function chatInfoFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+  workspace: Workspace | undefined,
+  runtimeSummary: RuntimeSummaryViewModel,
+): ChatInfoViewModel | null {
+  const conversation = activeConversation(snapshot);
+  if (!snapshot || !conversation) {
+    return null;
+  }
+  const participants = participantAgents(snapshot, conversation.id);
+  const participantIds = new Set(participants.map((agent) => agent.id));
+  const availableAgents = snapshot.agents.filter((agent) => !participantIds.has(agent.id));
+  return {
+    announcement: null,
+    availableAgents: availableAgents.map(toChatParticipant),
+    createdAtLabel: shortDate(conversation.createdAt),
+    id: conversation.id,
+    kind: conversation.kind,
+    note: null,
+    participantCount: participants.length,
+    participants: participants.map(toChatParticipant),
+    runtimeLabel: runtimeSummary.label,
+    title: conversation.title,
+    updatedAtLabel: shortDate(conversation.updatedAt),
+    workspaceName: workspace?.name ?? snapshot.workspaceMetadata?.displayName ?? "AgentHub",
   };
 }
 
@@ -299,7 +406,9 @@ function isDefaultAgent(agent: Agent): boolean {
   );
 }
 
-function agentsPageFromSnapshot(snapshot: WorkbenchSnapshot | undefined): WorkbenchViewModel["agentsPage"] {
+function agentsPageFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+): WorkbenchViewModel["agentsPage"] {
   const workspaceId = snapshot?.activeWorkspaceId ?? "workspace_unavailable";
   return {
     agents: (snapshot?.agents ?? []).map((agent) => ({
@@ -377,6 +486,7 @@ export function normalizeSelection(
     readonly diff: DiffViewModel | null;
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
+    readonly chatInfo?: ChatInfoViewModel | null;
   },
 ): InspectorSelection | null {
   if (!selection) {
@@ -385,16 +495,25 @@ export function normalizeSelection(
   if (selection.mode === "runtime") {
     return selection;
   }
+  if (selection.mode === "chat-info" && data.chatInfo?.id === selection.id) {
+    return selection;
+  }
   if (selection.mode === "plan" && data.plan?.id === selection.id) {
     return selection;
   }
-  if (selection.mode === "permission" && data.permissions.some((permission) => permission.id === selection.id)) {
+  if (
+    selection.mode === "permission" &&
+    data.permissions.some((permission) => permission.id === selection.id)
+  ) {
     return selection;
   }
   if (selection.mode === "diff" && data.diff?.id === selection.id) {
     return selection;
   }
-  if (selection.mode === "artifact" && data.artifacts.some((artifact) => artifact.id === selection.id)) {
+  if (
+    selection.mode === "artifact" &&
+    data.artifacts.some((artifact) => artifact.id === selection.id)
+  ) {
     return selection;
   }
   if (selection.mode === "run" && data.runs.some((run) => run.id === selection.id)) {
@@ -418,11 +537,14 @@ export function createWorkbenchViewModel(
   const runtimeSummary = runtimeFromSnapshot(runtime, snapshot);
   const navigation = navigationFromSnapshot(snapshot, workspace, runtime);
   const composer = composerFromSnapshot(snapshot, runtimeSummary);
+  const chatInfo = chatInfoFromSnapshot(snapshot, workspace, runtimeSummary);
   const agentsPage = agentsPageFromSnapshot(snapshot);
   const connections = connectionsFromSnapshot(runtimeSummary);
   const plan = options.activePlan
     ? {
-        agents: options.activePlan.steps.map((step) => agentName(step.assignedAgentId, snapshot?.agents ?? [])),
+        agents: options.activePlan.steps.map((step) =>
+          agentName(step.assignedAgentId, snapshot?.agents ?? []),
+        ),
         assumptions: options.activePlan.assumptions,
         goal: options.activePlan.goal,
         id: options.activePlan.id,
@@ -490,7 +612,10 @@ export function createWorkbenchViewModel(
             id: options.activeDiff.id,
             inspectorSelection: { id: options.activeDiff.id, mode: "diff" as const },
             kind: "diff" as const,
-            state: options.activeDiff.state === "offline" ? ("offline" as const) : ("metadata-only" as const),
+            state:
+              options.activeDiff.state === "offline"
+                ? ("offline" as const)
+                : ("metadata-only" as const),
             subtitle: options.activeDiff.state,
             title: "Diff review",
           },
@@ -513,6 +638,7 @@ export function createWorkbenchViewModel(
     permissions,
     plan,
     runs: runsFromSnapshot(snapshot),
+    chatInfo,
   });
 
   return {
@@ -522,6 +648,7 @@ export function createWorkbenchViewModel(
     connections,
     inspector: {
       artifacts,
+      chatInfo,
       diff: options.activeDiff ?? null,
       permissions,
       plan,
@@ -537,7 +664,8 @@ export function createWorkbenchViewModel(
     timeline,
     workspace: {
       ...navigation,
-      pendingPermissionCount: permissions.filter((permission) => permission.status === "pending").length,
+      pendingPermissionCount: permissions.filter((permission) => permission.status === "pending")
+        .length,
     },
   };
 }

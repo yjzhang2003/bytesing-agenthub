@@ -24,6 +24,7 @@ const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
   "artifact.created",
   "artifact.updated",
   "diff.metadata.updated",
+  "conversation.membership_changed",
 ];
 
 export interface WebControlPlaneClientOptions {
@@ -65,6 +66,14 @@ export class WebControlPlaneClient {
 
   async archiveAgent(agentId: string) {
     return this.#post(`/agents/${agentId}/archive`, {});
+  }
+
+  async addAgentToConversation(conversationId: string, agentId: string) {
+    return this.#post(`/conversations/${conversationId}/agents`, { agentId });
+  }
+
+  async removeAgentFromConversation(conversationId: string, agentId: string) {
+    return this.#post(`/conversations/${conversationId}/agents/${agentId}`, {}, "DELETE");
   }
 
   async cancelRun(runId: string) {
@@ -125,7 +134,6 @@ export function createDefaultWebControlPlaneClient(
   return new WebControlPlaneClient({
     accessToken: env.VITE_AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
     baseUrl:
-      env.VITE_CONTROL_PLANE_URL ??
-      `http://127.0.0.1:${agentHubLocalDefaults.controlPlanePort}`,
+      env.VITE_CONTROL_PLANE_URL ?? `http://127.0.0.1:${agentHubLocalDefaults.controlPlanePort}`,
   });
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   agentHubApiPaths,
   isDiffMetadataStale,
+  validateAddConversationAgentRequest,
   validateCreateLocalRunRequest,
   validateCreateAgentRequest,
   validateRuntimeRegistrationPayload,
@@ -58,13 +59,9 @@ describe("contract validation", () => {
       }).ok,
     ).toBe(true);
 
-    expect(
-      validateRuntimeCommand(claudeCodeRunStartCommandFixture).ok,
-    ).toBe(true);
+    expect(validateRuntimeCommand(claudeCodeRunStartCommandFixture).ok).toBe(true);
 
-    expect(
-      validateRuntimeCommand(runCancelCommandFixture).ok,
-    ).toBe(true);
+    expect(validateRuntimeCommand(runCancelCommandFixture).ok).toBe(true);
 
     for (const event of smokeProviderOutputFixtures) {
       expect(validateProviderRuntimeEvent(event).ok).toBe(true);
@@ -182,8 +179,14 @@ describe("contract validation", () => {
     ).toBe(true);
   });
 
+  it("accepts conversation membership contracts", () => {
+    expect(validateAddConversationAgentRequest({ agentId: "agent_1" }).ok).toBe(true);
+    expect(validateAddConversationAgentRequest({}).ok).toBe(false);
+  });
+
   it("exposes local agent, provider status, and memory status API paths", () => {
     expect(agentHubApiPaths.agents).toBe("/agents");
+    expect(agentHubApiPaths.conversations).toBe("/conversations");
     expect(agentHubApiPaths.runtimeProviderStatus).toBe("/runtime/provider-status");
     expect(agentHubApiPaths.memoryStatus).toBe("/memory/status");
   });
@@ -246,6 +249,18 @@ describe("contract validation", () => {
           workspaceId: "workspace_local_demo",
           kind: "group",
           title: "AgentHub local demo",
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      conversationParticipants: [
+        {
+          id: "participant_1",
+          ownerUserId: "user_local_demo",
+          conversationId: "conversation_local_demo",
+          agentId: "agent_1",
+          addedByUserId: "user_local_demo",
           archivedAt: null,
           createdAt: now,
           updatedAt: now,
