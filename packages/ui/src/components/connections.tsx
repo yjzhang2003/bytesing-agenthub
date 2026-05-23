@@ -1,7 +1,8 @@
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import React from "react";
 import type { ProviderConnectionViewModel, WorkbenchViewModel } from "../types.js";
-import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
+import { AgentHubAvatar, AgentHubBadge, AgentHubButton } from "./antd-primitives.js";
+import { DetailSection, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 function ProviderConnectionRow(props: {
   readonly provider: ProviderConnectionViewModel;
@@ -10,19 +11,22 @@ function ProviderConnectionRow(props: {
 }): React.ReactElement {
   const icon = props.provider.statusTone === "connected" ? CheckCircle2 : AlertTriangle;
   return (
-    <HoverButton
+    <AgentHubButton
       aria-pressed={props.selected}
       className="agenthub-provider-row"
+      htmlType="button"
       onClick={props.onSelect}
-      type="button"
     >
-      <Icon icon={icon} />
+      <AgentHubAvatar className="agenthub-provider-avatar" icon={<Icon icon={icon} />} size={24} />
       <span className="agenthub-row-main">{props.provider.label}</span>
-      <small>{props.provider.status}</small>
+      <AgentHubBadge
+        status={props.provider.statusTone === "connected" ? "success" : "warning"}
+        text={props.provider.status}
+      />
       <span className="agenthub-timeline-line">
         {props.provider.comingSoon ? "Coming soon" : props.provider.binaryPathLabel}
       </span>
-    </HoverButton>
+    </AgentHubButton>
   );
 }
 
@@ -61,13 +65,13 @@ function ProviderConnectionDetail(props: {
         </dl>
       </DetailSection>
       <div className="agenthub-action-row">
-        <HoverButton
+        <AgentHubButton
           disabled={props.provider.comingSoon}
+          htmlType="button"
           onClick={props.onRefreshConnections}
-          type="button"
         >
           <Icon icon={RefreshCw} /> Refresh status
-        </HoverButton>
+        </AgentHubButton>
         {props.provider.comingSoon ? <span className="agenthub-muted">Not configured</span> : null}
       </div>
     </section>

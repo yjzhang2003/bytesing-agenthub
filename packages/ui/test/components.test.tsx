@@ -8,11 +8,14 @@ import { describe, expect, it } from "vitest";
 import {
   AgentMentionComposer,
   AgentHubWorkbench,
+  AgentHubTextInput,
+  AgentHubThemeProvider,
   DiffCard,
   PermissionCard,
   PlanCard,
   RuntimeStatusBadge,
   SettingsPage,
+  createAgentHubAntdTheme,
   createWorkbenchViewModel,
   workbenchLayoutForWidth,
 } from "../src/index.js";
@@ -196,6 +199,23 @@ const artifact: Artifact = {
 };
 
 describe("@agenthub/ui components", () => {
+  it("maps AgentHub themes into Ant Design tokens and renders wrapped controls", () => {
+    const darkTheme = createAgentHubAntdTheme("dark");
+    const lightTheme = createAgentHubAntdTheme("light");
+    const html = renderToStaticMarkup(
+      <AgentHubThemeProvider mode="dark">
+        <AgentHubTextInput aria-label="Wrapped input" disabled placeholder="Wrapped input" />
+      </AgentHubThemeProvider>,
+    );
+
+    expect(darkTheme.token?.colorBgBase).toBe("#0f1110");
+    expect(lightTheme.token?.colorBgBase).toBe("#f6f7f4");
+    expect(darkTheme.token?.controlHeight).toBe(34);
+    expect(html).toContain("agenthub-antd-input");
+    expect(html).toContain("Wrapped input");
+    expect(html).toContain("disabled");
+  });
+
   it("renders runtime status", () => {
     expect(renderToStaticMarkup(<RuntimeStatusBadge status="offline" />)).toContain("offline");
   });
@@ -295,6 +315,8 @@ describe("@agenthub/ui components", () => {
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
     expect(html).toContain("agenthub-composer-box");
+    expect(html).toContain("agenthub-antd-input");
+    expect(html).toContain("agenthub-antd-button");
     expect(html).toContain('data-multiline="false"');
     expect(html).toContain("agenthub-composer-actions");
     expect(html).toContain("agenthub-composer-send");
@@ -372,6 +394,7 @@ describe("@agenthub/ui components", () => {
     expect(settings).toContain("Workspace");
     expect(settings).toContain("Runtime");
     expect(settings).toContain("Appearance");
+    expect(settings).toContain("agenthub-antd-switch");
     expect(settings).toContain("Permissions");
     expect(settings).toContain("Review");
     expect(settings).not.toContain("Claude Code");
@@ -390,6 +413,10 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Agent directory"');
     expect(html).toContain('aria-label="Resize agent directory"');
     expect(html).toContain('aria-label="Search agents"');
+    expect(html).toContain("agenthub-antd-input");
+    expect(html).toContain("agenthub-antd-avatar");
+    expect(html).toContain("agenthub-antd-badge");
+    expect(html).toContain("agenthub-antd-select");
     expect(html).toContain("Researcher");
     expect(html).toContain("Plan work");
     expect(html).toContain("Capability tags");
@@ -411,6 +438,8 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('data-view="connections"');
     expect(html).toContain("Connections");
     expect(html).toContain("Claude Code");
+    expect(html).toContain("agenthub-antd-avatar");
+    expect(html).toContain("agenthub-antd-badge");
     expect(html).toContain('aria-label="Resize provider list"');
     expect(html).toContain("connected");
     expect(html).toContain("/usr/local/bin/claude");

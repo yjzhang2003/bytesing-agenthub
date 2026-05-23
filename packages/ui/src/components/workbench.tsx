@@ -10,6 +10,7 @@ import { AgentsPage, type AgentRoleMutationInput } from "./agents.js";
 import { ConnectionsPage } from "./connections.js";
 import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
+import { AgentHubThemeProvider } from "./antd-primitives.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
@@ -132,33 +133,38 @@ export function AgentHubWorkbench(props: {
 
   if (props.loading) {
     return (
-      <main className="agenthub-workbench" data-layout={layoutMode} data-state="loading" data-theme={theme}>
-        <WorkbenchStyle />
-        <section aria-label="Loading workbench" className="agenthub-state-panel">
-          <strong>Loading AgentHub</strong>
-          <p>Fetching the latest Control Plane snapshot.</p>
-        </section>
-      </main>
+      <AgentHubThemeProvider mode={theme}>
+        <main className="agenthub-workbench" data-layout={layoutMode} data-state="loading" data-theme={theme}>
+          <WorkbenchStyle />
+          <section aria-label="Loading workbench" className="agenthub-state-panel">
+            <strong>Loading AgentHub</strong>
+            <p>Fetching the latest Control Plane snapshot.</p>
+          </section>
+        </main>
+      </AgentHubThemeProvider>
     );
   }
 
   if (props.error) {
     return (
-      <main className="agenthub-workbench" data-layout={layoutMode} data-state="error" data-theme={theme}>
-        <WorkbenchStyle />
-        <section aria-label="Connection error" className="agenthub-state-panel">
-          <strong>Control Plane offline</strong>
-          <p>{props.error}</p>
-          <HoverButton onClick={props.onRetry} type="button">
-            Retry
-          </HoverButton>
-        </section>
-      </main>
+      <AgentHubThemeProvider mode={theme}>
+        <main className="agenthub-workbench" data-layout={layoutMode} data-state="error" data-theme={theme}>
+          <WorkbenchStyle />
+          <section aria-label="Connection error" className="agenthub-state-panel">
+            <strong>Control Plane offline</strong>
+            <p>{props.error}</p>
+            <HoverButton onClick={props.onRetry} type="button">
+              Retry
+            </HoverButton>
+          </section>
+        </main>
+      </AgentHubThemeProvider>
     );
   }
 
   return (
-    <MotionConfig reducedMotion={reduceMotion ? "always" : "never"} transition={motionTransition}>
+    <AgentHubThemeProvider mode={theme}>
+      <MotionConfig reducedMotion={reduceMotion ? "always" : "never"} transition={motionTransition}>
       <main
         className="agenthub-workbench"
         data-left-collapsed={leftCollapsed ? "true" : "false"}
@@ -473,7 +479,8 @@ export function AgentHubWorkbench(props: {
           </section>
         ) : null}
       </main>
-    </MotionConfig>
+      </MotionConfig>
+    </AgentHubThemeProvider>
   );
 }
 

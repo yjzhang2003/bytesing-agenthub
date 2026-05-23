@@ -2,8 +2,10 @@ import type { Agent } from "@agenthub/contracts";
 import { Send } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React from "react";
+import type { TextAreaRef } from "antd/es/input/TextArea.js";
 import type { AgentTargetViewModel } from "../types.js";
-import { HoverButton, Icon } from "./primitives.js";
+import { AgentHubButton, AgentHubTextArea } from "./antd-primitives.js";
+import { Icon } from "./primitives.js";
 
 const SLASH_COMMANDS = [
   { id: "plan", label: "/plan", description: "Plan with the orchestrator" },
@@ -33,7 +35,7 @@ export function AgentMentionComposer(props: {
   const [message, setMessage] = React.useState("");
   const [target, setTarget] = React.useState(props.selectedTarget);
   const [isMultiline, setIsMultiline] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = React.useRef<TextAreaRef | null>(null);
   const selected = normalizedTargets.find((candidate) => candidate.target === target) ?? normalizedTargets[0];
   const planTarget = normalizedTargets.find((candidate) => candidate.role === "orchestrator") ?? selected;
   const directTarget = normalizedTargets.find((candidate) => candidate.role !== "orchestrator") ?? selected;
@@ -54,20 +56,8 @@ export function AgentMentionComposer(props: {
       }),
     );
   };
-  React.useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    textarea.style.height = "auto";
-    const style = window.getComputedStyle(textarea);
-    const lineHeight = Number.parseFloat(style.lineHeight);
-    const verticalPadding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
-    const singleLineHeight = lineHeight + verticalPadding;
-    const nextHeight = Math.min(textarea.scrollHeight, 128);
-    const measuredLines = Math.round((textarea.scrollHeight - verticalPadding) / lineHeight);
-    textarea.style.height = `${Math.max(nextHeight, singleLineHeight)}px`;
-    setIsMultiline(message.includes("\n") || measuredLines > 1);
+  React.useEffect(() => {
+    setIsMultiline(message.includes("\n") || message.length > 88);
   }, [message]);
 
   return (
@@ -101,22 +91,23 @@ export function AgentMentionComposer(props: {
             >
               {suggestionMode === "mention"
                 ? mentionSuggestions.map((candidate) => (
-                    <HoverButton
+                    <AgentHubButton
                       className="agenthub-composer-suggestion"
+                      htmlType="button"
                       key={candidate.id}
                       onClick={() => {
                         setTarget(candidate.target);
                         replaceCurrentToken(candidate.target);
                       }}
-                      type="button"
                     >
                       <span>{candidate.target}</span>
                       <small>{candidate.providerLabel}</small>
-                    </HoverButton>
+                    </AgentHubButton>
                   ))
                 : commandSuggestions.map((command) => (
-                    <HoverButton
+                    <AgentHubButton
                       className="agenthub-composer-suggestion"
+                      htmlType="button"
                       key={command.id}
                       onClick={() => {
                         const nextTarget = command.id === "plan" ? planTarget : directTarget;
@@ -125,16 +116,16 @@ export function AgentMentionComposer(props: {
                         }
                         replaceCurrentToken(command.label);
                       }}
-                      type="button"
                     >
                       <span>{command.label}</span>
                       <small>{command.description}</small>
-                    </HoverButton>
+                    </AgentHubButton>
                   ))}
             </motion.div>
           ) : null}
         </AnimatePresence>
-        <textarea
+        <AgentHubTextArea
+          autoSize={{ maxRows: 5, minRows: 1 }}
           aria-describedby={props.disabled ? "agenthub-composer-disabled-reason" : undefined}
           aria-label={`Message ${selected?.target ?? ""}`}
           ref={textareaRef}
@@ -149,14 +140,14 @@ export function AgentMentionComposer(props: {
           </span>
         ) : null}
         <div className="agenthub-composer-actions">
-          <HoverButton
+          <AgentHubButton
             aria-label="Send message"
             className="agenthub-composer-send"
             disabled={props.disabled || !message.trim()}
-            type="submit"
+            htmlType="submit"
           >
             <Icon icon={Send} />
-          </HoverButton>
+          </AgentHubButton>
         </div>
       </motion.div>
     </form>

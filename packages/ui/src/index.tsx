@@ -29,3 +29,26 @@ export type { AgentRoleMutationInput } from "./components/agents.js";
 export { ConnectionsPage } from "./components/connections.js";
 export { DiffCard, PermissionCard, PlanCard } from "./components/cards.js";
 export { ParticipantChip, RuntimeStatusBadge } from "./components/primitives.js";
+export {
+  AgentHubAvatar,
+  AgentHubBadge,
+  AgentHubButton,
+  AgentHubCheckbox,
+  AgentHubDropdown,
+  AgentHubEmptyState,
+  AgentHubFormItem,
+  AgentHubIconButton,
+  AgentHubLoadingState,
+  AgentHubModal,
+  AgentHubSearchInput,
+  AgentHubSelect,
+  AgentHubSwitch,
+  AgentHubTabs,
+  AgentHubTextArea,
+  AgentHubTextInput,
+  AgentHubThemeProvider,
+  AgentHubTooltip,
+  agentHubMessage,
+  createAgentHubAntdTheme,
+} from "./components/antd-primitives.js";
+export type { AgentHubThemeMode } from "./components/antd-primitives.js";

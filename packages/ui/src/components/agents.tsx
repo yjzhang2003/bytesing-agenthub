@@ -1,7 +1,16 @@
-import { Archive, Bot, Plus, Save, Search } from "lucide-react";
+import { Archive, Bot, Plus, Save } from "lucide-react";
 import React from "react";
 import type { AgentPageAgentViewModel, WorkbenchViewModel } from "../types.js";
-import { DetailSection, HoverButton, Icon } from "./primitives.js";
+import {
+  AgentHubAvatar,
+  AgentHubBadge,
+  AgentHubButton,
+  AgentHubSearchInput,
+  AgentHubSelect,
+  AgentHubTextArea,
+  AgentHubTextInput,
+} from "./antd-primitives.js";
+import { DetailSection, Icon } from "./primitives.js";
 
 export interface AgentRoleMutationInput {
   readonly agentId?: string;
@@ -47,21 +56,21 @@ function AgentListRow(props: {
     .join("");
 
   return (
-    <HoverButton
+    <AgentHubButton
       aria-pressed={props.selected}
       className="agenthub-agent-contact-row"
+      htmlType="button"
       onClick={props.onSelect}
-      type="button"
     >
-      <span aria-hidden="true" className="agenthub-agent-avatar">
+      <AgentHubAvatar className="agenthub-agent-avatar" size={44}>
         {initials || <Icon icon={Bot} />}
-      </span>
+      </AgentHubAvatar>
       <span className="agenthub-agent-contact-copy">
         <span className="agenthub-row-main">{props.agent.label}</span>
         <small>{props.agent.role} · {props.agent.providerLabel}</small>
       </span>
-      <small>{props.agent.capabilityTags.length}</small>
-    </HoverButton>
+      <AgentHubBadge count={props.agent.capabilityTags.length} size="small" />
+    </AgentHubButton>
   );
 }
 
@@ -94,8 +103,7 @@ export function AgentDirectory(props: {
     <section aria-label="Agent directory" className="agenthub-chat-list-panel agenthub-agent-directory-sidebar">
       <header className="agenthub-chat-list-header">
         <label className="agenthub-conversation-search">
-          <Icon icon={Search} />
-          <input
+          <AgentHubSearchInput
             aria-label="Search agents"
             onChange={(event) => setQuery(event.currentTarget.value)}
             placeholder="Search agents"
@@ -103,14 +111,14 @@ export function AgentDirectory(props: {
             value={query}
           />
         </label>
-        <HoverButton
+        <AgentHubButton
           aria-label="New agent"
           className="agenthub-icon-button"
+          htmlType="button"
           onClick={() => props.onSelectAgent(null)}
-          type="button"
         >
           <Icon icon={Plus} />
-        </HoverButton>
+        </AgentHubButton>
       </header>
       <nav aria-label="Agent roles" className="agenthub-agent-directory-list">
         <small className="agenthub-agent-directory-group">Agents</small>
@@ -163,9 +171,9 @@ function AgentEditor(props: {
   return (
     <section className="agenthub-agent-detail">
       <header className="agenthub-agent-profile">
-        <span aria-hidden="true" className="agenthub-agent-profile-avatar">
+        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={92}>
           {mode === "new" ? <Icon icon={Plus} /> : props.agent?.label.slice(0, 2).toUpperCase() ?? <Icon icon={Bot} />}
-        </span>
+        </AgentHubAvatar>
         <div className="agenthub-agent-profile-copy">
           <strong>{mode === "new" ? "New agent" : props.agent?.label ?? "Agent"}</strong>
           <p className="agenthub-muted">
@@ -174,7 +182,8 @@ function AgentEditor(props: {
           {props.agent?.defaultAgent ? <span className="agenthub-agent-default">Default agent</span> : null}
         </div>
         <div className="agenthub-agent-profile-actions">
-          <HoverButton
+          <AgentHubButton
+            htmlType="button"
             onClick={() => {
               setMode("new");
               setDisplayName("");
@@ -183,10 +192,9 @@ function AgentEditor(props: {
               setTags("");
               setPolicyJson("{}");
             }}
-            type="button"
           >
             <Icon icon={Plus} /> New agent
-          </HoverButton>
+          </AgentHubButton>
         </div>
       </header>
       <form
@@ -217,18 +225,27 @@ function AgentEditor(props: {
       >
         <label>
           <span>Name</span>
-          <input aria-label="Agent name" value={displayName} onChange={(event) => setDisplayName(event.currentTarget.value)} />
+          <AgentHubTextInput
+            aria-label="Agent name"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.currentTarget.value)}
+          />
         </label>
         <label>
           <span>Role</span>
-          <select aria-label="Agent role" value={role} onChange={(event) => setRole(event.currentTarget.value as AgentPageAgentViewModel["role"])}>
-            <option value="orchestrator">orchestrator</option>
-            <option value="worker">worker</option>
-          </select>
+          <AgentHubSelect
+            aria-label="Agent role"
+            value={role}
+            onChange={(value) => setRole(value)}
+            options={[
+              { label: "orchestrator", value: "orchestrator" },
+              { label: "worker", value: "worker" },
+            ]}
+          />
         </label>
         <label className="agenthub-agent-editor-wide">
           <span>System prompt</span>
-          <textarea
+          <AgentHubTextArea
             aria-label="Agent system prompt"
             rows={7}
             value={systemPrompt}
@@ -237,11 +254,15 @@ function AgentEditor(props: {
         </label>
         <label>
           <span>Capability tags</span>
-          <input aria-label="Capability tags" value={tags} onChange={(event) => setTags(event.currentTarget.value)} />
+          <AgentHubTextInput
+            aria-label="Capability tags"
+            value={tags}
+            onChange={(event) => setTags(event.currentTarget.value)}
+          />
         </label>
         <label className="agenthub-agent-editor-wide">
           <span>Policy JSON</span>
-          <textarea
+          <AgentHubTextArea
             aria-label="Policy JSON"
             aria-invalid={policyError ? "true" : undefined}
             rows={5}
@@ -259,20 +280,21 @@ function AgentEditor(props: {
           </DetailSection>
         ) : null}
         <div className="agenthub-action-row agenthub-agent-editor-wide">
-          <HoverButton disabled={!canSubmit} type="submit">
+          <AgentHubButton disabled={!canSubmit} htmlType="submit">
             <Icon icon={Save} /> Save changes
-          </HoverButton>
-          <HoverButton
+          </AgentHubButton>
+          <AgentHubButton
             disabled={!props.agent || props.agent.defaultAgent}
+            htmlType="button"
+            kind="danger"
             onClick={() => {
               if (props.agent && !props.agent.defaultAgent) {
                 props.onArchiveAgentRole?.(props.agent.id);
               }
             }}
-            type="button"
           >
             <Icon icon={Archive} /> Archive
-          </HoverButton>
+          </AgentHubButton>
         </div>
       </form>
     </section>

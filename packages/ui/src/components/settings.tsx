@@ -1,6 +1,7 @@
 import React from "react";
 import type { InspectorSelection, WorkbenchViewModel } from "../types.js";
-import { DetailSection, HoverButton, RuntimeStatusBadge } from "./primitives.js";
+import { AgentHubButton, AgentHubSwitch } from "./antd-primitives.js";
+import { DetailSection, RuntimeStatusBadge } from "./primitives.js";
 
 export function SettingsPage(props: {
   readonly model: WorkbenchViewModel;
@@ -59,9 +60,10 @@ export function SettingsPage(props: {
             <strong>Appearance</strong>
             <p className="agenthub-muted">Workbench display preferences</p>
           </div>
-          <HoverButton onClick={props.onToggleTheme} type="button">
-            Switch to {props.theme === "dark" ? "light" : "dark"} mode
-          </HoverButton>
+          <label className="agenthub-settings-switch">
+            <span>Dark mode</span>
+            <AgentHubSwitch checked={props.theme === "dark"} onChange={props.onToggleTheme} />
+          </label>
         </header>
       </section>
 
@@ -72,9 +74,12 @@ export function SettingsPage(props: {
             <p className="agenthub-muted">{props.model.workspace.pendingPermissionCount} pending request(s)</p>
           </div>
           {firstPermission ? (
-            <HoverButton onClick={() => props.onSelect({ id: firstPermission.id, mode: "permission" })} type="button">
+            <AgentHubButton
+              htmlType="button"
+              onClick={() => props.onSelect({ id: firstPermission.id, mode: "permission" })}
+            >
               Review
-            </HoverButton>
+            </AgentHubButton>
           ) : null}
         </header>
       </section>

@@ -209,6 +209,76 @@ body { overflow: hidden; }
   background: transparent;
   opacity: .58;
 }
+.agenthub-antd-button.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: inherit;
+  font: inherit;
+  box-shadow: none;
+}
+.agenthub-antd-button.ant-btn.agenthub-agent-contact-row,
+.agenthub-antd-button.ant-btn.agenthub-provider-row,
+.agenthub-antd-button.ant-btn.agenthub-composer-suggestion {
+  display: grid;
+  height: auto;
+  justify-content: initial;
+}
+.agenthub-antd-button.ant-btn.agenthub-composer-send,
+.agenthub-antd-button.ant-btn.agenthub-icon-button {
+  display: inline-grid;
+}
+.agenthub-antd-button.ant-btn-text:not(:disabled):not(.ant-btn-disabled):hover,
+.agenthub-antd-button.ant-btn-text:not(:disabled):not(.ant-btn-disabled):focus-visible {
+  color: var(--agenthub-text);
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-antd-input.ant-input,
+.agenthub-antd-input.ant-input-affix-wrapper,
+.agenthub-antd-input.ant-input-search .ant-input,
+.agenthub-antd-input.ant-input-search .ant-input-affix-wrapper,
+.agenthub-antd-select.ant-select .ant-select-selector {
+  border-color: var(--agenthub-border);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  box-shadow: none;
+}
+.agenthub-antd-input.ant-input,
+.agenthub-antd-input.ant-input-affix-wrapper,
+.agenthub-antd-select.ant-select .ant-select-selector {
+  min-height: 34px;
+}
+.agenthub-antd-input.ant-input:hover,
+.agenthub-antd-input.ant-input-affix-wrapper:hover,
+.agenthub-antd-select.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: var(--agenthub-border-strong);
+}
+.agenthub-antd-input.ant-input:focus,
+.agenthub-antd-input.ant-input-affix-wrapper-focused,
+.agenthub-antd-select.ant-select-focused .ant-select-selector {
+  border-color: var(--agenthub-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 28%, transparent);
+}
+.agenthub-antd-select {
+  width: 100%;
+}
+.agenthub-antd-avatar.ant-avatar {
+  background: color-mix(in srgb, var(--agenthub-accent) 12%, var(--agenthub-surface-hover));
+  color: var(--agenthub-text);
+  font-weight: 750;
+}
+.agenthub-antd-badge .ant-badge-count {
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text-muted);
+  box-shadow: none;
+}
+.agenthub-antd-empty.ant-empty {
+  color: var(--agenthub-text-muted);
+}
+.agenthub-workbench .ant-form-item {
+  margin-bottom: 14px;
+}
 .agenthub-sidebar-toggle {
   width: 30px;
   min-height: 30px;
@@ -620,6 +690,13 @@ body { overflow: hidden; }
   font-weight: 650;
 }
 .agenthub-settings-panel > header p { margin: 2px 0 0; }
+.agenthub-settings-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--agenthub-text-secondary);
+  font-size: 12px;
+}
 .agenthub-agents-page {
   min-width: 0;
   min-height: 0;
