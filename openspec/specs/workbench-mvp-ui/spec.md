@@ -111,7 +111,7 @@ The Desktop/Web MVP implementation SHALL include rendered verification for the c
 
 #### Scenario: UI implementation is ready for review
 - **WHEN** the MVP workbench UI is considered complete
-- **THEN** verification covers online workbench, offline runtime, active multi-agent conversation, draft plan review, pending permission queue, inline permission card, diff review, full-screen diff review, empty conversation, error state, narrow layout, and Simplified Chinese language rendering
+- **THEN** verification covers online workbench, offline runtime, active multi-agent conversation, draft plan review, pending permission queue, inline permission card, diff review, full-screen diff review, empty conversation, error state, Settings desktop and narrow layouts, and Simplified Chinese language rendering
 
 ### Requirement: Modernized Agents verification
 The Desktop/Web MVP implementation SHALL verify the modernized Agents page states, shared search rendering, template-assisted creation, advanced configuration disclosure, and localization.
@@ -241,4 +241,3 @@ The Desktop/Web MVP workbench SHALL allow users to find and select multiple elig
 
 - **WHEN** the add-agent picker has focus
 - **THEN** keyboard navigation reaches search, each visible agent option, cancel, and confirm controls with visible focus and accessible selected state
-

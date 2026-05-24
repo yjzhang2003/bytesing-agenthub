@@ -168,11 +168,15 @@ AgentHub Ant Design-backed controls SHALL support localized labels, placeholders
 - **THEN** the message uses Simplified Chinese and retains the same compact spacing and error styling as English
 
 ### Requirement: Settings panel visual structure
-The Desktop/Web Settings surface SHALL use a focused settings-panel layout with category navigation and grouped preference rows instead of generic stacked detail sections.
+The Desktop/Web Settings surface SHALL use a focused settings-panel layout with category navigation and grouped preference rows that follow AgentHub compact workbench typography, density, radius, and spacing tokens instead of page-specific oversized settings styling.
 
 #### Scenario: User opens Settings on desktop
 - **WHEN** the user opens Settings at desktop width
-- **THEN** the UI presents a left category list and a right scrollable content area with rounded grouped setting panels, large readable row labels, compact controls, and clear separators between rows
+- **THEN** the UI presents a left category list and a right scrollable content area with compact grouped setting panels, tokenized row labels, compact controls, and clear separators between rows without using oversized category labels, headings, row titles, row heights, or preference-card styling
+
+#### Scenario: Settings matches adjacent workbench surfaces
+- **WHEN** the user switches between Chat, Agents, and Settings
+- **THEN** Settings uses the same AgentHub compact typography scale, restrained panel treatment, icon scale, and control density as the surrounding workbench surfaces
 
 #### Scenario: Settings contains operational metadata
 - **WHEN** Settings shows workspace, runtime, permissions, language, keyboard, or appearance information
@@ -180,7 +184,7 @@ The Desktop/Web Settings surface SHALL use a focused settings-panel layout with 
 
 #### Scenario: Settings is viewed in a narrow layout
 - **WHEN** available width cannot support the desktop split layout
-- **THEN** the category navigation collapses into a horizontal scrollable strip above the grouped settings content without overlapping controls or clipping localized labels
+- **THEN** the category navigation collapses into a horizontal scrollable strip above the grouped settings content without overlapping controls, clipping localized labels, or inflating typography beyond the compact workbench scale
 
 ### Requirement: Grouped configuration editors
 Desktop/Web configuration editors SHALL place related editable settings inside shared rounded groups rather than leaving fields as unbounded page content.
@@ -262,4 +266,3 @@ The Desktop/Web visual system SHALL provide an AgentHub-owned compact add-agent 
 
 - **WHEN** the workbench uses a narrow or mobile-web layout
 - **THEN** the picker fits within the viewport, keeps search and actions reachable, and scrolls the agent list without horizontal overflow
-
