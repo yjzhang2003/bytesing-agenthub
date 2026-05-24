@@ -24,6 +24,8 @@ describe("@agenthub/ui localization", () => {
 
     expect(agentHubTranslationKeys).toContain("language.language");
     expect(agentHubTranslationKeys).toContain("chat.addAgent");
+    expect(agentHubTranslationKeys).toContain("chat.searchAgentsToAdd");
+    expect(agentHubTranslationKeys).toContain("chat.noMatchingAgents");
     expect(agentHubTranslationKeys).toContain("settings.permissions");
     expect(agentHubTranslationKeys).toContain("composer.placeholder");
     for (const key of agentHubTranslationKeys) {
@@ -105,6 +107,11 @@ describe("@agenthub/ui localization", () => {
     expect(chatInfo).toContain("参与者");
     expect(chatInfo).toContain("添加智能体");
     expect(chatInfo).not.toContain("选择要添加的智能体");
+    expect(createAgentHubI18n("zh-CN").t("chat.searchAgentsToAdd")).toBe("搜索");
+    expect(createAgentHubI18n("zh-CN").t("chat.addSelectedAgents", { count: "2" })).toBe(
+      "添加 2 个",
+    );
+    expect(createAgentHubI18n("zh-CN").t("chat.noMatchingAgents")).toBe("没有匹配的智能体");
     expect(chatInfo).toContain("基本信息");
     expect(narrow).toContain("Implemented ");
     expect(narrow).toContain("<code>pnpm check</code>");

@@ -124,10 +124,26 @@ describe("AgentHub component behavior", () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it("supports the Chat Info add-agent dialog workflow", async () => {
+  it("supports searching and multi-selecting agents in the Chat Info add-agent dialog", async () => {
     const onAddAgentToChat = vi.fn();
     const chatSnapshot = {
       ...snapshot(),
+      agents: [
+        ...snapshot().agents,
+        {
+          capabilityTags: ["quality"],
+          createdAt: "2026-05-21T00:00:00.000Z",
+          displayName: "Reviewer",
+          id: "agent_reviewer",
+          ownerUserId: "user_1",
+          policy: {},
+          providerId: "provider_1",
+          role: "worker" as const,
+          systemPrompt: "Review work.",
+          updatedAt: "2026-05-21T00:00:00.000Z",
+          workspaceId: "workspace_1",
+        },
+      ],
       conversationParticipants: [
         {
           addedByUserId: "user_1",
@@ -166,9 +182,7 @@ describe("AgentHub component behavior", () => {
       openChatInfoButton?.click();
       await settle();
     });
-    const addButton = document.querySelector(
-      'button[aria-label="Add agent"]',
-    ) as HTMLButtonElement;
+    const addButton = document.querySelector('button[aria-label="Add agent"]') as HTMLButtonElement;
     expect(addButton).toBeTruthy();
     await act(async () => {
       addButton.click();
@@ -176,11 +190,46 @@ describe("AgentHub component behavior", () => {
     });
 
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Add agent");
-    expect(document.querySelector("select")?.getAttribute("aria-label")).toBe(
-      "Select agent to add",
-    );
+    const search = document.querySelector(
+      'input[aria-label="Search agents to add"]',
+    ) as HTMLInputElement;
+    expect(search).toBeTruthy();
+    expect(document.querySelector("select")).toBeNull();
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Researcher");
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Reviewer");
+
+    await act(async () => {
+      search.value = "review";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("Researcher");
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Reviewer");
+
+    const reviewerOption = document.querySelector(
+      'button[aria-label="Select Reviewer"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      reviewerOption.click();
+      await settle();
+    });
+    expect(reviewerOption.getAttribute("aria-pressed")).toBe("true");
+
+    await act(async () => {
+      search.value = "";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    const researcherOption = document.querySelector(
+      'button[aria-label="Select Researcher"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      researcherOption.click();
+      await settle();
+    });
+
     const confirm = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent === "Add",
+      (button) => button.textContent === "Add 2",
     ) as HTMLButtonElement;
     await act(async () => {
       confirm.click();
@@ -188,6 +237,116 @@ describe("AgentHub component behavior", () => {
     });
 
     expect(onAddAgentToChat).toHaveBeenCalledWith("conversation_1", "agent_researcher");
+    expect(onAddAgentToChat).toHaveBeenCalledWith("conversation_1", "agent_reviewer");
+    expect(onAddAgentToChat).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("shows add-agent empty and no-results states", async () => {
+    const onAddAgentToChat = vi.fn();
+    const chatSnapshot = {
+      ...snapshot(),
+      conversationParticipants: snapshot().agents.map((agent, index) => ({
+        addedByUserId: "user_1",
+        agentId: agent.id,
+        archivedAt: null,
+        conversationId: "conversation_1",
+        createdAt: "2026-05-21T00:00:00.000Z",
+        id: `participant_${index}`,
+        ownerUserId: "user_1",
+        updatedAt: "2026-05-21T00:00:00.000Z",
+      })),
+    };
+    await render(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        onAddAgentToChat={onAddAgentToChat}
+        snapshot={chatSnapshot}
+      />,
+    );
+
+    const openChatInfoButton = Array.from(document.querySelectorAll("button")).find((button) =>
+      button.getAttribute("aria-label")?.includes("Open chat information"),
+    ) as HTMLButtonElement | undefined;
+    await act(async () => {
+      openChatInfoButton?.click();
+      await settle();
+    });
+    const addButton = document.querySelector('button[aria-label="Add agent"]') as HTMLButtonElement;
+    expect(addButton.disabled).toBe(false);
+
+    await act(async () => {
+      addButton.click();
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+      "No agents available to add",
+    );
+    expect(
+      Array.from(document.querySelectorAll("button"))
+        .find((button) => button.textContent === "Add")
+        ?.getAttribute("disabled"),
+    ).not.toBeNull();
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await nextFrame();
+    });
+
+    const searchableSnapshot = {
+      ...snapshot(),
+      conversationParticipants: [
+        {
+          addedByUserId: "user_1",
+          agentId: "agent_1",
+          archivedAt: null,
+          conversationId: "conversation_1",
+          createdAt: "2026-05-21T00:00:00.000Z",
+          id: "participant_1",
+          ownerUserId: "user_1",
+          updatedAt: "2026-05-21T00:00:00.000Z",
+        },
+      ],
+    };
+    await act(async () => {
+      for (const root of mountedRoots.splice(0)) {
+        root.unmount();
+      }
+      for (const container of mountedContainers.splice(0)) {
+        container.remove();
+      }
+    });
+    await render(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        onAddAgentToChat={onAddAgentToChat}
+        snapshot={searchableSnapshot}
+      />,
+    );
+
+    const secondOpenChatInfoButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label")?.includes("Open chat information"),
+    ) as HTMLButtonElement | undefined;
+    await act(async () => {
+      secondOpenChatInfoButton?.click();
+      await settle();
+    });
+    const searchableAddButton = document.querySelector(
+      'button[aria-label="Add agent"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      searchableAddButton.click();
+      await settle();
+    });
+    const search = document.querySelector(
+      'input[aria-label="Search agents to add"]',
+    ) as HTMLInputElement;
+    await act(async () => {
+      search.value = "missing";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("No matching agents");
   });
 
   it("covers form controls, tabs, menus, tooltip, toast, and loading labels", async () => {
@@ -322,7 +481,9 @@ describe("AgentHub component behavior", () => {
     );
     const namedInput = document.querySelector('input[aria-label="Name"]') as HTMLInputElement;
     const formError = document.querySelector(".agenthub-form-error") as HTMLElement;
-    const formHint = document.querySelector(".agenthub-form-field small:not(.agenthub-form-error)") as HTMLElement;
+    const formHint = document.querySelector(
+      ".agenthub-form-field small:not(.agenthub-form-error)",
+    ) as HTMLElement;
     expect(namedInput.getAttribute("aria-describedby")).toContain("existing-help");
     expect(namedInput.getAttribute("aria-describedby")).toContain(formError.id);
     expect(namedInput.getAttribute("aria-describedby")).toContain(formHint.id);

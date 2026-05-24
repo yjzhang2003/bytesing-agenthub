@@ -2084,9 +2084,6 @@ body { overflow: hidden; }
   border-style: dashed;
   padding: 0;
 }
-.agenthub-chat-agent-select.agenthub-select {
-  width: 100%;
-}
 .agenthub-chat-add-agent-button {
   width: 100%;
   min-height: 94px;
@@ -2117,10 +2114,108 @@ body { overflow: hidden; }
 }
 .agenthub-chat-add-agent-dialog {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 12px;
+  gap: 14px;
+  padding-top: 2px;
+  min-width: 0;
+}
+.agenthub-chat-add-agent-dialog .agenthub-sidebar-search {
+  min-height: 40px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--agenthub-surface-hover);
+  padding: 0 12px;
+}
+.agenthub-chat-add-agent-dialog .agenthub-sidebar-search .agenthub-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--agenthub-text-muted);
+}
+.agenthub-chat-add-agent-dialog .agenthub-sidebar-search input {
+  min-height: 40px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.agenthub-chat-add-agent-list {
+  display: grid;
+  gap: 2px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding: 4px 0;
+}
+.agenthub-chat-add-agent-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 30px 40px minmax(0, 1fr);
   align-items: center;
-  padding-top: 4px;
+  gap: 12px;
+  border: 0;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
+  color: var(--agenthub-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 6px;
+  text-align: left;
+}
+.agenthub-chat-add-agent-option:hover,
+.agenthub-chat-add-agent-option:focus-visible {
+  background: var(--agenthub-surface-hover);
+  outline: 0;
+}
+.agenthub-chat-add-agent-option:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--agenthub-accent);
+}
+.agenthub-chat-add-agent-option .agenthub-avatar {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 7px;
+}
+.agenthub-chat-add-agent-check {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 2px solid var(--agenthub-border-strong);
+  border-radius: 999px;
+  background: var(--agenthub-surface);
+}
+.agenthub-chat-add-agent-check::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid var(--agenthub-accent-text);
+  border-bottom: 2px solid var(--agenthub-accent-text);
+  opacity: 0;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.agenthub-chat-add-agent-option[data-selected="true"] .agenthub-chat-add-agent-check {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+}
+.agenthub-chat-add-agent-option[data-selected="true"] .agenthub-chat-add-agent-check::after {
+  opacity: 1;
+}
+.agenthub-chat-add-agent-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.agenthub-chat-add-agent-empty {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: var(--agenthub-radius);
+  color: var(--agenthub-text-muted);
+  text-align: center;
+  padding: 18px;
 }
 .agenthub-dialog {
   position: fixed;
@@ -2188,9 +2283,9 @@ body { overflow: hidden; }
   background: color-mix(in srgb, var(--agenthub-accent) 88%, var(--agenthub-surface));
   color: var(--agenthub-accent-text);
 }
-.agenthub-chat-add-agent-modal .agenthub-select:focus {
-  border-color: var(--agenthub-accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 24%, transparent);
+.agenthub-chat-add-agent-modal .agenthub-dialog-body {
+  max-height: min(72vh, 600px);
+  overflow: hidden;
 }
 .agenthub-file-list {
   display: grid;
@@ -2319,6 +2414,20 @@ body { overflow: hidden; }
   box-shadow: 0 20px 70px rgba(0, 0, 0, .32);
   contain: layout paint;
   will-change: transform, opacity;
+}
+.agenthub-workbench[data-layout="narrow"] .agenthub-chat-add-agent-modal .agenthub-dialog,
+.agenthub-workbench[data-layout="mobile-web"] .agenthub-chat-add-agent-modal .agenthub-dialog {
+  width: min(430px, calc(100vw - 20px)) !important;
+}
+.agenthub-workbench[data-layout="narrow"] .agenthub-chat-add-agent-option,
+.agenthub-workbench[data-layout="mobile-web"] .agenthub-chat-add-agent-option {
+  grid-template-columns: 28px 38px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 54px;
+}
+.agenthub-workbench[data-layout="narrow"] .agenthub-chat-add-agent-name,
+.agenthub-workbench[data-layout="mobile-web"] .agenthub-chat-add-agent-name {
+  font-size: 15px;
 }
 @media (prefers-reduced-motion: reduce) {
   .agenthub-workbench,

@@ -217,13 +217,7 @@ describe("@agenthub/ui components", () => {
           options={[{ label: "worker", value: "worker" }]}
         />
         <Switch ariaLabel="Dark mode" checked onCheckedChange={() => undefined} />
-        <Dialog
-          cancelLabel="Cancel"
-          closeLabel="Close"
-          confirmLabel="Add"
-          open
-          title="Add agent"
-        >
+        <Dialog cancelLabel="Cancel" closeLabel="Close" confirmLabel="Add" open title="Add agent">
           <p>Select an agent</p>
         </Dialog>
       </AgentHubThemeProvider>,
@@ -302,7 +296,9 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("Collapse workspace navigation");
     expect(workbench).toContain("Collapse Context Inspector");
     expect(workbench).toContain("Switch to light mode");
-    expect(workbench).toContain('.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel');
+    expect(workbench).toContain(
+      '.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel',
+    );
   });
 
   it("renders conversation messages as IM bubbles and active agent replies as loading bubbles", () => {
@@ -590,16 +586,27 @@ describe("@agenthub/ui components", () => {
     const formActionsCss = html.match(/\.agenthub-agent-form-actions \{[^}]*\}/)?.[0] ?? "";
     expect(formActionsCss).toContain("width: min(100%, 820px)");
     expect(formActionsCss).toContain("justify-content: flex-end");
-    const deleteButtonCss = html.match(/\.agenthub-button\.agenthub-agent-delete-button \{[^}]*\}/)?.[0] ?? "";
+    const deleteButtonCss =
+      html.match(/\.agenthub-button\.agenthub-agent-delete-button \{[^}]*\}/)?.[0] ?? "";
     expect(deleteButtonCss).toContain("border-color: transparent");
     expect(html).toContain("--agenthub-type-title: 16px");
-    expect(html).toContain(".agenthub-agent-settings-group > header,\n.agenthub-agent-advanced summary");
+    expect(html).toContain(
+      ".agenthub-agent-settings-group > header,\n.agenthub-agent-advanced summary",
+    );
     expect(html).toContain(".agenthub-agent-advanced summary::-webkit-details-marker");
     expect(html).toContain("list-style: none");
-    const agentEditorLabelCss = html.match(/\.agenthub-agent-editor label,[\s\S]*?\.agenthub-agent-readonly-row \{[^}]*\}/)?.[0] ?? "";
-    expect(agentEditorLabelCss).toContain("grid-template-columns: minmax(136px, 28%) minmax(0, 1fr)");
+    const agentEditorLabelCss =
+      html.match(
+        /\.agenthub-agent-editor label,[\s\S]*?\.agenthub-agent-readonly-row \{[^}]*\}/,
+      )?.[0] ?? "";
+    expect(agentEditorLabelCss).toContain(
+      "grid-template-columns: minmax(136px, 28%) minmax(0, 1fr)",
+    );
     expect(agentEditorLabelCss).not.toContain("border-top");
-    const agentEditorInputCss = html.match(/\.agenthub-agent-editor input,[\s\S]*?\.agenthub-role-form textarea \{[^}]*\}/)?.[0] ?? "";
+    const agentEditorInputCss =
+      html.match(
+        /\.agenthub-agent-editor input,[\s\S]*?\.agenthub-role-form textarea \{[^}]*\}/,
+      )?.[0] ?? "";
     expect(agentEditorInputCss).toContain("border: 1px solid transparent");
     expect(html).toContain(".agenthub-agent-editor .agenthub-input:hover");
     expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="Responsibilities")[^>]*\srows=/);
@@ -801,7 +808,9 @@ describe("@agenthub/ui components", () => {
       }),
     ]);
     expect(model.composer.selectedTarget).toBe("@Researcher");
-    expect(model.workspace.conversations.filter((conversation) => conversation.title === "Researcher")).toHaveLength(2);
+    expect(
+      model.workspace.conversations.filter((conversation) => conversation.title === "Researcher"),
+    ).toHaveLength(2);
   });
 
   it("hides only active loading placeholders after a run message starts", () => {
@@ -1048,6 +1057,9 @@ describe("@agenthub/ui components", () => {
     expect(withoutCallbacks).toContain("Add agent");
     expect(withoutCallbacks).toContain("Implementer");
     expect(withoutCallbacks).toContain("disabled");
+    expect(withCallbacks).toContain("agenthub-chat-add-agent-list");
+    expect(withCallbacks).toContain("agenthub-chat-add-agent-option");
+    expect(withCallbacks).toContain("agenthub-chat-add-agent-check");
     expect(withoutCallbacks).not.toContain("agent participant");
     expect(withoutCallbacks).not.toContain("<small>orchestrator</small>");
     expect(withoutCallbacks).not.toContain("<small>worker</small>");

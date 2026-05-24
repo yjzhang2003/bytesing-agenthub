@@ -13,8 +13,14 @@ import type {
 } from "../types.js";
 import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
-import { AgentHubAvatar, AgentHubModal, AgentHubSelect } from "./system.js";
-import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
+import { AgentHubAvatar, AgentHubModal } from "./system.js";
+import {
+  DetailSection,
+  HoverButton,
+  Icon,
+  RuntimeStatusBadge,
+  SidebarSearchField,
+} from "./primitives.js";
 
 export function ContextInspector(props: {
   readonly model: WorkbenchViewModel;
@@ -148,13 +154,6 @@ function ChatInfoDetail(props: {
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
-  const [selectedAgentId, setSelectedAgentId] = React.useState(
-    props.chat.availableAgents[0]?.id ?? "",
-  );
-
-  React.useEffect(() => {
-    setSelectedAgentId(props.chat.availableAgents[0]?.id ?? "");
-  }, [props.chat.id, props.chat.availableAgents]);
 
   return (
     <div className="agenthub-inspector-body">
@@ -171,7 +170,7 @@ function ChatInfoDetail(props: {
             <button
               aria-label={i18n.t("chat.addAgent")}
               className="agenthub-chat-add-agent-button"
-              disabled={props.chat.availableAgents.length === 0 || !props.onAddAgent}
+              disabled={!props.onAddAgent}
               onClick={() => setAddDialogOpen(true)}
               type="button"
             >
@@ -182,14 +181,14 @@ function ChatInfoDetail(props: {
         <AddChatAgentDialog
           agents={props.chat.availableAgents}
           conversationId={props.chat.id}
-          onAdd={(conversationId, agentId) => {
-            props.onAddAgent?.(conversationId, agentId);
+          onAdd={(conversationId, agentIds) => {
+            for (const agentId of agentIds) {
+              props.onAddAgent?.(conversationId, agentId);
+            }
             setAddDialogOpen(false);
           }}
-          onChangeSelectedAgent={setSelectedAgentId}
           onClose={() => setAddDialogOpen(false)}
           open={addDialogOpen}
-          selectedAgentId={selectedAgentId}
         />
       </DetailSection>
       <DetailSection title={i18n.t("chat.basicInfo")}>
@@ -225,13 +224,49 @@ function ChatInfoDetail(props: {
 function AddChatAgentDialog(props: {
   readonly agents: readonly ChatInfoViewModel["availableAgents"][number][];
   readonly conversationId: string;
-  readonly onAdd: (conversationId: string, agentId: string) => void;
-  readonly onChangeSelectedAgent: (agentId: string) => void;
+  readonly onAdd: (conversationId: string, agentIds: readonly string[]) => void;
   readonly onClose: () => void;
   readonly open: boolean;
-  readonly selectedAgentId: string;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
+  const [query, setQuery] = React.useState("");
+  const [selectedAgentIds, setSelectedAgentIds] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  React.useEffect(() => {
+    if (props.open) {
+      setQuery("");
+      setSelectedAgentIds(new Set());
+    }
+  }, [props.open, props.conversationId, props.agents]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleAgents = React.useMemo(
+    () =>
+      normalizedQuery
+        ? props.agents.filter((agent) => agent.label.toLowerCase().includes(normalizedQuery))
+        : props.agents,
+    [props.agents, normalizedQuery],
+  );
+  const selectedCount = selectedAgentIds.size;
+  const confirmLabel =
+    selectedCount > 0
+      ? i18n.t("chat.addSelectedAgents", { count: selectedCount })
+      : i18n.t("chat.add");
+
+  const toggleAgent = (agentId: string) => {
+    setSelectedAgentIds((current) => {
+      const next = new Set(current);
+      if (next.has(agentId)) {
+        next.delete(agentId);
+      } else {
+        next.add(agentId);
+      }
+      return next;
+    });
+  };
+
   return (
     <AgentHubModal
       cancelText={i18n.t("actions.cancel")}
@@ -241,35 +276,53 @@ function AddChatAgentDialog(props: {
       getContainer={false}
       okButtonProps={{
         className: "agenthub-modal-confirm-button",
-        disabled: !props.selectedAgentId || props.agents.length === 0,
+        disabled: selectedCount === 0,
         type: "default",
       }}
-      okText={i18n.t("chat.add")}
+      okText={confirmLabel}
       onCancel={props.onClose}
-      onOk={() => props.onAdd(props.conversationId, props.selectedAgentId)}
+      onOk={() => props.onAdd(props.conversationId, Array.from(selectedAgentIds))}
       open={props.open}
       title={i18n.t("chat.addAgent")}
-      width={360}
+      width={430}
     >
       <div className="agenthub-chat-add-agent-dialog">
-        {props.agents.length > 0 ? (
-          <>
-            <AgentHubAvatar shape="square">
-              <Icon icon={Plus} />
-            </AgentHubAvatar>
-            <AgentHubSelect
-              aria-label={i18n.t("chat.selectAgentToAdd")}
-              className="agenthub-chat-agent-select"
-              onChange={props.onChangeSelectedAgent}
-              options={props.agents.map((agent) => ({
-                label: agent.label,
-                value: agent.id,
-              }))}
-              value={props.selectedAgentId}
-            />
-          </>
+        <SidebarSearchField
+          label={i18n.t("chat.searchAgentsToAdd")}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          onInput={(event) => setQuery(event.currentTarget.value)}
+          placeholder={i18n.t("nav.search")}
+          value={query}
+        />
+        {props.agents.length === 0 ? (
+          <p className="agenthub-chat-add-agent-empty">{i18n.t("chat.noAvailableAgents")}</p>
+        ) : visibleAgents.length === 0 ? (
+          <p className="agenthub-chat-add-agent-empty">{i18n.t("chat.noMatchingAgents")}</p>
         ) : (
-          <p className="agenthub-muted">{i18n.t("state.noParticipants")}</p>
+          <div className="agenthub-chat-add-agent-list" role="listbox" aria-multiselectable="true">
+            {visibleAgents.map((agent) => {
+              const selected = selectedAgentIds.has(agent.id);
+              return (
+                <button
+                  aria-label={i18n.t("chat.selectAgentNamed", { agent: agent.label })}
+                  aria-pressed={selected}
+                  aria-selected={selected}
+                  className="agenthub-chat-add-agent-option"
+                  data-selected={selected}
+                  key={agent.id}
+                  onClick={() => toggleAgent(agent.id)}
+                  role="option"
+                  type="button"
+                >
+                  <span className="agenthub-chat-add-agent-check" aria-hidden="true" />
+                  <AgentHubAvatar shape="square">{agent.initials}</AgentHubAvatar>
+                  <span className="agenthub-chat-add-agent-name" title={agent.label}>
+                    {agent.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </AgentHubModal>
