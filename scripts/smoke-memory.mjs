@@ -86,6 +86,19 @@ async function waitFor(path, label) {
   throw new Error(`${label} did not become ready: ${lastError?.message ?? "unknown error"}`);
 }
 
+function activeConversationAgentId(snapshot) {
+  const participantAgentIds = new Set(
+    (snapshot.conversationParticipants ?? [])
+      .filter((participant) => participant.conversationId === snapshot.activeConversationId)
+      .map((participant) => participant.agentId),
+  );
+  const agent = snapshot.agents?.find((candidate) => participantAgentIds.has(candidate.id));
+  if (!agent?.id) {
+    throw new Error("Active conversation has no runnable agent participant");
+  }
+  return agent.id;
+}
+
 async function main() {
   const memoryServer = await startMemoryStub();
   const address = memoryServer.address();
@@ -116,7 +129,7 @@ async function main() {
       body: JSON.stringify({
         workspaceId: snapshot.activeWorkspaceId,
         conversationId: snapshot.activeConversationId,
-        agentId: snapshot.agents.find((agent) => agent.role === "worker")?.id,
+        agentId: activeConversationAgentId(snapshot),
         prompt: "Verify memory path",
       }),
       method: "POST",

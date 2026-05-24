@@ -4,6 +4,7 @@ import type {
   AgentHubClientState,
   Conversation,
   ConnectionCheckTarget,
+  ClaudeCodeRunOptions,
   CreateLocalRunRequest,
   Message,
   PermissionRequest,
@@ -94,7 +95,9 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
     ...emptyAgentHubClientState,
     activeDiff: {
       runId: "run_1",
-      files: [{ path: "packages/ui/src/index.tsx", status: "modified", insertions: 24, deletions: 3 }],
+      files: [
+        { path: "packages/ui/src/index.tsx", status: "modified", insertions: 24, deletions: 3 },
+      ],
     },
     activePlan: {
       id: "plan_1",
@@ -136,6 +139,19 @@ export function createRunRequestFromSnapshot(
   },
   target: string | undefined,
   prompt: string,
+  claudeCode?: {
+    readonly permissionPreset: NonNullable<ClaudeCodeRunOptions["permissionPreset"]>;
+    readonly runtimeProfileId: string;
+    readonly mcpProfileId: string;
+    readonly pluginProfileId?: string | null;
+    readonly effort: NonNullable<ClaudeCodeRunOptions["effort"]>;
+    readonly sessionBehavior: NonNullable<ClaudeCodeRunOptions["session"]>["behavior"];
+    readonly sessionId?: string | null;
+    readonly settingsSource: NonNullable<ClaudeCodeRunOptions["settingsSource"]>;
+    readonly hooksPolicy: NonNullable<ClaudeCodeRunOptions["hooksPolicy"]>;
+    readonly allowedTools?: readonly string[];
+    readonly disallowedTools?: readonly string[];
+  },
 ): CreateLocalRunRequest {
   const normalizedTarget = target?.replace(/^@/, "").toLowerCase();
   const selectedAgent =
@@ -152,7 +168,8 @@ export function createRunRequestFromSnapshot(
     throw new Error("No active workspace is available");
   }
   const activeConversationId =
-    snapshot.activeConversationId ?? snapshot.conversations.find((conversation) => !conversation.archivedAt)?.id;
+    snapshot.activeConversationId ??
+    snapshot.conversations.find((conversation) => !conversation.archivedAt)?.id;
   if (!activeConversationId) {
     throw new Error("No active conversation is available");
   }
@@ -160,18 +177,48 @@ export function createRunRequestFromSnapshot(
     throw new Error("No runnable agent is available");
   }
 
-  return {
+  const claudeCodeOptions = claudeCode
+    ? {
+        permissionPreset: claudeCode.permissionPreset,
+        runtimeProfileId: claudeCode.runtimeProfileId,
+        mcpProfileId: claudeCode.mcpProfileId === "none" ? null : claudeCode.mcpProfileId,
+        pluginProfileId:
+          !claudeCode.pluginProfileId || claudeCode.pluginProfileId === "none"
+            ? null
+            : claudeCode.pluginProfileId,
+        effort: claudeCode.effort,
+        session: {
+          behavior: claudeCode.sessionBehavior,
+          ...(claudeCode.sessionId ? { sessionId: claudeCode.sessionId } : {}),
+        },
+        settingsSource: claudeCode.settingsSource,
+        hooksPolicy: claudeCode.hooksPolicy,
+        ...(claudeCode.allowedTools?.length ? { allowedTools: claudeCode.allowedTools } : {}),
+        ...(claudeCode.disallowedTools?.length
+          ? { disallowedTools: claudeCode.disallowedTools }
+          : {}),
+      }
+    : undefined;
+
+  const request: CreateLocalRunRequest = {
     workspaceId: snapshot.activeWorkspaceId,
     conversationId: activeConversationId,
     agentId: selectedAgent.id,
     prompt,
+    ...(claudeCodeOptions ? { claudeCode: claudeCodeOptions } : {}),
   };
+  return request;
 }
 
 export function connectionCheckTimestamps(
   snapshot: Pick<
     WorkbenchSnapshot,
-    "activeWorkspaceId" | "memoryHealth" | "providerHealth" | "runtimeDevices" | "workspaces"
+    | "activeWorkspaceId"
+    | "memoryHealth"
+    | "providerHealth"
+    | "runtimeDevices"
+    | "workspaces"
+    | "claudeCodeDiscovery"
   >,
   targets: readonly ConnectionCheckTarget[],
 ): ConnectionCheckTimestampMap {
@@ -190,6 +237,9 @@ export function connectionCheckTimestamps(
       if (target === "memory") {
         return [target, snapshot.memoryHealth?.checkedAt ?? null] as const;
       }
+      if (target === "claude-code") {
+        return [target, snapshot.claudeCodeDiscovery?.checkedAt ?? null] as const;
+      }
       return [target, activeRuntime?.lastHeartbeatAt ?? null] as const;
     }),
   );
@@ -198,7 +248,12 @@ export function connectionCheckTimestamps(
 export function hasFreshConnectionCheckResults(
   snapshot: Pick<
     WorkbenchSnapshot,
-    "activeWorkspaceId" | "memoryHealth" | "providerHealth" | "runtimeDevices" | "workspaces"
+    | "activeWorkspaceId"
+    | "memoryHealth"
+    | "providerHealth"
+    | "runtimeDevices"
+    | "workspaces"
+    | "claudeCodeDiscovery"
   >,
   previous: ConnectionCheckTimestampMap,
   targets: readonly ConnectionCheckTarget[],
@@ -240,7 +295,12 @@ export function applyAgentHubEventToSnapshot(
       ...snapshot,
       runs: snapshot.runs.map((run) =>
         run.id === event.runId
-          ? updateRunFromStatusEvent(run, event.payload.status, event.payload.message ?? null, event.occurredAt)
+          ? updateRunFromStatusEvent(
+              run,
+              event.payload.status,
+              event.payload.message ?? null,
+              event.occurredAt,
+            )
           : run,
       ),
     };
@@ -256,9 +316,7 @@ export function applyAgentHubEventToSnapshot(
       ? {
           ...existing,
           parts: existing.parts.map((part, index) =>
-            index === 0
-              ? { ...part, text: `${part.text ?? ""}${event.payload.delta}` }
-              : part,
+            index === 0 ? { ...part, text: `${part.text ?? ""}${event.payload.delta}` } : part,
           ),
           updatedAt: event.occurredAt,
         }
@@ -295,9 +353,12 @@ function updateRunFromStatusEvent(
   message: string | null,
   occurredAt: string,
 ): Run {
-  const startedAt = run.startedAt ?? (status === "running" || status === "streaming" ? occurredAt : null);
+  const startedAt =
+    run.startedAt ?? (status === "running" || status === "streaming" ? occurredAt : null);
   const completedAt =
-    status === "completed" || status === "failed" || status === "cancelled" ? occurredAt : run.completedAt;
+    status === "completed" || status === "failed" || status === "cancelled"
+      ? occurredAt
+      : run.completedAt;
   return {
     ...run,
     status,

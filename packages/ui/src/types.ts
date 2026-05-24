@@ -1,6 +1,8 @@
 import type {
   Agent,
   Artifact,
+  ClaudeCodeDiscoverySummary,
+  ClaudeCodeRunOptions,
   DiffFileSummary,
   MemoryHealth,
   PermissionRequest,
@@ -82,6 +84,7 @@ export interface RuntimeSummaryViewModel {
   readonly memoryHealth: MemoryHealth | null;
   readonly providerStatusLabel: string;
   readonly memoryStatusLabel: string;
+  readonly claudeCodeDiscovery: ClaudeCodeDiscoverySummary | null;
 }
 
 export interface AgentTargetViewModel {
@@ -89,9 +92,13 @@ export interface AgentTargetViewModel {
   readonly label: string;
   readonly role: Agent["role"];
   readonly target: string;
+  readonly runtimeProvider: AgentRuntimeProvider;
   readonly providerLabel: string;
   readonly capabilityTags: readonly string[];
+  readonly claudeCodeControls?: ComposerClaudeCodeControls | null;
 }
+
+export type AgentRuntimeProvider = "claude-code" | "codex";
 
 export interface ComposerTargetState {
   readonly selectedTarget: string;
@@ -100,6 +107,21 @@ export interface ComposerTargetState {
   readonly disabled: boolean;
   readonly disabledReason: string | null;
   readonly targets: readonly AgentTargetViewModel[];
+  readonly claudeCodeControls: ComposerClaudeCodeControls | null;
+}
+
+export interface ComposerClaudeCodeControls {
+  readonly permissionPreset: NonNullable<ClaudeCodeRunOptions["permissionPreset"]>;
+  readonly runtimeProfileId: string;
+  readonly mcpProfileId: string;
+  readonly pluginProfileId?: string | null;
+  readonly effort: NonNullable<ClaudeCodeRunOptions["effort"]>;
+  readonly sessionBehavior: NonNullable<ClaudeCodeRunOptions["session"]>["behavior"];
+  readonly sessionId?: string | null;
+  readonly settingsSource: NonNullable<ClaudeCodeRunOptions["settingsSource"]>;
+  readonly hooksPolicy: NonNullable<ClaudeCodeRunOptions["hooksPolicy"]>;
+  readonly allowedTools?: readonly string[];
+  readonly disallowedTools?: readonly string[];
 }
 
 export interface AgentPageAgentViewModel {
@@ -107,11 +129,15 @@ export interface AgentPageAgentViewModel {
   readonly label: string;
   readonly role: Agent["role"];
   readonly providerLabel: string;
+  readonly runtimeProvider: AgentRuntimeProvider;
   readonly systemPrompt: string;
   readonly capabilityTags: readonly string[];
   readonly policyJson: string;
   readonly memoryNamespace: string;
   readonly defaultAgent: boolean;
+  readonly claudeCodeDefaults: ComposerClaudeCodeControls | null;
+  readonly highRiskClaudeCode: boolean;
+  readonly hooksEnabled: boolean;
 }
 
 export interface AgentsPageViewModel {
@@ -131,8 +157,13 @@ export interface ProviderConnectionViewModel {
   readonly comingSoon: boolean;
 }
 
-export type ConnectionItemKind = "runtime" | "provider" | "memory" | "future-provider";
-export type ConnectionCheckTargetId = "runtime" | "provider" | "memory";
+export type ConnectionItemKind =
+  | "runtime"
+  | "provider"
+  | "memory"
+  | "claude-code-discovery"
+  | "future-provider";
+export type ConnectionCheckTargetId = "runtime" | "provider" | "memory" | "claude-code";
 
 export interface ConnectionMetadataRow {
   readonly label: string;
@@ -232,6 +263,13 @@ export interface RunViewModel {
   readonly startedAt: string;
   readonly completedAt: string;
   readonly failureReason: string | null;
+  readonly claudeCodeProfileLabel: string | null;
+  readonly claudeCodePermissionLabel: string | null;
+  readonly claudeCodeMcpLabel: string | null;
+  readonly claudeCodeEffortLabel: string | null;
+  readonly claudeCodeSettingsLabel: string | null;
+  readonly claudeCodeOverrideSource: string | null;
+  readonly highRiskClaudeCode: boolean;
 }
 
 export interface ChatInfoParticipantViewModel extends AgentTargetViewModel {

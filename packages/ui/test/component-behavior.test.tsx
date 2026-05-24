@@ -194,7 +194,7 @@ describe("AgentHub component behavior", () => {
       'input[aria-label="Search agents to add"]',
     ) as HTMLInputElement;
     expect(search).toBeTruthy();
-    expect(document.querySelector("select")).toBeNull();
+    expect(document.querySelector('[role="dialog"] select')).toBeNull();
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Researcher");
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Reviewer");
 
@@ -247,11 +247,13 @@ describe("AgentHub component behavior", () => {
 
     expect(document.querySelector('input[aria-label="Search settings"]')).toBeTruthy();
     expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Language");
-    expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Appearance");
+    expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain(
+      "Appearance",
+    );
 
-    const shortcuts = Array.from(
-      document.querySelectorAll(".agenthub-settings-category-row"),
-    ).find((button) => button.textContent?.includes("Shortcuts")) as HTMLButtonElement;
+    const shortcuts = Array.from(document.querySelectorAll(".agenthub-settings-category-row")).find(
+      (button) => button.textContent?.includes("Shortcuts"),
+    ) as HTMLButtonElement;
     await act(async () => {
       shortcuts.click();
       await settle();
@@ -263,7 +265,9 @@ describe("AgentHub component behavior", () => {
       "Language",
     );
 
-    const search = document.querySelector('input[aria-label="Search settings"]') as HTMLInputElement;
+    const search = document.querySelector(
+      'input[aria-label="Search settings"]',
+    ) as HTMLInputElement;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
         search,
@@ -320,15 +324,13 @@ describe("AgentHub component behavior", () => {
       await settle();
     });
 
-    const checkAll = document.querySelector(
-      'button[aria-label="Check all"]',
-    ) as HTMLButtonElement;
+    const checkAll = document.querySelector('button[aria-label="Check all"]') as HTMLButtonElement;
     await act(async () => {
       checkAll.click();
       await settle();
     });
 
-    expect(onCheckConnections).toHaveBeenLastCalledWith(["provider"]);
+    expect(onCheckConnections).toHaveBeenLastCalledWith(["provider", "claude-code"]);
   });
 
   it("shows add-agent empty and no-results states", async () => {

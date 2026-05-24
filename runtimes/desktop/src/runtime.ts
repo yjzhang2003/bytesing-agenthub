@@ -1,6 +1,7 @@
 import type {
   ProviderHealth,
   ProviderRuntimeEvent,
+  ClaudeCodeDiscoverySummary,
   RuntimeConnectionCheckResult,
   RuntimeCommand,
   RuntimeRegistrationPayload,
@@ -9,12 +10,17 @@ import type { AgentMemoryRuntimeClient } from "./agent-memory-client.js";
 import { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
 import { readWorkspaceGitMetadata, type WorkspaceGitMetadata } from "./git.js";
 import type { AgentRunHandle, AgentRunRequest, ProviderAdapter } from "./provider-adapter.js";
+import { materializeClaudeCodeProfile } from "./claude-code-profile.js";
 
 export interface DesktopRuntimeConfig {
   readonly deviceName: string;
   readonly controlPlaneUrl: string;
   readonly authToken: string;
   readonly heartbeatSeconds: number;
+  readonly claudeCode?: {
+    readonly profileRoot: string;
+    readonly pluginDirs: readonly string[];
+  };
 }
 
 export interface LocalWorkspaceRegistration {
@@ -31,6 +37,7 @@ export class DesktopRuntime {
   readonly #activeRuns = new Map<string, AgentRunHandle>();
   readonly #memoryClient: AgentMemoryRuntimeClient | null;
   readonly #checkProviderHealth: (() => Promise<ProviderHealth>) | null;
+  readonly #discoverClaudeCode: (() => Promise<ClaudeCodeDiscoverySummary>) | null;
 
   constructor(
     config: DesktopRuntimeConfig,
@@ -38,6 +45,7 @@ export class DesktopRuntime {
     options: {
       readonly memoryClient?: AgentMemoryRuntimeClient | null;
       readonly checkProviderHealth?: (() => Promise<ProviderHealth>) | null;
+      readonly discoverClaudeCode?: (() => Promise<ClaudeCodeDiscoverySummary>) | null;
     } = {},
   ) {
     this.#config = config;
@@ -47,6 +55,7 @@ export class DesktopRuntime {
     });
     this.#memoryClient = options.memoryClient ?? null;
     this.#checkProviderHealth = options.checkProviderHealth ?? null;
+    this.#discoverClaudeCode = options.discoverClaudeCode ?? null;
     for (const adapter of adapters) {
       this.#adapters.set(adapter.kind, adapter);
     }
@@ -189,6 +198,11 @@ export class DesktopRuntime {
       );
     }
 
+    const claudeCodeLaunchOptions =
+      payload.providerMode === "claude-code" && payload.claudeCode
+        ? await this.#materializeClaudeCodeLaunchOptions(payload)
+        : payload.claudeCode;
+
     await this.startProviderRun(
       payload.providerMode,
       {
@@ -198,6 +212,7 @@ export class DesktopRuntime {
         prompt: payload.prompt,
         systemPrompt,
         conversationContext: [],
+        ...(claudeCodeLaunchOptions ? { claudeCode: claudeCodeLaunchOptions } : {}),
       },
       (event) => {
         if (event.type === "message.delta" && memory?.enabled && this.#memoryClient) {
@@ -221,6 +236,33 @@ export class DesktopRuntime {
       },
     );
     await Promise.all(observationPromises);
+  }
+
+  async #materializeClaudeCodeLaunchOptions(
+    payload: Extract<RuntimeCommand, { readonly type: "run.start" }>["payload"],
+  ): Promise<AgentRunRequest["claudeCode"]> {
+    if (!payload.claudeCode) {
+      return undefined;
+    }
+    const profileRoot =
+      this.#config.claudeCode?.profileRoot ?? `${process.env.HOME ?? "."}/.agenthub/claude-code`;
+    const materialized = await materializeClaudeCodeProfile({
+      ...payload.claudeCode,
+      agentId: payload.agentId,
+      profileRoot,
+      runId: payload.runId,
+      settingsSource: payload.claudeCode.settingsSource ?? "managed",
+      workspaceId: payload.workspaceId,
+      workspacePath: payload.workspacePath,
+    });
+    return {
+      ...payload.claudeCode,
+      settingSources: materialized.settingSources,
+      ...(materialized.settingsPath ? { settingsPath: materialized.settingsPath } : {}),
+      ...(materialized.mcpConfigPath ? { mcpConfigPath: materialized.mcpConfigPath } : {}),
+      pluginDirs: this.#config.claudeCode?.pluginDirs ?? [],
+      strictMcpConfig: materialized.strictMcpConfig,
+    };
   }
 
   async handleConnectionCheckCommand(
@@ -259,6 +301,11 @@ export class DesktopRuntime {
                   checkedAt,
                   failureReason: "agentmemory health checker is not configured",
                 },
+          }
+        : {}),
+      ...(command.payload.targets.includes("claude-code") && this.#discoverClaudeCode
+        ? {
+            claudeCodeDiscovery: await this.#discoverClaudeCode(),
           }
         : {}),
     };

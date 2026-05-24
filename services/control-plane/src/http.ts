@@ -13,6 +13,7 @@ import {
   runtimeHeartbeatPayloadSchema,
   runtimeRegistrationPayloadSchema,
   type AgentHubAuthMode,
+  type ClaudeCodeRunOptions,
   type ServiceHealth,
 } from "@agenthub/contracts";
 import { parseBearerToken, verifySupabaseJwt, type AuthContext } from "./auth.js";
@@ -229,6 +230,9 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
           workspace: parsed.workspace,
           ...(parsed.providerHealth ? { providerHealth: parsed.providerHealth } : {}),
           ...(parsed.memoryHealth ? { memoryHealth: parsed.memoryHealth } : {}),
+          ...(parsed.claudeCodeDiscovery
+            ? { claudeCodeDiscovery: parsed.claudeCodeDiscovery }
+            : {}),
           ...(parsed.deviceId ? { id: parsed.deviceId } : {}),
         });
         sendJson(response, 200, { device });
@@ -276,6 +280,9 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
           runtimeDeviceId: result.runtimeDeviceId,
           ...(result.providerHealth ? { providerHealth: result.providerHealth } : {}),
           ...(result.memoryHealth ? { memoryHealth: result.memoryHealth } : {}),
+          ...(result.claudeCodeDiscovery
+            ? { claudeCodeDiscovery: result.claudeCodeDiscovery }
+            : {}),
         });
         sendJson(response, 202, { ok: true });
         return;
@@ -283,6 +290,7 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
 
       if (request.method === "POST" && url.pathname === agentHubApiPaths.runs) {
         const body = createLocalRunRequestSchema.parse(await readJson(request));
+        const claudeCode = body.claudeCode as ClaudeCodeRunOptions | undefined;
         const run = registry.createRun(
           auth.userId,
           {
@@ -291,8 +299,9 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
             agentId: body.agentId,
             prompt: body.prompt,
             ...(body.planId ? { planId: body.planId } : {}),
+            ...(claudeCode ? { claudeCode } : {}),
           },
-          options.providerMode ?? "smoke",
+          options.providerMode ?? "claude-code",
         );
         sendJson(response, 201, { run });
         return;

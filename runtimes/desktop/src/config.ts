@@ -5,6 +5,8 @@ import {
   type ProviderHealth,
   type RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
+import { delimiter, join } from "node:path";
+import { homedir } from "node:os";
 import { readWorkspaceGitMetadata } from "./git.js";
 
 export interface DesktopRuntimeProcessConfig {
@@ -17,6 +19,10 @@ export interface DesktopRuntimeProcessConfig {
   readonly pollSeconds: number;
   readonly providerMode: AgentHubProviderMode;
   readonly claudeCodeBin: string;
+  readonly claudeCode: {
+    readonly profileRoot: string;
+    readonly pluginDirs: readonly string[];
+  };
   readonly agentMemory: {
     readonly enabled: boolean;
     readonly url: string;
@@ -41,8 +47,15 @@ export function readDesktopRuntimeConfig(
     deviceName: env.AGENTHUB_RUNTIME_DEVICE_NAME ?? agentHubLocalDefaults.runtimeDeviceName,
     heartbeatSeconds: Number.parseInt(env.AGENTHUB_RUNTIME_HEARTBEAT_SECONDS ?? "15", 10),
     pollSeconds: Number.parseInt(env.AGENTHUB_RUNTIME_POLL_SECONDS ?? "2", 10),
-    providerMode: env.AGENTHUB_PROVIDER_MODE === "claude-code" ? "claude-code" : "smoke",
+    providerMode: env.AGENTHUB_PROVIDER_MODE === "smoke" ? "smoke" : "claude-code",
     claudeCodeBin: env.AGENTHUB_CLAUDE_CODE_BIN ?? "claude",
+    claudeCode: {
+      profileRoot:
+        env.AGENTHUB_CLAUDE_CODE_PROFILE_ROOT ?? join(homedir(), ".agenthub", "claude-code"),
+      pluginDirs: (env.AGENTHUB_CLAUDE_CODE_PLUGIN_DIRS ?? "")
+        .split(delimiter)
+        .filter(Boolean),
+    },
     agentMemory: {
       enabled: env.AGENTMEMORY_ENABLED === "1" || env.AGENTMEMORY_ENABLED === "true",
       url: env.AGENTMEMORY_URL ?? "http://127.0.0.1:3111",

@@ -14,6 +14,7 @@ import type {
   InspectorSelection,
   WorkbenchLayoutMode,
   WorkbenchViewModel,
+  ComposerClaudeCodeControls,
 } from "../types.js";
 import { createWorkbenchViewModel, workbenchLayoutForWidth } from "../view-model.js";
 import { workbenchCss } from "../styles.js";
@@ -46,7 +47,11 @@ export function AgentHubWorkbench(props: {
   readonly initialLeftCollapsed?: boolean;
   readonly locale?: AgentHubLocale | undefined;
   readonly onRetry?: () => void;
-  readonly onSend?: (message: string, target?: string) => void;
+  readonly onSend?: (
+    message: string,
+    target?: string,
+    claudeCode?: ComposerClaudeCodeControls,
+  ) => void;
   readonly onCreateAgentRole?: (input: Omit<AgentRoleMutationInput, "agentId">) => void;
   readonly onUpdateAgentRole?: (
     input: AgentRoleMutationInput & { readonly agentId: string },
@@ -57,7 +62,9 @@ export function AgentHubWorkbench(props: {
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onRefreshConnections?: () => void;
-  readonly onCheckConnections?: (targets: readonly ConnectionCheckTargetId[]) => void | Promise<void>;
+  readonly onCheckConnections?: (
+    targets: readonly ConnectionCheckTargetId[],
+  ) => void | Promise<void>;
 }): React.ReactElement {
   const [storedLocale, setStoredLocale] = React.useState<AgentHubLocale>(() => {
     if (props.locale) {
@@ -95,8 +102,13 @@ export function AgentHubWorkbench(props: {
   }, [activeConversationIdOverride, props.snapshot]);
   const model =
     props.viewModel ?? createWorkbenchViewModel(effectiveSnapshot, { checkingConnectionIds });
+  const defaultChatSelection = model.inspector.chatInfo
+    ? ({ id: model.inspector.chatInfo.id, mode: "chat-info" } as const)
+    : null;
   const [selection, setSelection] = React.useState<InspectorSelection | null>(
-    props.initialInspectorSelection ?? model.inspector.selection,
+    props.initialInspectorSelection !== undefined
+      ? props.initialInspectorSelection
+      : (model.inspector.selection ?? defaultChatSelection),
   );
   const [fullScreenDiffId, setFullScreenDiffId] = React.useState<string | null>(
     props.initialFullScreenDiffId ?? null,
@@ -196,7 +208,8 @@ export function AgentHubWorkbench(props: {
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
   const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
-  const renderOverlayInspector = !managementPage && overlayInspectorLayout && mobileRightOpen;
+  const renderOverlayInspector =
+    !renderInspector && !managementPage && overlayInspectorLayout && mobileRightOpen;
   const fullScreenDiff =
     fullScreenDiffId && model.inspector.diff?.id === fullScreenDiffId ? model.inspector.diff : null;
   const openChatInfo = React.useCallback(() => {
@@ -257,13 +270,13 @@ export function AgentHubWorkbench(props: {
         if (selection?.mode === "chat-info") {
           setSelection({ id: conversationId, mode: "chat-info" });
         } else {
-          setSelection(null);
+          setSelection(defaultChatSelection);
         }
       }
       setCenterView("conversation");
       setMobileLeftOpen(false);
     },
-    [props.onOpenConversation, selection?.mode],
+    [defaultChatSelection, props.onOpenConversation, selection?.mode],
   );
   const checkConnections = React.useCallback(
     async (targets: readonly ConnectionCheckTargetId[]) => {
@@ -422,7 +435,7 @@ export function AgentHubWorkbench(props: {
                 />
                 {!leftCollapsed && !compactLeftNavigation ? (
                   <div
-                      aria-label={
+                    aria-label={
                       centerView === "connections"
                         ? i18n.t("connections.resizeProviderList")
                         : centerView === "agents" || centerView === "settings"
@@ -682,6 +695,7 @@ export function AgentHubWorkbench(props: {
                     locale={activeLocale}
                     modeLabel={model.composer.modeLabel}
                     {...(props.onSend ? { onSend: props.onSend } : {})}
+                    claudeCodeControls={model.composer.claudeCodeControls}
                     selectedTarget={model.composer.selectedTarget}
                     targets={model.composer.targets}
                   />

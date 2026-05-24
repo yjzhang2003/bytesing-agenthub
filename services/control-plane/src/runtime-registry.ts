@@ -2,6 +2,8 @@ import type {
   Agent,
   AgentMemoryConfig,
   AgentHubProviderMode,
+  ClaudeCodeDiscoverySummary,
+  ClaudeCodeRunOptions,
   Conversation,
   ConversationParticipant,
   CreateConnectionCheckRequest,
@@ -23,7 +25,7 @@ import type {
   Workspace,
   WorkspaceMetadata,
 } from "@agenthub/contracts";
-import { agentHubLocalDefaults } from "@agenthub/contracts";
+import { agentHubLocalDefaults, claudeCodeRunOptionsSchema } from "@agenthub/contracts";
 import type { AgentHubEvent } from "@agenthub/contracts";
 import { ControlPlaneEventBus } from "./events.js";
 
@@ -36,6 +38,7 @@ export interface RegisterRuntimeDeviceInput {
   readonly workspace?: WorkspaceMetadata;
   readonly providerHealth?: ProviderHealth;
   readonly memoryHealth?: MemoryHealth;
+  readonly claudeCodeDiscovery?: ClaudeCodeDiscoverySummary;
 }
 
 export interface WorkspaceBinding {
@@ -51,6 +54,7 @@ export interface CreateRunInput {
   readonly agentId: Id;
   readonly prompt?: string;
   readonly planId?: Id | null;
+  readonly claudeCode?: ClaudeCodeRunOptions;
 }
 
 export interface ConnectionCheckRequestResult {
@@ -76,6 +80,7 @@ export class ControlPlaneRegistry {
   readonly #conversationParticipants = new Map<Id, ConversationParticipant>();
   readonly #providerHealth = new Map<Id, ProviderHealth>();
   readonly #memoryHealth = new Map<Id, MemoryHealth>();
+  readonly #claudeCodeDiscovery = new Map<Id, ClaudeCodeDiscoverySummary>();
 
   constructor(
     options: {
@@ -126,6 +131,9 @@ export class ControlPlaneRegistry {
     }
     if (input.memoryHealth) {
       this.#memoryHealth.set(ownerUserId, input.memoryHealth);
+    }
+    if (input.claudeCodeDiscovery) {
+      this.#claudeCodeDiscovery.set(ownerUserId, input.claudeCodeDiscovery);
     }
     this.#events.publish(this.#deviceStatusEvent(device));
     return device;
@@ -187,7 +195,7 @@ export class ControlPlaneRegistry {
   createRun(
     ownerUserId: Id,
     input: CreateRunInput,
-    providerMode: AgentHubProviderMode = "smoke",
+    providerMode: AgentHubProviderMode = "claude-code",
   ): Run {
     const conversation = this.#requireConversationAvailable(ownerUserId, input.conversationId);
     if (conversation && conversation.workspaceId !== input.workspaceId) {
@@ -203,6 +211,7 @@ export class ControlPlaneRegistry {
       throw new Error("Workspace runtime is offline");
     }
     const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
+    const effectiveProviderMode = this.#effectiveProviderMode(agent, providerMode);
     if (conversation) {
       const activeParticipants = this.listConversationParticipants(ownerUserId, conversation.id);
       if (!activeParticipants.some((participant) => participant.agentId === agent.id)) {
@@ -211,13 +220,14 @@ export class ControlPlaneRegistry {
     }
 
     const now = this.#now().toISOString();
+    const claudeCodeOptions = this.#effectiveClaudeCodeOptions(agent, input.claudeCode);
     const userMessage: Message = {
       id: crypto.randomUUID(),
       ownerUserId,
       conversationId: input.conversationId,
       authorKind: "user",
       authorId: ownerUserId,
-      parts: [{ type: "text", text: input.prompt ?? "Run AgentHub local smoke task" }],
+      parts: [{ type: "text", text: input.prompt ?? "Run AgentHub local task" }],
       replyToMessageId: null,
       createdAt: now,
       updatedAt: now,
@@ -233,6 +243,20 @@ export class ControlPlaneRegistry {
       startedAt: null,
       completedAt: null,
       failureReason: null,
+      ...(claudeCodeOptions
+        ? {
+            claudeCode: {
+              ...claudeCodeOptions.options,
+              overrideSource: claudeCodeOptions.overrideSource,
+              ...(claudeCodeOptions.options.permissionPreset
+                ? { effectivePermissionPreset: claudeCodeOptions.options.permissionPreset }
+                : {}),
+              ...(claudeCodeOptions.options.settingsSource
+                ? { effectiveSettingsSource: claudeCodeOptions.options.settingsSource }
+                : {}),
+            },
+          }
+        : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -250,13 +274,47 @@ export class ControlPlaneRegistry {
         conversationId: run.conversationId,
         agentId: run.agentId,
         workspacePath: binding.localPath,
-        prompt: input.prompt ?? "Run AgentHub local smoke task",
+        prompt: input.prompt ?? "Run AgentHub local task",
         systemPrompt: agent.systemPrompt,
-        providerMode,
+        providerMode: effectiveProviderMode,
         memory: this.#agentMemoryConfig(ownerUserId, run.workspaceId, input.agentId),
+        ...(claudeCodeOptions ? { claudeCode: claudeCodeOptions.options } : {}),
       },
     });
     return run;
+  }
+
+  #effectiveClaudeCodeOptions(
+    agent: Agent,
+    override: ClaudeCodeRunOptions | undefined,
+  ):
+    | {
+        readonly options: ClaudeCodeRunOptions;
+        readonly overrideSource: "agent-default" | "run-override";
+      }
+    | undefined {
+    if (override) {
+      return { options: override, overrideSource: "run-override" };
+    }
+    const parsed = claudeCodeRunOptionsSchema.safeParse(agent.policy["claudeCode"]);
+    return parsed.success
+      ? { options: parsed.data as ClaudeCodeRunOptions, overrideSource: "agent-default" }
+      : undefined;
+  }
+
+  #effectiveProviderMode(agent: Agent, fallback: AgentHubProviderMode): AgentHubProviderMode {
+    if (fallback === "smoke") {
+      return fallback;
+    }
+    const runtime = agent.policy["runtime"];
+    const provider =
+      runtime && typeof runtime === "object" && !Array.isArray(runtime)
+        ? (runtime as Record<string, unknown>)["provider"]
+        : agent.policy["runtimeProvider"];
+    if (provider === "codex") {
+      throw new Error("Codex runtime is not configured yet");
+    }
+    return "claude-code";
   }
 
   createAgent(ownerUserId: Id, input: CreateAgentRequest): Agent {
@@ -429,6 +487,10 @@ export class ControlPlaneRegistry {
     return this.#memoryHealth.get(ownerUserId) ?? null;
   }
 
+  latestClaudeCodeDiscovery(ownerUserId: Id): ClaudeCodeDiscoverySummary | null {
+    return this.#claudeCodeDiscovery.get(ownerUserId) ?? null;
+  }
+
   requestConnectionChecks(
     ownerUserId: Id,
     input: CreateConnectionCheckRequest,
@@ -442,7 +504,8 @@ export class ControlPlaneRegistry {
     const device = this.#requireOwnedDevice(ownerUserId, binding.runtimeDeviceId);
     const runtimeOnline = device.status === "online" || device.status === "active-running";
     const queuedTargets = input.targets.filter(
-      (target): target is LocalConnectionCheckTarget => target === "provider" || target === "memory",
+      (target): target is LocalConnectionCheckTarget =>
+        target === "provider" || target === "memory" || target === "claude-code",
     );
     if (queuedTargets.length > 0 && !runtimeOnline) {
       throw new Error("Desktop Runtime must be online to check local connections");
@@ -466,16 +529,16 @@ export class ControlPlaneRegistry {
     };
   }
 
-  recordRuntimeConnectionCheckResult(
-    ownerUserId: Id,
-    result: RuntimeConnectionCheckResult,
-  ): void {
+  recordRuntimeConnectionCheckResult(ownerUserId: Id, result: RuntimeConnectionCheckResult): void {
     this.#requireOwnedDevice(ownerUserId, result.runtimeDeviceId);
     if (result.providerHealth) {
       this.#providerHealth.set(ownerUserId, result.providerHealth);
     }
     if (result.memoryHealth) {
       this.#memoryHealth.set(ownerUserId, result.memoryHealth);
+    }
+    if (result.claudeCodeDiscovery) {
+      this.#claudeCodeDiscovery.set(ownerUserId, result.claudeCodeDiscovery);
     }
   }
 
@@ -490,7 +553,8 @@ export class ControlPlaneRegistry {
         status === "completed" || status === "failed" || status === "cancelled"
           ? now
           : run.completedAt,
-      failureReason: failureReason ?? run.failureReason,
+      failureReason:
+        status === "failed" || status === "cancelled" ? (failureReason ?? run.failureReason) : null,
       updatedAt: now,
     };
     this.#runs.set(updated.id, updated);
@@ -649,6 +713,7 @@ export class ControlPlaneRegistry {
       workspaceMetadata: metadata,
       providerHealth: this.latestProviderHealth(ownerUserId),
       memoryHealth: this.latestMemoryHealth(ownerUserId),
+      claudeCodeDiscovery: this.latestClaudeCodeDiscovery(ownerUserId),
       conversations,
       conversationParticipants: [...this.#conversationParticipants.values()].filter(
         (participant) => participant.ownerUserId === ownerUserId && !participant.archivedAt,

@@ -5,7 +5,7 @@
 - Node.js 24 or newer.
 - pnpm 10.
 - Supabase project or local Supabase stack for account-backed development.
-- Claude Code installed and authenticated on the Desktop Runtime machine when using `AGENTHUB_PROVIDER_MODE=claude-code`.
+- Claude Code installed and authenticated on the Desktop Runtime machine for normal local runs. Set `AGENTHUB_PROVIDER_MODE=smoke` only when you want deterministic smoke output.
 
 ## Install
 
@@ -14,7 +14,7 @@ pnpm install
 cp .env.example .env.local
 ```
 
-The default local/demo mode does not require hosted Supabase credentials or Claude Code. It uses a deterministic local user and a decoupled smoke provider so Web, Desktop, Control Plane, and Desktop Runtime can be verified first.
+Local/demo mode does not require hosted Supabase credentials. Desktop Runtime defaults to the real Claude Code provider when `AGENTHUB_PROVIDER_MODE` is unset, so normal local runs require an installed and authenticated `claude` CLI. Deterministic verification scripts set `AGENTHUB_PROVIDER_MODE=smoke` themselves.
 
 ## Quick Start
 
@@ -46,6 +46,7 @@ Additional local smoke checks:
 ```bash
 pnpm smoke:claude-code:fake
 pnpm smoke:memory
+AGENTHUB_RUN_REAL_CLAUDE_CODE_SMOKE=1 pnpm smoke:claude-code:real
 ```
 
 Expected local URLs:
@@ -72,7 +73,7 @@ Local/demo mode:
 - `AGENTHUB_AUTH_MODE=local-demo`
 - `AGENTHUB_LOCAL_AUTH_TOKEN=agenthub-local-demo-token`
 - `AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:5310`
-- `AGENTHUB_PROVIDER_MODE=smoke`
+- `AGENTHUB_PROVIDER_MODE` unset for real Claude Code, or `AGENTHUB_PROVIDER_MODE=smoke` for deterministic smoke verification
 - `AGENTHUB_WORKSPACE_PATH=/absolute/path/to/agenthub`
 - `AGENTHUB_WORKSPACE_NAME=AgentHub`
 
@@ -106,10 +107,20 @@ Desktop Runtime:
 
 Claude Code provider mode:
 
-- `AGENTHUB_PROVIDER_MODE=claude-code`
+- `AGENTHUB_PROVIDER_MODE` unset, or `AGENTHUB_PROVIDER_MODE=claude-code` when you want to be explicit
 - `AGENTHUB_CLAUDE_CODE_BIN=claude` or an absolute path to the authenticated Claude Code CLI
+- `AGENTHUB_CLAUDE_CODE_PROFILE_ROOT=/absolute/path` to override the default `~/.agenthub/claude-code`
+- `AGENTHUB_CLAUDE_CODE_PLUGIN_DIRS=/path/to/pluginA:/path/to/pluginB` to expose additional local plugin directories on macOS/Linux
 
-When these are set on the Desktop Runtime process, new Control Plane run commands are executed by the Claude Code provider adapter. Desktop Runtime preflights the binary and reports provider health in the workbench snapshot, `/runtime/provider-status`, and settings UI. Do not set `AGENTHUB_PROVIDER_MODE=claude-code` until the CLI is installed and authenticated on the same machine as the Desktop Runtime.
+When the provider mode is unset or explicitly `claude-code`, new Control Plane run commands are executed by the Claude Code provider adapter. Desktop Runtime preflights the binary and reports provider health plus Claude Code discovery summaries in the workbench snapshot and Connections UI. Set `AGENTHUB_PROVIDER_MODE=smoke` only for deterministic verification or when you need to work without the CLI.
+
+Managed Claude Code profile modes:
+
+- `inherit` lets Claude Code load user, project, and local settings.
+- `managed` passes AgentHub-managed settings, MCP config, and plugin directories while launching from the bound workspace. This is the composer default.
+- `isolated` constrains Claude Code to AgentHub-selected local profile files and strict MCP config when available.
+
+AgentHub stores generated profile files outside the workspace by default under `AGENTHUB_CLAUDE_CODE_PROFILE_ROOT` or `~/.agenthub/claude-code`. Workspace `.claude/settings*.json`, `.mcp.json`, `CLAUDE.md`, plugin files, hook commands, MCP secrets, and full `SKILL.md` contents stay local; clients receive only summaries such as names, counts, path labels, and status.
 
 Long-term memory with `rohitg00/agentmemory`:
 
@@ -146,23 +157,27 @@ pnpm --filter @agenthub/desktop rebuild electron
 
 ## Smoke Verification
 
-`pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode, waits for health and runtime registration, creates a minimal run, verifies command delivery through the Desktop Runtime, waits for smoke provider output to appear in the workbench snapshot, verifies the run reaches `completed`, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.
+`pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode with `AGENTHUB_PROVIDER_MODE=smoke`, waits for health and runtime registration, creates a minimal run, verifies command delivery through the Desktop Runtime, waits for smoke provider output to appear in the workbench snapshot, verifies the run reaches `completed`, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.
 
-`pnpm smoke:claude-code:fake` creates a temporary fake `claude` binary, verifies provider preflight, and completes a Claude Code-mode run without requiring a real Claude Code install. `pnpm smoke:memory` starts a stub agentmemory HTTP server and verifies health, role-scoped context lookup, and user/agent observation writes.
+`pnpm smoke:memory` starts a stub agentmemory HTTP server and also sets `AGENTHUB_PROVIDER_MODE=smoke` for deterministic output. `pnpm smoke:claude-code:fake` intentionally sets `AGENTHUB_PROVIDER_MODE=claude-code` with a temporary fake `claude` binary so the Claude Code adapter path can be verified without a real install.
+
+`AGENTHUB_RUN_REAL_CLAUDE_CODE_SMOKE=1 pnpm smoke:claude-code:real` is optional and invokes the real local Claude Code CLI. It starts the same local topology, checks provider health, queues a minimal plan-only run with managed settings and hooks disabled, then waits for normalized output through Control Plane. If the binary is missing, unauthenticated, or a selected profile is invalid, the script fails with a setup-focused message.
 
 Failure recovery:
 
 - Missing or busy Control Plane: confirm `CONTROL_PLANE_PORT` matches `AGENTHUB_CONTROL_PLANE_URL`, or run with a different port pair such as `AGENTHUB_CONTROL_PLANE_URL=http://127.0.0.1:5311 CONTROL_PLANE_PORT=5311 pnpm smoke:local`.
 - Offline Desktop Runtime: check the runtime terminal for registration or heartbeat failures, and confirm `AGENTHUB_LOCAL_AUTH_TOKEN`, `AGENTHUB_CONTROL_PLANE_URL`, and `AGENTHUB_WORKSPACE_PATH` match the Control Plane process.
 - Provider failure in smoke mode: inspect the smoke output for the missing step named by the failure message, such as runtime registration, run completion, or provider output recording.
-- Missing Claude Code binary: set `AGENTHUB_CLAUDE_CODE_BIN` to the installed CLI path or return to `AGENTHUB_PROVIDER_MODE=smoke`; Claude Code mode reports startup failures instead of silently falling back to smoke output.
+- Missing Claude Code binary: set `AGENTHUB_CLAUDE_CODE_BIN` to the installed CLI path or set `AGENTHUB_PROVIDER_MODE=smoke` for deterministic verification; Claude Code mode reports startup failures instead of silently falling back to smoke output.
+- Unsupported Claude Code flag: update the local Claude Code CLI or choose fewer managed profile options. The adapter reports unsupported structured output, permission, settings, MCP, plugin, effort, or session flags as visible run/provider failures.
+- Invalid MCP/plugin/profile setup: check `AGENTHUB_CLAUDE_CODE_PROFILE_ROOT`, `AGENTHUB_CLAUDE_CODE_PLUGIN_DIRS`, and local `.mcp.json`. Discovery redacts secrets, so inspect the local files on the Desktop Runtime machine for exact values.
 
 ## Known Limitations
 
 - iOS is not part of this runnable change; the SwiftUI client remains a future native implementation target.
 - Cloud execution is out of scope. All executable workspace access is through Desktop Runtime.
 - Hosted Supabase auth is optional for this local runnable path.
-- Claude Code real execution is optional. The default smoke provider verifies the same runtime/provider event boundary without invoking the CLI.
+- Deterministic smoke execution is explicit. Normal Desktop Runtime startup uses real Claude Code by default; smoke scripts opt into smoke where they need stable fake output.
 - Web and Desktop currently share the same Web workbench surface; Desktop-specific native controls can be added after the process topology is stable.
 
 ## Source Privacy Boundary

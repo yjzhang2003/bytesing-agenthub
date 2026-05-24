@@ -90,6 +90,15 @@ function renderInspectorBody(
   onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void,
 ): React.ReactNode {
   if (!selection) {
+    if (model.inspector.chatInfo) {
+      return (
+        <ChatInfoDetail
+          chat={model.inspector.chatInfo}
+          {...(onAddAgentToChat ? { onAddAgent: onAddAgentToChat } : {})}
+          {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
+        />
+      );
+    }
     return <EmptyDetail model={model} onSelect={onSelect} />;
   }
 
@@ -531,6 +540,27 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
           <dd>{props.run.completedAt}</dd>
         </dl>
       </DetailSection>
+      {props.run.claudeCodePermissionLabel ? (
+        <DetailSection title="Claude Code">
+          <dl>
+            <dt>Permission</dt>
+            <dd>{props.run.claudeCodePermissionLabel}</dd>
+            <dt>Runtime profile</dt>
+            <dd>{props.run.claudeCodeProfileLabel}</dd>
+            <dt>MCP profile</dt>
+            <dd>{props.run.claudeCodeMcpLabel}</dd>
+            <dt>Effort</dt>
+            <dd>{props.run.claudeCodeEffortLabel}</dd>
+            <dt>Settings</dt>
+            <dd>{props.run.claudeCodeSettingsLabel}</dd>
+            <dt>Source</dt>
+            <dd>{props.run.claudeCodeOverrideSource}</dd>
+          </dl>
+          {props.run.highRiskClaudeCode ? (
+            <p className="agenthub-warning">Full access was selected for this run.</p>
+          ) : null}
+        </DetailSection>
+      ) : null}
       {props.run.failureReason ? (
         <p className="agenthub-warning">{props.run.failureReason}</p>
       ) : null}

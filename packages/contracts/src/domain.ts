@@ -122,6 +122,26 @@ export interface Run extends UserOwned {
   readonly startedAt: ISODateTime | null;
   readonly completedAt: ISODateTime | null;
   readonly failureReason: string | null;
+  readonly claudeCode?: RunClaudeCodeMetadata | undefined;
+}
+
+export interface RunClaudeCodeMetadata {
+  readonly permissionPreset?: "plan-only" | "ask-first" | "auto-edits" | "full-access";
+  readonly settingsSource?: "inherit" | "managed" | "isolated";
+  readonly runtimeProfileId?: Id | null;
+  readonly mcpProfileId?: Id | null;
+  readonly pluginProfileId?: Id | null;
+  readonly hooksPolicy?: "inherit" | "disabled" | "enabled";
+  readonly allowedTools?: readonly string[];
+  readonly disallowedTools?: readonly string[];
+  readonly effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  readonly session?: {
+    readonly behavior: "new" | "continue" | "fork";
+    readonly sessionId?: Id | null;
+  };
+  readonly overrideSource: "agent-default" | "run-override";
+  readonly effectivePermissionPreset?: "plan-only" | "ask-first" | "auto-edits" | "full-access";
+  readonly effectiveSettingsSource?: "inherit" | "managed" | "isolated";
 }
 
 export interface PermissionRequest extends UserOwned {

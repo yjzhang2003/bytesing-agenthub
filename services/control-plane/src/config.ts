@@ -17,7 +17,7 @@ export function readControlPlaneConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ControlPlaneConfig {
   const authMode = env.AGENTHUB_AUTH_MODE === "supabase" ? "supabase" : "local-demo";
-  const providerMode = env.AGENTHUB_PROVIDER_MODE === "claude-code" ? "claude-code" : "smoke";
+  const providerMode = env.AGENTHUB_PROVIDER_MODE === "smoke" ? "smoke" : "claude-code";
 
   return {
     authMode,

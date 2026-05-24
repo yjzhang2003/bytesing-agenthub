@@ -7,9 +7,11 @@ export { agentHubApiPaths, agentHubLocalDefaults } from "./local-runtime.js";
 export {
   addConversationAgentRequestSchema,
   agentMemoryConfigSchema,
+  claudeCodeDiscoverySummarySchema,
   createAgentConversationRequestSchema,
   createConnectionCheckRequestSchema,
   createAgentRequestSchema,
+  claudeCodeRunOptionsSchema,
   createLocalRunRequestSchema,
   diffMetadataSchema,
   dispatchPlanStepSchema,
@@ -29,6 +31,7 @@ export {
 export type {
   AddConversationAgentRequestPayload,
   ConnectionCheckTargetPayload,
+  ClaudeCodeDiscoverySummaryPayload,
   CreateAgentConversationRequestPayload,
   CreateConnectionCheckRequestPayload,
   CreateAgentRequestPayload,
@@ -38,6 +41,7 @@ export type {
   OrchestratorDispatchPlan,
   ProviderHealthPayload,
   ProviderRuntimeEvent,
+  ClaudeCodeRunOptionsPayload,
   RuntimeConnectionCheckResultPayload,
   RuntimeCommandPayload,
   RuntimeRegistrationPayloadData,

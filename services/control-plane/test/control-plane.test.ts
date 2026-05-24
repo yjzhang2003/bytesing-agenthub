@@ -149,6 +149,124 @@ describe("control plane registry", () => {
     expect(cancelled.status).toBe("cancelling");
   });
 
+  it("includes agent Claude Code defaults in queued runtime commands", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Builder",
+      role: "worker",
+      systemPrompt: "Build carefully.",
+      capabilityTags: ["code"],
+      policy: {
+        claudeCode: {
+          permissionPreset: "plan-only",
+          settingsSource: "managed",
+          runtimeProfileId: "profile_engineering",
+          mcpProfileId: "mcp_project",
+          hooksPolicy: "disabled",
+          effort: "high",
+          session: { behavior: "new" },
+        },
+      },
+    });
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+
+    const run = registry.createRun(
+      "user_1",
+      {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "hello",
+      },
+      "claude-code",
+    );
+
+    expect(registry.getRun("user_1", run.id).claudeCode).toMatchObject({
+      permissionPreset: "plan-only",
+      overrideSource: "agent-default",
+      effectivePermissionPreset: "plan-only",
+      effectiveSettingsSource: "managed",
+    });
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      type: "run.start",
+      payload: {
+        providerMode: "claude-code",
+        claudeCode: {
+          permissionPreset: "plan-only",
+          settingsSource: "managed",
+          runtimeProfileId: "profile_engineering",
+          mcpProfileId: "mcp_project",
+          hooksPolicy: "disabled",
+          effort: "high",
+          session: { behavior: "new" },
+        },
+      },
+    });
+  });
+
+  it("lets composer Claude Code run options override agent defaults without mutating the agent", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Builder",
+      role: "worker",
+      systemPrompt: "Build carefully.",
+      capabilityTags: ["code"],
+      policy: {
+        claudeCode: {
+          permissionPreset: "ask-first",
+          settingsSource: "inherit",
+          effort: "medium",
+        },
+      },
+    });
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+
+    const run = registry.createRun(
+      "user_1",
+      {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "hello",
+        claudeCode: {
+          permissionPreset: "full-access",
+          settingsSource: "isolated",
+          effort: "xhigh",
+        },
+      },
+      "claude-code",
+    );
+
+    expect(registry.getRun("user_1", run.id).claudeCode).toMatchObject({
+      permissionPreset: "full-access",
+      overrideSource: "run-override",
+      effectivePermissionPreset: "full-access",
+      effectiveSettingsSource: "isolated",
+    });
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      type: "run.start",
+      payload: {
+        claudeCode: {
+          permissionPreset: "full-access",
+          settingsSource: "isolated",
+          effort: "xhigh",
+        },
+      },
+    });
+    expect(
+      registry.createWorkbenchSnapshot("user_1").agents.find((candidate) => candidate.id === agent.id)
+        ?.policy,
+    ).toMatchObject({
+      claudeCode: {
+        permissionPreset: "ask-first",
+        settingsSource: "inherit",
+        effort: "medium",
+      },
+    });
+  });
+
   it("records provider output into the workbench snapshot", () => {
     const { registry, device } = createRegisteredRunLoopRegistry();
     const run = registry.createRun("user_1", {
@@ -215,13 +333,16 @@ describe("control plane registry", () => {
       message: "done",
     });
 
-    expect(registry.getRun("user_1", run.id).completedAt).not.toBeNull();
+    expect(registry.getRun("user_1", run.id)).toMatchObject({
+      completedAt: expect.any(String),
+      failureReason: null,
+      status: "completed",
+    });
     expect(registry.events.snapshot().at(-1)).toMatchObject({
       type: "agent.run.completed",
       runId: run.id,
       payload: {
         status: "completed",
-        message: "done",
       },
     });
   });
@@ -276,6 +397,27 @@ describe("control plane registry", () => {
     expect(
       snapshot.conversationParticipants?.map((participant) => participant.agentId),
     ).not.toContain(agent.id);
+  });
+
+  it("does not route Codex-backed agents through Claude Code before Codex runtime exists", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Codex worker",
+      role: "worker",
+      systemPrompt: "Use Codex",
+      capabilityTags: ["code"],
+      policy: { runtime: { provider: "codex" } },
+    });
+
+    expect(() =>
+      registry.createRun("user_1", {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "hello",
+      }),
+    ).toThrow("Codex runtime is not configured yet");
   });
 
   it("persists conversation agent membership in snapshots", () => {
@@ -545,6 +687,55 @@ describe("control plane registry", () => {
     });
   });
 
+  it("queues Claude Code discovery checks and stores redacted discovery summaries", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const result = registry.requestConnectionChecks("user_1", {
+      workspaceId: "workspace_1",
+      targets: ["claude-code"],
+    });
+
+    expect(result.queuedTargets).toEqual(["claude-code"]);
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toMatchObject([
+      {
+        type: "connection.check",
+        payload: { targets: ["claude-code"] },
+      },
+    ]);
+
+    registry.recordRuntimeConnectionCheckResult("user_1", {
+      runtimeDeviceId: device.id,
+      claudeCodeDiscovery: {
+        binaryPathLabel: "claude",
+        checkedAt: "2026-05-24T00:00:00.000Z",
+        profileRootLabel: "/Users/example/.agenthub/claude-code",
+        plugins: [{ name: "superpowers", version: "5.1.0", pathLabel: "superpowers" }],
+        skills: [
+          {
+            name: "using-superpowers",
+            description: "Use when starting a conversation",
+            pluginName: "superpowers",
+            pathLabel: "superpowers/skills/using-superpowers/SKILL.md",
+          },
+        ],
+        mcpServers: [{ name: "github", transport: "stdio" }],
+        workspaceClaudeFiles: {
+          claudeDir: true,
+          settingsJson: false,
+          settingsLocalJson: false,
+          mcpJson: true,
+          claudeMd: false,
+        },
+      },
+    });
+
+    expect(registry.createWorkbenchSnapshot("user_1").claudeCodeDiscovery).toMatchObject({
+      checkedAt: "2026-05-24T00:00:00.000Z",
+      plugins: [{ name: "superpowers" }],
+      skills: [{ name: "using-superpowers" }],
+      mcpServers: [{ name: "github" }],
+    });
+  });
+
   it("rejects local connection checks when the bound runtime is offline", () => {
     const registry = new ControlPlaneRegistry();
     const device = registry.registerRuntimeDevice("user_1", {
@@ -750,10 +941,21 @@ describe("control plane HTTP local mode", () => {
           conversationId: snapshotBody.activeConversationId,
           agentId: snapshotBody.agents[1].id,
           prompt: "smoke",
+          claudeCode: {
+            permissionPreset: "auto-edits",
+            settingsSource: "isolated",
+            effort: "high",
+          },
         }),
       });
       const runBody = await runResponse.json();
       expect(runBody.run.status).toBe("queued");
+      expect(runBody.run.claudeCode).toMatchObject({
+        permissionPreset: "auto-edits",
+        overrideSource: "run-override",
+        effectivePermissionPreset: "auto-edits",
+        effectiveSettingsSource: "isolated",
+      });
 
       const commands = await fetch(`${baseUrl}/runtime/commands?deviceId=runtime_local_demo`, {
         headers,
@@ -765,6 +967,17 @@ describe("control plane HTTP local mode", () => {
       expect(commandBody.commands.map((command: { type: string }) => command.type)).toContain(
         "run.start",
       );
+      expect(
+        commandBody.commands.find((command: { type: string }) => command.type === "run.start"),
+      ).toMatchObject({
+        payload: {
+          claudeCode: {
+            permissionPreset: "auto-edits",
+            settingsSource: "isolated",
+            effort: "high",
+          },
+        },
+      });
 
       const eventResponse = await fetch(`${baseUrl}/runtime/events`, {
         method: "POST",

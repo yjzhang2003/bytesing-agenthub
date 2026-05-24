@@ -1300,7 +1300,103 @@ body { overflow: hidden; }
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  min-width: max-content;
   transition: transform var(--agenthub-motion-medium), opacity var(--agenthub-motion-medium);
+}
+.agenthub-composer-icon-action {
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-composer-inline-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-composer-inline-select[data-tone="danger"] {
+  color: var(--agenthub-danger);
+}
+.agenthub-composer-inline-select .agenthub-icon {
+  width: 16px;
+  height: 16px;
+}
+.agenthub-composer-inline-select .agenthub-select {
+  width: auto;
+  min-width: 88px;
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+  padding: 3px 22px 3px 4px;
+  font-weight: 700;
+}
+.agenthub-composer-runtime-pill {
+  color: var(--agenthub-text-secondary);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 700;
+}
+.agenthub-composer-runtime-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(96px, 1fr));
+  gap: 8px;
+  align-items: end;
+  border-top: 1px solid var(--agenthub-border);
+  padding-top: 8px;
+}
+.agenthub-composer-runtime-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--agenthub-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.agenthub-composer-runtime-controls .agenthub-select,
+.agenthub-composer-runtime-controls .agenthub-input {
+  min-height: 30px;
+  border-color: var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-bg);
+  padding: 5px 8px;
+  font-size: var(--agenthub-type-sm);
+}
+.agenthub-composer-risk-confirmation {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0;
+  color: var(--agenthub-warning) !important;
+  font-size: var(--agenthub-type-sm);
+  font-weight: 700;
+}
+.agenthub-composer-risk-confirmation .agenthub-checkbox {
+  width: 16px;
+  height: 16px;
+}
+.agenthub-composer-advanced-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  color: var(--agenthub-text-secondary);
+  font-size: var(--agenthub-type-sm);
+}
+.agenthub-composer-advanced-controls[open] {
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+}
+.agenthub-composer-advanced-controls summary {
+  grid-column: 1 / -1;
+  cursor: pointer;
+  font-weight: 700;
+}
+.agenthub-composer-advanced-controls label {
+  min-height: 0;
 }
 .agenthub-composer-send {
   width: 36px;
@@ -1714,6 +1810,11 @@ body { overflow: hidden; }
 .agenthub-agent-settings-body > .agenthub-detail-section {
   padding: 12px 18px;
 }
+.agenthub-agent-settings-body > .agenthub-warning {
+  padding: 8px 18px 12px;
+  font-size: var(--agenthub-type-sm);
+  font-weight: 650;
+}
 .agenthub-agent-editor label,
 .agenthub-role-form label,
 .agenthub-agent-readonly-row {
@@ -1778,15 +1879,20 @@ body { overflow: hidden; }
   border-radius: var(--agenthub-radius);
   background: var(--agenthub-surface);
   color: var(--agenthub-text);
-  font: 600 var(--agenthub-type-md)/1.45 var(--agenthub-font);
-  padding: 8px 10px;
-  min-height: 34px;
+  font: 600 var(--agenthub-type-md) / 20px var(--agenthub-font);
+  min-height: 40px;
+  padding: 9px 10px;
+  vertical-align: middle;
 }
 .agenthub-agent-editor .agenthub-select {
-  font-size: var(--agenthub-type-md);
-}
-.agenthub-agent-editor .agenthub-select {
-  font: 600 var(--agenthub-type-md)/1.45 var(--agenthub-font);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23575f6b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  line-height: 20px;
+  padding-block: 9px;
+  padding-inline: 10px 34px;
+  background-position: right 10px center;
+  background-size: 16px 16px;
 }
 .agenthub-agent-editor .agenthub-input,
 .agenthub-agent-editor .agenthub-select {

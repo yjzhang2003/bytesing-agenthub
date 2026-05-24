@@ -62,7 +62,18 @@ function snapshot(
         displayName: "Researcher",
         id: "agent_researcher",
         ownerUserId: "user_1",
-        policy: { network: "ask" },
+        policy: {
+          network: "ask",
+          claudeCode: {
+            permissionPreset: "full-access",
+            runtimeProfileId: "research",
+            mcpProfileId: "project",
+            effort: "high",
+            settingsSource: "managed",
+            hooksPolicy: "enabled",
+            session: { behavior: "new" },
+          },
+        },
         providerId: "provider_1",
         role: "worker",
         systemPrompt: "Research before coding.",
@@ -128,6 +139,30 @@ function snapshot(
       checkedAt: now,
       failureReason: null,
     },
+    claudeCodeDiscovery: {
+      binaryPathLabel: "/usr/local/bin/claude",
+      checkedAt: now,
+      profileRootLabel: "~/.agenthub/claude-code",
+      plugins: [
+        { name: "superpowers", version: "5.1.0", pathLabel: "~/.claude/plugins/superpowers" },
+      ],
+      skills: [
+        {
+          name: "test-driven-development",
+          description: "TDD workflow",
+          pluginName: "superpowers",
+          pathLabel: "~/.claude/plugins/superpowers/skills/test-driven-development/SKILL.md",
+        },
+      ],
+      mcpServers: [{ name: "github", transport: "stdio" }],
+      workspaceClaudeFiles: {
+        claudeDir: true,
+        settingsJson: true,
+        settingsLocalJson: false,
+        mcpJson: true,
+        claudeMd: true,
+      },
+    },
     runs: [
       {
         agentId: "agent_2",
@@ -140,6 +175,18 @@ function snapshot(
         planId: "plan_1",
         startedAt: now,
         status: "running",
+        claudeCode: {
+          permissionPreset: "full-access",
+          effectivePermissionPreset: "full-access",
+          runtimeProfileId: "engineering",
+          mcpProfileId: "project",
+          effort: "high",
+          settingsSource: "managed",
+          effectiveSettingsSource: "managed",
+          hooksPolicy: "disabled",
+          session: { behavior: "new" },
+          overrideSource: "run-override",
+        },
         updatedAt: now,
         workspaceId: "workspace_1",
       },
@@ -242,6 +289,93 @@ describe("@agenthub/ui components", () => {
     }
   });
 
+  it("renders Claude Code composer controls and passes selected run options", () => {
+    const sends: unknown[] = [];
+    const html = renderToStaticMarkup(
+      <AgentMentionComposer
+        selectedTarget="@Implementer"
+        targets={[
+          {
+            capabilityTags: ["code"],
+            id: "agent_2",
+            label: "Implementer",
+            providerLabel: "Claude Code",
+            runtimeProvider: "claude-code",
+            role: "worker",
+            target: "@Implementer",
+          },
+        ]}
+        claudeCodeControls={{
+          permissionPreset: "ask-first",
+          runtimeProfileId: "default",
+          mcpProfileId: "none",
+          effort: "medium",
+          sessionBehavior: "new",
+          settingsSource: "managed",
+          hooksPolicy: "disabled",
+        }}
+        onSend={(message, target, options) => sends.push({ message, target, options })}
+      />,
+    );
+
+    expect(html).toContain("Permission");
+    expect(html).toContain("Ask first");
+    expect(html).toContain("Effort");
+    expect(html).toContain("Voice input");
+    expect(html).not.toContain("Runtime profile");
+    expect(html).not.toContain("Advanced Claude Code controls");
+  });
+
+  it("scopes Claude Code composer controls to the selected runtime target", () => {
+    const html = renderToStaticMarkup(
+      <AgentMentionComposer
+        selectedTarget="@Reviewer"
+        targets={[
+          {
+            capabilityTags: ["code"],
+            id: "agent_2",
+            label: "Implementer",
+            providerLabel: "Claude Code",
+            runtimeProvider: "claude-code",
+            role: "worker",
+            target: "@Implementer",
+            claudeCodeControls: {
+              permissionPreset: "full-access",
+              runtimeProfileId: "default",
+              mcpProfileId: "none",
+              effort: "high",
+              sessionBehavior: "new",
+              settingsSource: "managed",
+              hooksPolicy: "disabled",
+            },
+          },
+          {
+            capabilityTags: ["review"],
+            id: "agent_3",
+            label: "Reviewer",
+            providerLabel: "Codex",
+            runtimeProvider: "codex",
+            role: "worker",
+            target: "@Reviewer",
+          },
+        ]}
+        claudeCodeControls={{
+          permissionPreset: "full-access",
+          runtimeProfileId: "default",
+          mcpProfileId: "none",
+          effort: "high",
+          sessionBehavior: "new",
+          settingsSource: "managed",
+          hooksPolicy: "disabled",
+        }}
+      />,
+    );
+
+    expect(html).not.toContain("Permission");
+    expect(html).not.toContain("Effort");
+    expect(html).not.toContain("Full access");
+  });
+
   it("maps AgentHub themes into AgentHub tokens and renders wrapped controls", () => {
     const darkTheme = createAgentHubTheme("dark");
     const lightTheme = createAgentHubTheme("light");
@@ -289,6 +423,7 @@ describe("@agenthub/ui components", () => {
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
     expect(diff).toContain("1 files changed");
     expect(workbench).toContain("Context Inspector");
+    expect(workbench).toContain("Claude Code: Full access");
     expect(workbench).toContain("Workspace navigation");
     expect(workbench).toContain('data-theme="dark"');
     expect(workbench).toContain('data-left-collapsed="false"');
@@ -299,6 +434,22 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain(
       '.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel',
     );
+  });
+
+  it("renders Claude Code agent warnings and discovery summaries", () => {
+    const model = createWorkbenchViewModel(snapshot());
+    const agents = renderToStaticMarkup(
+      <AgentsPage model={model} selectedAgentId="agent_researcher" />,
+    );
+
+    expect(agents).toContain("Claude Code defaults");
+    expect(agents).toContain("Runtime");
+    expect(agents).toContain("Provider");
+    expect(agents).toContain("Full access is a high-risk default");
+    expect(agents).toContain("Hooks may execute local commands");
+    expect(model.connections.items.map((item) => item.label)).toContain("Claude Code capabilities");
+    expect(JSON.stringify(model.connections.items)).toContain("superpowers");
+    expect(JSON.stringify(model.connections.items)).toContain("test-driven-development");
   });
 
   it("renders conversation messages as IM bubbles and active agent replies as loading bubbles", () => {
@@ -591,9 +742,7 @@ describe("@agenthub/ui components", () => {
     );
 
     const settingsGridCss =
-      html.match(
-        /\.agenthub-workbench\[data-center-view="settings"\] \{[^}]*\}/,
-      )?.[0] ?? "";
+      html.match(/\.agenthub-workbench\[data-center-view="settings"\] \{[^}]*\}/)?.[0] ?? "";
     const contactRowCss = html.match(/\.agenthub-agent-contact-row \{[^}]*\}/)?.[0] ?? "";
     const detailCss = html.match(/\.agenthub-agent-detail \{[^}]*\}/)?.[0] ?? "";
     const groupCss = html.match(/\.agenthub-agent-settings-group \{[^}]*\}/)?.[0] ?? "";
@@ -843,15 +992,19 @@ describe("@agenthub/ui components", () => {
     expect(model.agentsPage.agents.map((agent) => agent.label)).toContain("Researcher");
     expect(model.connections.items.map((connection) => connection.label)).toEqual([
       "Claude Code",
+      "Claude Code capabilities",
       "Codex",
     ]);
-    expect(model.connections.items.find((connection) => connection.id === "provider")?.checkable).toBe(
-      true,
-    );
-    expect(model.connections.items.find((connection) => connection.id === "memory")).toBeUndefined();
+    expect(
+      model.connections.items.find((connection) => connection.id === "provider")?.checkable,
+    ).toBe(true);
+    expect(
+      model.connections.items.find((connection) => connection.id === "memory"),
+    ).toBeUndefined();
     expect(model.timeline.map((item) => item.kind)).toEqual([
       "message",
       "message",
+      "run-event",
       "permission",
       "diff",
       "artifact",
@@ -868,12 +1021,16 @@ describe("@agenthub/ui components", () => {
     const provider = model.connections.items.find((connection) => connection.id === "provider");
     const codex = model.connections.items.find((connection) => connection.id === "codex");
 
-    expect(model.connections.items.find((connection) => connection.id === "runtime")).toBeUndefined();
+    expect(
+      model.connections.items.find((connection) => connection.id === "runtime"),
+    ).toBeUndefined();
     expect(provider?.checking).toBe(true);
     expect(provider?.status).toBe("connected");
     expect(provider?.checkable).toBe(false);
     expect(provider?.disabledReason).toContain("Desktop Runtime");
-    expect(model.connections.items.find((connection) => connection.id === "memory")).toBeUndefined();
+    expect(
+      model.connections.items.find((connection) => connection.id === "memory"),
+    ).toBeUndefined();
     expect(codex?.checkable).toBe(false);
     expect(codex?.statusTone).toBe("disabled");
   });
@@ -958,7 +1115,7 @@ describe("@agenthub/ui components", () => {
     ).toHaveLength(2);
   });
 
-  it("hides only active loading placeholders after a run message starts", () => {
+  it("hides synthetic run placeholders and failed run errors after output starts", () => {
     const base = snapshot();
     const withRunMessage = {
       ...base,
@@ -989,15 +1146,14 @@ describe("@agenthub/ui components", () => {
     expect(createWorkbenchViewModel(withRunMessage).timeline.map((item) => item.id)).not.toContain(
       "run-message-run_1",
     );
-    expect(createWorkbenchViewModel(failedAfterOutput).timeline).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          body: ["Command failed"],
-          id: "run-message-run_1",
-          state: "error",
-        }),
-      ]),
+    expect(createWorkbenchViewModel(failedAfterOutput).timeline.map((item) => item.id)).not.toContain(
+      "run-message-run_1",
     );
+    expect(
+      createWorkbenchViewModel(failedAfterOutput).timeline.some((item) =>
+        item.body.includes("Command failed"),
+      ),
+    ).toBe(false);
   });
 
   it("maps offline runtime to disabled composer state while preserving navigation", () => {
@@ -1057,7 +1213,7 @@ describe("@agenthub/ui components", () => {
       renderToStaticMarkup(
         <AgentHubWorkbench initialInspectorSelection={null} viewModel={model} />,
       ),
-    ).toContain("Runtime details");
+    ).toContain("Participants");
     expect(
       renderToStaticMarkup(
         <AgentHubWorkbench

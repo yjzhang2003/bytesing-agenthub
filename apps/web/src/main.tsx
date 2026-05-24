@@ -60,13 +60,13 @@ function AgentHubWebApp(): React.ReactElement {
       error={error}
       loading={loading}
       onRetry={() => void loadSnapshot({ showLoading: true })}
-      onSend={(message, target) => {
+      onSend={(message, target, claudeCode) => {
         const active = snapshot;
         if (!active) {
           return;
         }
         void client
-          .createRun(createRunRequestFromSnapshot(active, target, message))
+          .createRun(createRunRequestFromSnapshot(active, target, message, claudeCode))
           .then(() => loadSnapshot());
       }}
       onCreateAgentRole={(input) => {

@@ -44,13 +44,7 @@ export class WebControlPlaneClient {
     this.#accessToken = options.accessToken;
   }
 
-  async createRun(input: {
-    readonly workspaceId: string;
-    readonly conversationId: string;
-    readonly agentId: string;
-    readonly prompt: string;
-    readonly planId?: string | null;
-  }) {
+  async createRun(input: CreateLocalRunRequest) {
     return this.#post(agentHubApiPaths.runs, input satisfies CreateLocalRunRequest);
   }
 

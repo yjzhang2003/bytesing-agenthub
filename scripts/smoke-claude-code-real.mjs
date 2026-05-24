@@ -1,24 +1,17 @@
-import { mkdtemp, writeFile, chmod } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
+if (process.env.AGENTHUB_RUN_REAL_CLAUDE_CODE_SMOKE !== "1") {
+  throw new Error(
+    "Real Claude Code smoke is opt-in. Set AGENTHUB_RUN_REAL_CLAUDE_CODE_SMOKE=1 after installing and authenticating Claude Code.",
+  );
+}
+
 const root = new URL("..", import.meta.url);
 const authToken = process.env.AGENTHUB_LOCAL_AUTH_TOKEN ?? "agenthub-local-demo-token";
-const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:5312";
+const controlPlaneUrl = process.env.AGENTHUB_CONTROL_PLANE_URL ?? "http://127.0.0.1:5314";
+const expectedText = "AGENTHUB_REAL_CLAUDE_CODE_OK";
 const processes = [];
-
-async function createFakeClaudeBinary() {
-  const directory = await mkdtemp(join(tmpdir(), "agenthub-fake-claude-"));
-  const binary = join(directory, "claude");
-  await writeFile(
-    binary,
-    "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'claude fake 1.0'; exit 0; fi\necho \"Fake Claude Code received: $2\"\n",
-  );
-  await chmod(binary, 0o755);
-  return binary;
-}
 
 function start(name, args, env = {}) {
   const child = spawn("pnpm", args, {
@@ -57,7 +50,7 @@ async function fetchJson(path, options = {}) {
 
 async function waitFor(path, label) {
   let lastError;
-  for (let index = 0; index < 60; index += 1) {
+  for (let index = 0; index < 80; index += 1) {
     try {
       return await fetchJson(path);
     } catch (error) {
@@ -82,23 +75,36 @@ function activeConversationAgentId(snapshot) {
 }
 
 async function main() {
-  const fakeClaude = await createFakeClaudeBinary();
   start("control-plane", ["--filter", "@agenthub/control-plane", "dev"]);
   await waitFor("/health", "Control Plane");
-  start("desktop-runtime", ["--filter", "@agenthub/desktop-runtime", "dev"], {
-    AGENTHUB_CLAUDE_CODE_BIN: fakeClaude,
-  });
+  start("desktop-runtime", ["--filter", "@agenthub/desktop-runtime", "dev"]);
 
   let snapshot;
-  for (let index = 0; index < 60; index += 1) {
+  for (let index = 0; index < 80; index += 1) {
     snapshot = await fetchJson("/workbench/snapshot");
     if (snapshot.providerHealth?.status === "connected") {
       break;
     }
+    if (snapshot.providerHealth?.status === "missing") {
+      throw new Error(
+        `Claude Code binary was not found. Set AGENTHUB_CLAUDE_CODE_BIN or install the claude CLI. Detail: ${
+          snapshot.providerHealth.failureReason ?? "missing binary"
+        }`,
+      );
+    }
+    if (snapshot.providerHealth?.status === "misconfigured") {
+      throw new Error(
+        `Claude Code provider is misconfigured. Authenticate the CLI or fix the selected profile. Detail: ${
+          snapshot.providerHealth.failureReason ?? "misconfigured provider"
+        }`,
+      );
+    }
     await delay(250);
   }
   if (snapshot?.providerHealth?.status !== "connected") {
-    throw new Error("Fake Claude Code provider did not report connected");
+    throw new Error(
+      `Claude Code provider did not connect. Last status: ${snapshot?.providerHealth?.status ?? "unknown"}`,
+    );
   }
 
   const runResponse = await fetchJson("/runs", {
@@ -106,31 +112,42 @@ async function main() {
       workspaceId: snapshot.activeWorkspaceId,
       conversationId: snapshot.activeConversationId,
       agentId: activeConversationAgentId(snapshot),
-      prompt: "Verify fake Claude Code path",
+      prompt: `Reply with exactly this text and no extra text: ${expectedText}`,
+      claudeCode: {
+        permissionPreset: "plan-only",
+        settingsSource: "managed",
+        hooksPolicy: "disabled",
+        effort: "low",
+        session: { behavior: "new" },
+      },
     }),
     method: "POST",
   });
+  if (!runResponse.run?.id) {
+    throw new Error("Real Claude Code smoke run creation did not return a run id");
+  }
 
-  for (let index = 0; index < 60; index += 1) {
+  for (let index = 0; index < 120; index += 1) {
     snapshot = await fetchJson("/workbench/snapshot");
-    const completedRun = snapshot.runs?.find(
-      (run) => run.id === runResponse.run.id && run.status === "completed",
-    );
+    const run = snapshot.runs?.find((candidate) => candidate.id === runResponse.run.id);
     const providerMessage = snapshot.messages?.find((message) =>
       message.parts?.some(
         (part) =>
           part.runId === runResponse.run.id &&
           typeof part.text === "string" &&
-          part.text.includes("Fake Claude Code received"),
+          part.text.includes(expectedText),
       ),
     );
-    if (completedRun && providerMessage) {
-      console.log("[smoke] Fake Claude Code provider preflight and run loop verified");
+    if (run?.status === "failed") {
+      throw new Error(`Real Claude Code run failed: ${run.failureReason ?? "unknown failure"}`);
+    }
+    if (run?.status === "completed" && providerMessage) {
+      console.log("[smoke] Real Claude Code provider preflight and normalized run output verified");
       return;
     }
-    await delay(250);
+    await delay(500);
   }
-  throw new Error("Fake Claude Code run did not complete with provider output");
+  throw new Error("Real Claude Code run did not complete with normalized provider output");
 }
 
 try {

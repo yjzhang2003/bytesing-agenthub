@@ -136,9 +136,61 @@ export const memoryHealthSchema = z.object({
   failureReason: z.string().nullable(),
 });
 
+export const claudeCodeDiscoverySummarySchema = z.object({
+  binaryPathLabel: z.string().min(1),
+  checkedAt: z.string().datetime(),
+  profileRootLabel: z.string().min(1),
+  plugins: z.array(
+    z.object({
+      name: z.string().min(1),
+      version: z.string().nullable(),
+      pathLabel: z.string().min(1),
+    }),
+  ),
+  skills: z.array(
+    z.object({
+      name: z.string().min(1),
+      description: z.string(),
+      pluginName: z.string().min(1),
+      pathLabel: z.string().min(1),
+    }),
+  ),
+  mcpServers: z.array(
+    z.object({
+      name: z.string().min(1),
+      transport: z.enum(["stdio", "http", "sse", "unknown"]),
+    }),
+  ),
+  workspaceClaudeFiles: z.object({
+    claudeDir: z.boolean(),
+    settingsJson: z.boolean(),
+    settingsLocalJson: z.boolean(),
+    mcpJson: z.boolean(),
+    claudeMd: z.boolean(),
+  }),
+});
+
 export const agentMemoryConfigSchema = z.object({
   namespace: z.string().min(1),
   enabled: z.boolean(),
+});
+
+export const claudeCodeRunOptionsSchema = z.object({
+  permissionPreset: z.enum(["plan-only", "ask-first", "auto-edits", "full-access"]).optional(),
+  settingsSource: z.enum(["inherit", "managed", "isolated"]).optional(),
+  runtimeProfileId: idSchema.nullable().optional(),
+  mcpProfileId: idSchema.nullable().optional(),
+  pluginProfileId: idSchema.nullable().optional(),
+  hooksPolicy: z.enum(["inherit", "disabled", "enabled"]).optional(),
+  allowedTools: z.array(z.string().min(1)).optional(),
+  disallowedTools: z.array(z.string().min(1)).optional(),
+  effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+  session: z
+    .object({
+      behavior: z.enum(["new", "continue", "fork"]),
+      sessionId: idSchema.nullable().optional(),
+    })
+    .optional(),
 });
 
 export const runtimeRegistrationPayloadSchema = z.object({
@@ -150,14 +202,15 @@ export const runtimeRegistrationPayloadSchema = z.object({
   workspace: workspaceMetadataSchema,
   providerHealth: providerHealthSchema.optional(),
   memoryHealth: memoryHealthSchema.optional(),
+  claudeCodeDiscovery: claudeCodeDiscoverySummarySchema.optional(),
 });
 
 export const runtimeHeartbeatPayloadSchema = z.object({
   runtimeDeviceId: idSchema,
 });
 
-export const connectionCheckTargetSchema = z.enum(["runtime", "provider", "memory"]);
-export const localConnectionCheckTargetSchema = z.enum(["provider", "memory"]);
+export const connectionCheckTargetSchema = z.enum(["runtime", "provider", "memory", "claude-code"]);
+export const localConnectionCheckTargetSchema = z.enum(["provider", "memory", "claude-code"]);
 
 export const createConnectionCheckRequestSchema = z.object({
   workspaceId: idSchema,
@@ -169,8 +222,9 @@ export const runtimeConnectionCheckResultSchema = z
     runtimeDeviceId: idSchema,
     providerHealth: providerHealthSchema.optional(),
     memoryHealth: memoryHealthSchema.optional(),
+    claudeCodeDiscovery: claudeCodeDiscoverySummarySchema.optional(),
   })
-  .refine((value) => value.providerHealth || value.memoryHealth, {
+  .refine((value) => value.providerHealth || value.memoryHealth || value.claudeCodeDiscovery, {
     message: "At least one connection health result must be provided",
   });
 
@@ -180,6 +234,7 @@ export const createLocalRunRequestSchema = z.object({
   agentId: idSchema,
   prompt: z.string().min(1),
   planId: idSchema.nullable().optional(),
+  claudeCode: claudeCodeRunOptionsSchema.optional(),
 });
 
 export const createAgentRequestSchema = z.object({
@@ -228,6 +283,7 @@ export const runtimeCommandSchema = z.discriminatedUnion("type", [
       systemPrompt: z.string(),
       providerMode: z.enum(["smoke", "claude-code"]),
       memory: agentMemoryConfigSchema.optional(),
+      claudeCode: claudeCodeRunOptionsSchema.optional(),
     }),
   }),
   z.object({
@@ -333,6 +389,15 @@ const runSchema = z.object({
   startedAt: z.string().datetime().nullable(),
   completedAt: z.string().datetime().nullable(),
   failureReason: z.string().nullable(),
+  claudeCode: claudeCodeRunOptionsSchema
+    .extend({
+      overrideSource: z.enum(["agent-default", "run-override"]),
+      effectivePermissionPreset: z
+        .enum(["plan-only", "ask-first", "auto-edits", "full-access"])
+        .optional(),
+      effectiveSettingsSource: z.enum(["inherit", "managed", "isolated"]).optional(),
+    })
+    .optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -367,6 +432,7 @@ export const workbenchSnapshotSchema = z.object({
   workspaceMetadata: workspaceMetadataSchema.nullable(),
   providerHealth: providerHealthSchema.nullable().optional(),
   memoryHealth: memoryHealthSchema.nullable().optional(),
+  claudeCodeDiscovery: claudeCodeDiscoverySummarySchema.nullable().optional(),
   conversations: z.array(conversationSchema),
   conversationParticipants: z.array(conversationParticipantSchema).optional(),
   agents: z.array(agentSchema),
@@ -381,6 +447,8 @@ export type CreateAgentConversationRequestPayload = z.infer<
   typeof createAgentConversationRequestSchema
 >;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
+export type ClaudeCodeRunOptionsPayload = z.infer<typeof claudeCodeRunOptionsSchema>;
+export type ClaudeCodeDiscoverySummaryPayload = z.infer<typeof claudeCodeDiscoverySummarySchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type CreateConnectionCheckRequestPayload = z.infer<
   typeof createConnectionCheckRequestSchema

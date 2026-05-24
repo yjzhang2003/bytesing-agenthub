@@ -1,7 +1,12 @@
 import { Bot, MessageSquarePlus, Plus, Trash2 } from "lucide-react";
 import React from "react";
 import { type TranslationKey, useAgentHubI18n } from "../i18n.js";
-import type { AgentPageAgentViewModel, WorkbenchViewModel } from "../types.js";
+import type {
+  AgentPageAgentViewModel,
+  AgentRuntimeProvider,
+  ComposerClaudeCodeControls,
+  WorkbenchViewModel,
+} from "../types.js";
 import {
   AgentHubAvatar,
   AgentHubBadge,
@@ -70,7 +75,8 @@ const agentTemplatePresets: readonly [
     descriptionKey: "agents.templateOrchestratorDescription",
     displayName: "Orchestrator",
     role: "orchestrator",
-    systemPrompt: "Coordinate multi-agent work, create plans, assign tasks, and summarize outcomes.",
+    systemPrompt:
+      "Coordinate multi-agent work, create plans, assign tasks, and summarize outcomes.",
     capabilityTags: ["planning", "coordination"],
     policy: {},
   },
@@ -80,7 +86,8 @@ const agentTemplatePresets: readonly [
     descriptionKey: "agents.templateImplementerDescription",
     displayName: "Implementer",
     role: "worker",
-    systemPrompt: "Implement scoped code changes, keep edits focused, and report validation results.",
+    systemPrompt:
+      "Implement scoped code changes, keep edits focused, and report validation results.",
     capabilityTags: ["code", "implementation"],
     policy: {},
   },
@@ -90,7 +97,8 @@ const agentTemplatePresets: readonly [
     descriptionKey: "agents.templateReviewerDescription",
     displayName: "Reviewer",
     role: "worker",
-    systemPrompt: "Review code for correctness, regressions, missing tests, and maintainability risks.",
+    systemPrompt:
+      "Review code for correctness, regressions, missing tests, and maintainability risks.",
     capabilityTags: ["review", "quality"],
     policy: {},
   },
@@ -100,7 +108,8 @@ const agentTemplatePresets: readonly [
     descriptionKey: "agents.templateResearcherDescription",
     displayName: "Researcher",
     role: "worker",
-    systemPrompt: "Research context, compare options, and summarize findings before implementation.",
+    systemPrompt:
+      "Research context, compare options, and summarize findings before implementation.",
     capabilityTags: ["research", "analysis"],
     policy: { network: "ask" },
   },
@@ -229,6 +238,30 @@ function AgentEditor(props: {
   const [policyJson, setPolicyJson] = React.useState(
     props.agent?.policyJson ?? JSON.stringify(defaultTemplate.policy, null, 2),
   );
+  const [runtimeProvider, setRuntimeProvider] = React.useState<AgentRuntimeProvider>(
+    props.agent?.runtimeProvider ?? "claude-code",
+  );
+  const [claudePermissionPreset, setClaudePermissionPreset] = React.useState<
+    ComposerClaudeCodeControls["permissionPreset"]
+  >(props.agent?.claudeCodeDefaults?.permissionPreset ?? "ask-first");
+  const [claudeRuntimeProfileId, setClaudeRuntimeProfileId] = React.useState(
+    props.agent?.claudeCodeDefaults?.runtimeProfileId ?? "default",
+  );
+  const [claudeMcpProfileId, setClaudeMcpProfileId] = React.useState(
+    props.agent?.claudeCodeDefaults?.mcpProfileId ?? "none",
+  );
+  const [claudeEffort, setClaudeEffort] = React.useState<ComposerClaudeCodeControls["effort"]>(
+    props.agent?.claudeCodeDefaults?.effort ?? "medium",
+  );
+  const [claudeSettingsSource, setClaudeSettingsSource] = React.useState<
+    ComposerClaudeCodeControls["settingsSource"]
+  >(props.agent?.claudeCodeDefaults?.settingsSource ?? "managed");
+  const [claudeHooksPolicy, setClaudeHooksPolicy] = React.useState<
+    ComposerClaudeCodeControls["hooksPolicy"]
+  >(props.agent?.claudeCodeDefaults?.hooksPolicy ?? "disabled");
+  const [claudeSessionBehavior, setClaudeSessionBehavior] = React.useState<
+    ComposerClaudeCodeControls["sessionBehavior"]
+  >(props.agent?.claudeCodeDefaults?.sessionBehavior ?? "new");
   const [policyError, setPolicyError] = React.useState<string | null>(null);
   const [conversationPending, setConversationPending] = React.useState(false);
   const [conversationError, setConversationError] = React.useState<string | null>(null);
@@ -244,6 +277,14 @@ function AgentEditor(props: {
       setSystemPrompt(template.systemPrompt);
       setTags(template.capabilityTags.join(", "));
       setPolicyJson(JSON.stringify(template.policy, null, 2));
+      setRuntimeProvider("claude-code");
+      setClaudePermissionPreset("ask-first");
+      setClaudeRuntimeProfileId("default");
+      setClaudeMcpProfileId("none");
+      setClaudeEffort("medium");
+      setClaudeSettingsSource("managed");
+      setClaudeHooksPolicy("disabled");
+      setClaudeSessionBehavior("new");
       setPolicyError(null);
       return;
     }
@@ -255,6 +296,14 @@ function AgentEditor(props: {
     setSystemPrompt(props.agent?.systemPrompt ?? "");
     setTags(props.agent?.capabilityTags.join(", ") ?? "");
     setPolicyJson(props.agent?.policyJson ?? "{}");
+    setRuntimeProvider(props.agent?.runtimeProvider ?? "claude-code");
+    setClaudePermissionPreset(props.agent?.claudeCodeDefaults?.permissionPreset ?? "ask-first");
+    setClaudeRuntimeProfileId(props.agent?.claudeCodeDefaults?.runtimeProfileId ?? "default");
+    setClaudeMcpProfileId(props.agent?.claudeCodeDefaults?.mcpProfileId ?? "none");
+    setClaudeEffort(props.agent?.claudeCodeDefaults?.effort ?? "medium");
+    setClaudeSettingsSource(props.agent?.claudeCodeDefaults?.settingsSource ?? "managed");
+    setClaudeHooksPolicy(props.agent?.claudeCodeDefaults?.hooksPolicy ?? "disabled");
+    setClaudeSessionBehavior(props.agent?.claudeCodeDefaults?.sessionBehavior ?? "new");
     setPolicyError(null);
   }, [defaultTemplate, mode, props.agent, selectedTemplateId]);
 
@@ -272,6 +321,14 @@ function AgentEditor(props: {
     setSystemPrompt(template.systemPrompt);
     setTags(template.capabilityTags.join(", "));
     setPolicyJson(JSON.stringify(template.policy, null, 2));
+    setRuntimeProvider("claude-code");
+    setClaudePermissionPreset("ask-first");
+    setClaudeRuntimeProfileId("default");
+    setClaudeMcpProfileId("none");
+    setClaudeEffort("medium");
+    setClaudeSettingsSource("managed");
+    setClaudeHooksPolicy("disabled");
+    setClaudeSessionBehavior("new");
     setPolicyError(null);
   };
 
@@ -284,12 +341,41 @@ function AgentEditor(props: {
       setPolicyError(policy.error);
       return;
     }
+    const basePolicy = { ...policy.value };
+    delete basePolicy["claudeCode"];
+    const claudeCodePolicy = {
+      ...((policy.value["claudeCode"] &&
+      typeof policy.value["claudeCode"] === "object" &&
+      !Array.isArray(policy.value["claudeCode"])
+        ? policy.value["claudeCode"]
+        : {}) as Record<string, unknown>),
+      permissionPreset: claudePermissionPreset,
+      runtimeProfileId: claudeRuntimeProfileId,
+      mcpProfileId: claudeMcpProfileId,
+      effort: claudeEffort,
+      settingsSource: claudeSettingsSource,
+      hooksPolicy: claudeHooksPolicy,
+      session: { behavior: claudeSessionBehavior },
+    };
+    const policyValue = {
+      ...basePolicy,
+      runtime: {
+        ...((basePolicy["runtime"] &&
+        typeof basePolicy["runtime"] === "object" &&
+        !Array.isArray(basePolicy["runtime"])
+          ? basePolicy["runtime"]
+          : {}) as Record<string, unknown>),
+        provider: runtimeProvider,
+      },
+      ...(runtimeProvider === "claude-code" ? { claudeCode: claudeCodePolicy } : {}),
+    };
+    setPolicyJson(JSON.stringify(policyValue, null, 2));
     const payload = {
       displayName: displayName.trim(),
       role,
       systemPrompt: systemPrompt.trim(),
       capabilityTags: parseTags(tags),
-      policy: policy.value,
+      policy: policyValue,
     };
     if (editingExisting) {
       props.onUpdateAgentRole?.({ ...payload, agentId: props.agent.id });
@@ -298,11 +384,19 @@ function AgentEditor(props: {
     }
   }, [
     canSubmit,
+    claudeEffort,
+    claudeHooksPolicy,
+    claudeMcpProfileId,
+    claudePermissionPreset,
+    claudeRuntimeProfileId,
+    claudeSessionBehavior,
+    claudeSettingsSource,
     displayName,
     editingExisting,
     policyJson,
     props,
     role,
+    runtimeProvider,
     systemPrompt,
     tags,
   ]);
@@ -425,6 +519,134 @@ function AgentEditor(props: {
             </label>
           </div>
         </section>
+        <section className="agenthub-agent-settings-group">
+          <header>
+            <h3>Runtime</h3>
+          </header>
+          <div className="agenthub-agent-settings-body">
+            <label>
+              <span>Provider</span>
+              <AgentHubSelect
+                aria-label="Agent runtime provider"
+                value={runtimeProvider}
+                onValueChange={setRuntimeProvider}
+                options={[
+                  { label: "Claude Code", value: "claude-code" },
+                  { label: "Codex", value: "codex" },
+                ]}
+              />
+            </label>
+            {runtimeProvider === "codex" ? (
+              <span className="agenthub-warning">
+                Codex runtime support is not wired yet. This saves the agent preference for the
+                future runtime adapter.
+              </span>
+            ) : null}
+          </div>
+        </section>
+        {runtimeProvider === "claude-code" ? (
+          <section className="agenthub-agent-settings-group">
+            <header>
+              <h3>Claude Code defaults</h3>
+            </header>
+            <div className="agenthub-agent-settings-body">
+              <label>
+                <span>Permission</span>
+                <AgentHubSelect
+                  aria-label="Claude Code permission default"
+                  value={claudePermissionPreset}
+                  onValueChange={setClaudePermissionPreset}
+                  options={[
+                    { label: "Plan only", value: "plan-only" },
+                    { label: "Ask first", value: "ask-first" },
+                    { label: "Auto edits", value: "auto-edits" },
+                    { label: "Full access", value: "full-access" },
+                  ]}
+                />
+              </label>
+              <label>
+                <span>Runtime profile</span>
+                <AgentHubTextInput
+                  aria-label="Claude Code runtime profile default"
+                  value={claudeRuntimeProfileId}
+                  onChange={(event) => setClaudeRuntimeProfileId(event.currentTarget.value)}
+                />
+              </label>
+              <label>
+                <span>MCP profile</span>
+                <AgentHubTextInput
+                  aria-label="Claude Code MCP profile default"
+                  value={claudeMcpProfileId}
+                  onChange={(event) => setClaudeMcpProfileId(event.currentTarget.value)}
+                />
+              </label>
+              <label>
+                <span>Effort</span>
+                <AgentHubSelect
+                  aria-label="Claude Code effort default"
+                  value={claudeEffort}
+                  onValueChange={setClaudeEffort}
+                  options={[
+                    { label: "Low", value: "low" },
+                    { label: "Medium", value: "medium" },
+                    { label: "High", value: "high" },
+                    { label: "XHigh", value: "xhigh" },
+                    { label: "Max", value: "max" },
+                  ]}
+                />
+              </label>
+              <label>
+                <span>Settings</span>
+                <AgentHubSelect
+                  aria-label="Claude Code settings source default"
+                  value={claudeSettingsSource}
+                  onValueChange={setClaudeSettingsSource}
+                  options={[
+                    { label: "Inherited", value: "inherit" },
+                    { label: "Managed", value: "managed" },
+                    { label: "Isolated", value: "isolated" },
+                  ]}
+                />
+              </label>
+              <label>
+                <span>Hooks</span>
+                <AgentHubSelect
+                  aria-label="Claude Code hooks default"
+                  value={claudeHooksPolicy}
+                  onValueChange={setClaudeHooksPolicy}
+                  options={[
+                    { label: "Inherited", value: "inherit" },
+                    { label: "Disabled", value: "disabled" },
+                    { label: "Enabled", value: "enabled" },
+                  ]}
+                />
+              </label>
+              <label>
+                <span>Session</span>
+                <AgentHubSelect
+                  aria-label="Claude Code session default"
+                  value={claudeSessionBehavior}
+                  onValueChange={setClaudeSessionBehavior}
+                  options={[
+                    { label: "New", value: "new" },
+                    { label: "Continue", value: "continue" },
+                    { label: "Fork", value: "fork" },
+                  ]}
+                />
+              </label>
+              {claudePermissionPreset === "full-access" ? (
+                <span className="agenthub-warning">
+                  Full access is a high-risk default for future runs.
+                </span>
+              ) : null}
+              {claudeHooksPolicy === "enabled" || claudeHooksPolicy === "inherit" ? (
+                <span className="agenthub-warning">
+                  Hooks may execute local commands during runs.
+                </span>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
         <details
           className="agenthub-agent-settings-group agenthub-agent-advanced"
           open={policyError ? true : undefined}

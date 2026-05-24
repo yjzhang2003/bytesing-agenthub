@@ -11,6 +11,7 @@ export {
   readDesktopRuntimeConfig,
 } from "./config.js";
 export { checkClaudeCodeProviderHealth } from "./provider-health.js";
+export { discoverClaudeCodeRuntime, materializeClaudeCodeProfile } from "./claude-code-profile.js";
 export { ClaudeCodeProviderAdapter } from "./claude-code-provider-adapter.js";
 export type { DesktopRuntimeProcessConfig } from "./config.js";
 export { readDiffSummary, readWorkspaceGitMetadata } from "./git.js";
@@ -35,6 +36,7 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
   const { SmokeProviderAdapter } = await import("./smoke-provider-adapter.js");
   const { ClaudeCodeProviderAdapter } = await import("./claude-code-provider-adapter.js");
   const { checkClaudeCodeProviderHealth } = await import("./provider-health.js");
+  const { discoverClaudeCodeRuntime } = await import("./claude-code-profile.js");
   const { AgentMemoryClient } = await import("./agent-memory-client.js");
   const config = readDesktopRuntimeConfig();
   const memoryClient = new AgentMemoryClient({
@@ -47,6 +49,7 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
   const runtime = new DesktopRuntime(
     {
       authToken: config.authToken,
+      claudeCode: config.claudeCode,
       controlPlaneUrl: config.controlPlaneUrl,
       deviceName: config.deviceName,
       heartbeatSeconds: config.heartbeatSeconds,
@@ -63,6 +66,13 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
         checkClaudeCodeProviderHealth({
           providerMode: config.providerMode,
           binaryPath: config.claudeCodeBin,
+        }),
+      discoverClaudeCode: () =>
+        discoverClaudeCodeRuntime({
+          binaryPath: config.claudeCodeBin,
+          workspacePath: config.workspacePath,
+          pluginDirs: config.claudeCode.pluginDirs,
+          profileRoot: config.claudeCode.profileRoot,
         }),
     },
   );

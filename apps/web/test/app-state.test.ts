@@ -98,7 +98,9 @@ describe("web app state", () => {
       "fetch",
       vi.fn(async (url: string, init: RequestInit = {}) => {
         requests.push({ url, init });
-        return new Response(JSON.stringify({ agent: { id: "agent_new" }, agents: [] }), { status: 200 });
+        return new Response(JSON.stringify({ agent: { id: "agent_new" }, agents: [] }), {
+          status: 200,
+        });
       }),
     );
     const client = createDefaultWebControlPlaneClient({
@@ -123,7 +125,9 @@ describe("web app state", () => {
     await client.setActiveConversation("conversation_new");
     await client.listAgents("workspace_1");
 
-    expect(requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`)).toEqual([
+    expect(
+      requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`),
+    ).toEqual([
       "POST /agents",
       "PATCH /agents/agent_new",
       "POST /agents/agent_new/archive",
@@ -153,10 +157,9 @@ describe("web app state", () => {
       targets: ["runtime", "provider", "memory"],
     });
 
-    expect(requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`)).toEqual([
-      "POST /connections/checks",
-      "POST /connections/checks",
-    ]);
+    expect(
+      requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`),
+    ).toEqual(["POST /connections/checks", "POST /connections/checks"]);
     expect(JSON.parse(String(requests[0]?.init.body))).toEqual({
       workspaceId: "workspace_1",
       targets: ["provider"],
@@ -229,6 +232,48 @@ describe("web app state", () => {
     ).toBe(true);
   });
 
+  it("tracks fresh Claude Code discovery checks", () => {
+    const flow = createDemoWorkspaceFlow();
+    const baseSnapshot = {
+      ...flow.state,
+      activeConversationId: flow.activeConversation.id,
+      activeWorkspaceId: flow.activeWorkspace.id,
+      availableActions: ["run.create"],
+      claudeCodeDiscovery: {
+        binaryPathLabel: "/usr/local/bin/claude",
+        checkedAt: "2026-05-21T00:00:00.000Z",
+        profileRootLabel: "~/.agenthub/claude-code",
+        plugins: [],
+        skills: [],
+        mcpServers: [],
+        workspaceClaudeFiles: {
+          claudeDir: false,
+          settingsJson: false,
+          settingsLocalJson: false,
+          mcpJson: false,
+          claudeMd: false,
+        },
+      },
+      userId: "user_1",
+    };
+    const previous = connectionCheckTimestamps(baseSnapshot, ["claude-code"]);
+
+    expect(previous).toEqual({ "claude-code": "2026-05-21T00:00:00.000Z" });
+    expect(
+      hasFreshConnectionCheckResults(
+        {
+          ...baseSnapshot,
+          claudeCodeDiscovery: {
+            ...baseSnapshot.claudeCodeDiscovery,
+            checkedAt: "2026-05-21T00:00:01.000Z",
+          },
+        },
+        previous,
+        ["claude-code"],
+      ),
+    ).toBe(true);
+  });
+
   it("creates direct run requests for the selected worker target", () => {
     const flow = createDemoWorkspaceFlow();
     const request = createRunRequestFromSnapshot(flow.state, "@Reviewer", "review this");
@@ -238,6 +283,39 @@ describe("web app state", () => {
       conversationId: flow.activeConversation.id,
       agentId: "agent_3",
       prompt: "review this",
+    });
+  });
+
+  it("maps composer Claude Code controls into run requests", () => {
+    const flow = createDemoWorkspaceFlow();
+    const request = createRunRequestFromSnapshot(flow.state, "@Reviewer", "review this", {
+      permissionPreset: "full-access",
+      runtimeProfileId: "engineering",
+      mcpProfileId: "project",
+      pluginProfileId: "project",
+      effort: "high",
+      sessionBehavior: "continue",
+      sessionId: "session_1",
+      settingsSource: "isolated",
+      hooksPolicy: "enabled",
+      allowedTools: ["Read"],
+      disallowedTools: ["Bash(rm:*)"],
+    });
+
+    expect(request.claudeCode).toEqual({
+      permissionPreset: "full-access",
+      runtimeProfileId: "engineering",
+      mcpProfileId: "project",
+      pluginProfileId: "project",
+      effort: "high",
+      session: {
+        behavior: "continue",
+        sessionId: "session_1",
+      },
+      settingsSource: "isolated",
+      hooksPolicy: "enabled",
+      allowedTools: ["Read"],
+      disallowedTools: ["Bash(rm:*)"],
     });
   });
 

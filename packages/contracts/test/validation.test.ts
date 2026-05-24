@@ -74,7 +74,7 @@ describe("contract validation", () => {
         createdAt: "2026-05-24T00:00:00.000Z",
         payload: {
           workspaceId: "workspace_local_demo",
-          targets: ["provider", "memory"],
+          targets: ["provider", "memory", "claude-code"],
         },
       }).ok,
     ).toBe(true);
@@ -82,6 +82,43 @@ describe("contract validation", () => {
     for (const event of smokeProviderOutputFixtures) {
       expect(validateProviderRuntimeEvent(event).ok).toBe(true);
     }
+  });
+
+  it("accepts and preserves Claude Code run options on runtime commands", () => {
+    const result = validateRuntimeCommand({
+      id: "command_1",
+      type: "run.start",
+      runtimeDeviceId: "runtime_local_demo",
+      createdAt: "2026-05-24T00:00:00.000Z",
+      payload: {
+        runId: "run_1",
+        workspaceId: "workspace_1",
+        conversationId: "conversation_1",
+        agentId: "agent_1",
+        workspacePath: "/tmp/project",
+        prompt: "Implement the feature",
+        systemPrompt: "You are a worker",
+        providerMode: "claude-code",
+        claudeCode: {
+          permissionPreset: "auto-edits",
+          settingsSource: "managed",
+          runtimeProfileId: "profile_engineering",
+          mcpProfileId: "mcp_project",
+          hooksPolicy: "disabled",
+          allowedTools: ["Read", "Edit"],
+          disallowedTools: ["Bash(git push *)"],
+          effort: "high",
+          session: { behavior: "new" },
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect((result.data as { payload: { claudeCode?: unknown } } | undefined)?.payload.claudeCode).toMatchObject({
+      permissionPreset: "auto-edits",
+      settingsSource: "managed",
+      effort: "high",
+    });
   });
 
   it("detects stale diff metadata fingerprints", () => {
@@ -181,6 +218,13 @@ describe("contract validation", () => {
     ).toBe(true);
 
     expect(
+      validateCreateConnectionCheckRequest({
+        workspaceId: "workspace_local_demo",
+        targets: ["claude-code"],
+      }).ok,
+    ).toBe(true);
+
+    expect(
       validateRuntimeConnectionCheckResult({
         runtimeDeviceId: "runtime_local_demo",
         providerHealth: {
@@ -197,6 +241,28 @@ describe("contract validation", () => {
           viewerUrl: "http://127.0.0.1:3113",
           checkedAt: now,
           failureReason: null,
+        },
+        claudeCodeDiscovery: {
+          binaryPathLabel: "claude",
+          checkedAt: now,
+          profileRootLabel: "/Users/example/.agenthub/claude-code",
+          plugins: [{ name: "superpowers", version: "5.1.0", pathLabel: "superpowers" }],
+          skills: [
+            {
+              name: "test-driven-development",
+              description: "Use when implementing features",
+              pluginName: "superpowers",
+              pathLabel: "superpowers/skills/test-driven-development/SKILL.md",
+            },
+          ],
+          mcpServers: [{ name: "github", transport: "stdio" }],
+          workspaceClaudeFiles: {
+            claudeDir: true,
+            settingsJson: false,
+            settingsLocalJson: false,
+            mcpJson: true,
+            claudeMd: false,
+          },
         },
       }).ok,
     ).toBe(true);

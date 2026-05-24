@@ -17,6 +17,7 @@ import type {
   ArtifactViewModel,
   ChatInfoParticipantViewModel,
   ChatInfoViewModel,
+  ComposerClaudeCodeControls,
   DiffViewModel,
   InspectorSelection,
   PermissionViewModel,
@@ -28,6 +29,19 @@ import type {
   WorkbenchViewModel,
   WorkspaceNavigationViewModel,
 } from "./types.js";
+
+function agentRuntimeProvider(policy: Record<string, unknown>): "claude-code" | "codex" {
+  const runtime = policy["runtime"];
+  const candidate =
+    runtime && typeof runtime === "object" && !Array.isArray(runtime)
+      ? (runtime as Record<string, unknown>)["provider"]
+      : policy["runtimeProvider"];
+  return candidate === "codex" ? "codex" : "claude-code";
+}
+
+function runtimeProviderLabel(provider: "claude-code" | "codex"): string {
+  return provider === "codex" ? "Codex" : "Claude Code";
+}
 
 export function workbenchLayoutForWidth(width: number): WorkbenchLayoutMode {
   if (width >= 1280) {
@@ -129,12 +143,16 @@ function participantAgents(
 }
 
 function toChatParticipant(agent: Agent): ChatInfoParticipantViewModel {
+  const runtimeProvider = agentRuntimeProvider(agent.policy);
   return {
     capabilityTags: agent.capabilityTags,
+    claudeCodeControls:
+      runtimeProvider === "claude-code" ? claudeCodeDefaultsFromPolicy(agent.policy) : null,
     id: agent.id,
     initials: agentInitials(agent.displayName),
     label: agent.displayName,
-    providerLabel: "Claude Code",
+    providerLabel: runtimeProviderLabel(runtimeProvider),
+    runtimeProvider,
     role: agent.role,
     target: `@${agent.displayName}`,
   };
@@ -165,29 +183,52 @@ function messageTitle(message: Message, agents: readonly Agent[]): string {
   return "System";
 }
 
-function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewModel | null {
-  const title = agentName(run.agentId, agents);
-  if (run.status === "completed" || run.status === "cancelled") {
+function labelFromId(value: string | null | undefined, fallback: string): string {
+  return value && value !== "none" ? value : fallback;
+}
+
+function claudeCodePermissionLabel(run: Run): string | null {
+  const preset = run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset;
+  if (!preset) {
     return null;
   }
-  if (run.status === "failed") {
-    return {
-      authorId: run.agentId,
-      authorKind: "agent",
-      body: [run.failureReason ?? "The run failed before the agent could finish replying."],
-      id: `run-message-${run.id}`,
-      kind: "message",
-      state: "error",
-      subtitle: "agent message",
-      title,
-    };
+  return {
+    "plan-only": "Plan only",
+    "ask-first": "Ask first",
+    "auto-edits": "Auto edits",
+    "full-access": "Full access",
+  }[preset];
+}
+
+function claudeCodeRunBody(run: Run): readonly string[] {
+  const claudeCode = run.claudeCode;
+  if (!claudeCode) {
+    return [];
+  }
+  const permission = claudeCodePermissionLabel(run) ?? "Ask first";
+  const profile = labelFromId(claudeCode.runtimeProfileId, "default");
+  const mcp = labelFromId(claudeCode.mcpProfileId, "none");
+  const effort = claudeCode.effort ?? "medium";
+  const settings = claudeCode.effectiveSettingsSource ?? claudeCode.settingsSource ?? "managed";
+  return [
+    `Claude Code: ${permission} · profile ${profile} · MCP ${mcp} · effort ${effort}`,
+    `Settings ${settings} · ${claudeCode.overrideSource}`,
+  ];
+}
+
+function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewModel | null {
+  const title = agentName(run.agentId, agents);
+  const auditBody = claudeCodeRunBody(run);
+  if (run.status === "completed" || run.status === "cancelled" || run.status === "failed") {
+    return null;
   }
   if (run.status === "blocked") {
     return {
       authorId: run.agentId,
       authorKind: "agent",
-      body: ["Waiting for approval before continuing."],
+      body: ["Waiting for approval before continuing.", ...auditBody],
       id: `run-message-${run.id}`,
+      inspectorSelection: { id: run.id, mode: "run" },
       kind: "message",
       state: "warning",
       subtitle: "agent message",
@@ -197,8 +238,9 @@ function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewM
   return {
     authorId: run.agentId,
     authorKind: "agent",
-    body: ["Writing a reply..."],
+    body: ["Writing a reply...", ...auditBody],
     id: `run-message-${run.id}`,
+    inspectorSelection: { id: run.id, mode: "run" },
     kind: "message",
     state: "loading",
     subtitle: "agent message",
@@ -252,8 +294,22 @@ function timelineItemsFromSnapshot(
     )
     .map(({ item }) => item)
     .filter((item): item is TimelineItemViewModel => item !== null);
+  const auditItems = activeRuns
+    .filter((run) => run.claudeCode)
+    .map((run) => ({
+      body: claudeCodeRunBody(run),
+      id: `run-audit-${run.id}`,
+      inspectorSelection: { id: run.id, mode: "run" as const },
+      kind: "run-event" as const,
+      state:
+        run.claudeCode?.effectivePermissionPreset === "full-access"
+          ? ("warning" as const)
+          : ("metadata-only" as const),
+      subtitle: run.status,
+      title: `Run ${run.id}`,
+    }));
 
-  const items = [...messageItems, ...runItems];
+  const items = [...messageItems, ...runItems, ...auditItems];
   if (items.length > 0) {
     return items;
   }
@@ -288,7 +344,8 @@ function navigationFromSnapshot(
       capabilityTags: agent.capabilityTags,
       id: agent.id,
       label: agent.displayName,
-      providerLabel: "Claude Code",
+      providerLabel: runtimeProviderLabel(agentRuntimeProvider(agent.policy)),
+      runtimeProvider: agentRuntimeProvider(agent.policy),
       role: agent.role,
       target: `@${agent.displayName}`,
     })),
@@ -323,6 +380,7 @@ function runtimeFromSnapshot(
   const canExecute = status === "online" || status === "active-running";
   const providerHealth = snapshot?.providerHealth ?? null;
   const memoryHealth = snapshot?.memoryHealth ?? null;
+  const claudeCodeDiscovery = snapshot?.claudeCodeDiscovery ?? null;
   return {
     appVersion: runtime?.appVersion ?? "Unavailable",
     capabilities: runtime?.capabilities ?? [],
@@ -335,6 +393,7 @@ function runtimeFromSnapshot(
     lastHeartbeatLabel: shortDate(runtime?.lastHeartbeatAt ?? null),
     memoryHealth,
     memoryStatusLabel: memoryHealth ? `Memory ${memoryHealth.status}` : "Memory unknown",
+    claudeCodeDiscovery,
     platform: runtime?.platform ?? "unknown",
     providerHealth,
     providerStatusLabel: providerHealth
@@ -348,24 +407,50 @@ function composerFromSnapshot(
   snapshot: WorkbenchSnapshot | undefined,
   runtimeSummary: RuntimeSummaryViewModel,
 ): WorkbenchViewModel["composer"] {
-  const targets = participantAgents(snapshot, snapshot?.activeConversationId).map((agent) => ({
-    capabilityTags: agent.capabilityTags,
-    id: agent.id,
-    label: agent.displayName,
-    providerLabel: "Claude Code",
-    role: agent.role,
-    target: `@${agent.displayName}`,
-  }));
+  const activeAgents = participantAgents(snapshot, snapshot?.activeConversationId);
+  const targets = activeAgents.map((agent) => {
+    const runtimeProvider = agentRuntimeProvider(agent.policy);
+    return {
+      capabilityTags: agent.capabilityTags,
+      claudeCodeControls:
+        runtimeProvider === "claude-code" ? claudeCodeDefaultsFromPolicy(agent.policy) : null,
+      id: agent.id,
+      label: agent.displayName,
+      providerLabel: runtimeProviderLabel(runtimeProvider),
+      runtimeProvider,
+      role: agent.role,
+      target: `@${agent.displayName}`,
+    };
+  });
   const selected = targets.find((target) => target.role === "orchestrator") ??
     targets[0] ?? {
       capabilityTags: [],
+      claudeCodeControls: null,
       id: "target-unavailable",
       label: "Orchestrator",
       providerLabel: "Unavailable",
+      runtimeProvider: "claude-code" as const,
       role: "orchestrator" as const,
       target: "@Orchestrator",
     };
+  const selectedAgent = activeAgents.find((agent) => agent.id === selected.id);
+  const selectedClaudeCodeDefaults = selectedAgent
+    ? claudeCodeDefaultsFromPolicy(selectedAgent.policy)
+    : null;
   return {
+    claudeCodeControls:
+      selected.runtimeProvider === "claude-code"
+        ? (selectedClaudeCodeDefaults ?? {
+            permissionPreset: "ask-first",
+            runtimeProfileId: "default",
+            mcpProfileId: "none",
+            pluginProfileId: "default",
+            effort: "medium",
+            sessionBehavior: "new",
+            settingsSource: "managed",
+            hooksPolicy: "disabled",
+          })
+        : null,
     disabled: !runtimeSummary.canExecute,
     disabledReason: runtimeSummary.canExecute ? null : runtimeSummary.explanation,
     modeLabel: selected.role === "orchestrator" ? "Plan Mode" : "Direct agent message",
@@ -424,9 +509,14 @@ function agentsPageFromSnapshot(
       label: agent.displayName,
       memoryNamespace: `agenthub:${snapshot?.userId ?? "user_unavailable"}:${workspaceId}:${agent.id}`,
       policyJson: JSON.stringify(agent.policy, null, 2),
-      providerLabel: "Claude Code",
+      providerLabel: runtimeProviderLabel(agentRuntimeProvider(agent.policy)),
+      runtimeProvider: agentRuntimeProvider(agent.policy),
       role: agent.role,
       systemPrompt: agent.systemPrompt,
+      claudeCodeDefaults: claudeCodeDefaultsFromPolicy(agent.policy),
+      highRiskClaudeCode:
+        claudeCodeDefaultsFromPolicy(agent.policy)?.permissionPreset === "full-access",
+      hooksEnabled: claudeCodeDefaultsFromPolicy(agent.policy)?.hooksPolicy === "enabled",
     })),
     selectedAgentId: snapshot?.agents[0]?.id ?? null,
   };
@@ -445,8 +535,12 @@ function connectionsFromSnapshot(
 ): WorkbenchViewModel["connections"] {
   const providerHealth = runtimeSummary.providerHealth;
   const memoryHealth = runtimeSummary.memoryHealth;
-  const runtimeOnline = runtimeSummary.status === "online" || runtimeSummary.status === "active-running";
-  const localDisabledReason = runtimeOnline ? null : "Desktop Runtime must be online to check this connection.";
+  const discovery = runtimeSummary.claudeCodeDiscovery;
+  const runtimeOnline =
+    runtimeSummary.status === "online" || runtimeSummary.status === "active-running";
+  const localDisabledReason = runtimeOnline
+    ? null
+    : "Desktop Runtime must be online to check this connection.";
   const providerDisabledReason = localDisabledReason;
   const items = [
     {
@@ -466,6 +560,61 @@ function connectionsFromSnapshot(
       ],
       status: providerHealth?.status ?? "unknown",
       statusTone: connectionTone(providerHealth?.status ?? "unknown"),
+    },
+    {
+      checkTarget: "claude-code" as const,
+      checkable: runtimeOnline,
+      checkedAt: discovery?.checkedAt ?? "Unavailable",
+      checking: checkingConnectionIds.includes("claude-code"),
+      description: "Claude Code plugins, skills, MCP, hooks, and managed profiles",
+      disabledReason: localDisabledReason,
+      failureReason: null,
+      id: "claude-code-discovery",
+      kind: "claude-code-discovery" as const,
+      label: "Claude Code capabilities",
+      metadata: [
+        { label: "Profile root", value: discovery?.profileRootLabel ?? "Unavailable" },
+        { label: "Binary", value: discovery?.binaryPathLabel ?? "Unavailable" },
+        { label: "Plugins", value: String(discovery?.plugins.length ?? 0) },
+        {
+          label: "Plugin names",
+          value: discovery?.plugins.map((plugin) => plugin.name).join(", ") || "None",
+        },
+        { label: "Skills", value: String(discovery?.skills.length ?? 0) },
+        {
+          label: "Skill names",
+          value:
+            discovery?.skills
+              .slice(0, 6)
+              .map((skill) => skill.name)
+              .join(", ") || "None",
+        },
+        { label: "MCP servers", value: String(discovery?.mcpServers.length ?? 0) },
+        {
+          label: "MCP names",
+          value:
+            discovery?.mcpServers
+              .map((server) => `${server.name} (${server.transport})`)
+              .join(", ") || "None",
+        },
+        { label: "Hooks", value: "Controlled by selected profile policy" },
+        {
+          label: "Workspace files",
+          value: discovery
+            ? [
+                discovery.workspaceClaudeFiles.claudeDir ? ".claude/" : null,
+                discovery.workspaceClaudeFiles.settingsJson ? "settings.json" : null,
+                discovery.workspaceClaudeFiles.settingsLocalJson ? "settings.local.json" : null,
+                discovery.workspaceClaudeFiles.mcpJson ? ".mcp.json" : null,
+                discovery.workspaceClaudeFiles.claudeMd ? "CLAUDE.md" : null,
+              ]
+                .filter(Boolean)
+                .join(", ") || "None"
+            : "Unavailable",
+        },
+      ],
+      status: discovery ? "available" : "unknown",
+      statusTone: discovery ? ("connected" as const) : ("warning" as const),
     },
     {
       checkTarget: null,
@@ -524,11 +673,82 @@ function connectionsFromSnapshot(
   };
 }
 
+function claudeCodeDefaultsFromPolicy(
+  policy: Record<string, unknown>,
+): ComposerClaudeCodeControls | null {
+  const candidate = policy["claudeCode"];
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return null;
+  }
+  const value = candidate as Record<string, unknown>;
+  return {
+    permissionPreset:
+      value["permissionPreset"] === "full-access" ||
+      value["permissionPreset"] === "plan-only" ||
+      value["permissionPreset"] === "auto-edits"
+        ? value["permissionPreset"]
+        : "ask-first",
+    runtimeProfileId:
+      typeof value["runtimeProfileId"] === "string" ? value["runtimeProfileId"] : "default",
+    mcpProfileId: typeof value["mcpProfileId"] === "string" ? value["mcpProfileId"] : "none",
+    pluginProfileId:
+      typeof value["pluginProfileId"] === "string" ? value["pluginProfileId"] : "default",
+    effort:
+      value["effort"] === "low" ||
+      value["effort"] === "high" ||
+      value["effort"] === "xhigh" ||
+      value["effort"] === "max"
+        ? value["effort"]
+        : "medium",
+    sessionBehavior:
+      typeof value["session"] === "object" &&
+      value["session"] &&
+      !Array.isArray(value["session"]) &&
+      ((value["session"] as Record<string, unknown>)["behavior"] === "continue" ||
+        (value["session"] as Record<string, unknown>)["behavior"] === "fork")
+        ? ((value["session"] as Record<string, unknown>)["behavior"] as "continue" | "fork")
+        : "new",
+    sessionId:
+      typeof value["session"] === "object" &&
+      value["session"] &&
+      !Array.isArray(value["session"]) &&
+      typeof (value["session"] as Record<string, unknown>)["sessionId"] === "string"
+        ? ((value["session"] as Record<string, unknown>)["sessionId"] as string)
+        : null,
+    settingsSource:
+      value["settingsSource"] === "inherit" || value["settingsSource"] === "isolated"
+        ? value["settingsSource"]
+        : "managed",
+    hooksPolicy:
+      value["hooksPolicy"] === "inherit" || value["hooksPolicy"] === "enabled"
+        ? value["hooksPolicy"]
+        : "disabled",
+    allowedTools: Array.isArray(value["allowedTools"])
+      ? value["allowedTools"].filter((tool): tool is string => typeof tool === "string")
+      : [],
+    disallowedTools: Array.isArray(value["disallowedTools"])
+      ? value["disallowedTools"].filter((tool): tool is string => typeof tool === "string")
+      : [],
+  };
+}
+
 function runsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly RunViewModel[] {
   return (snapshot?.runs ?? []).map((run) => ({
     agentName: agentName(run.agentId, snapshot?.agents ?? []),
+    claudeCodeEffortLabel: run.claudeCode?.effort ?? null,
+    claudeCodeMcpLabel: run.claudeCode ? labelFromId(run.claudeCode.mcpProfileId, "none") : null,
+    claudeCodeOverrideSource: run.claudeCode?.overrideSource ?? null,
+    claudeCodePermissionLabel: claudeCodePermissionLabel(run),
+    claudeCodeProfileLabel: run.claudeCode
+      ? labelFromId(run.claudeCode.runtimeProfileId, "default")
+      : null,
+    claudeCodeSettingsLabel:
+      run.claudeCode?.effectiveSettingsSource ?? run.claudeCode?.settingsSource ?? null,
     completedAt: shortDate(run.completedAt),
     failureReason: run.failureReason,
+    highRiskClaudeCode:
+      (run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset) ===
+      "full-access",
     id: run.id,
     startedAt: shortDate(run.startedAt),
     status: run.status,
