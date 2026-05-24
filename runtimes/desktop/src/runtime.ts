@@ -1,5 +1,7 @@
 import type {
+  ProviderHealth,
   ProviderRuntimeEvent,
+  RuntimeConnectionCheckResult,
   RuntimeCommand,
   RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
@@ -28,11 +30,15 @@ export class DesktopRuntime {
   readonly #adapters = new Map<string, ProviderAdapter>();
   readonly #activeRuns = new Map<string, AgentRunHandle>();
   readonly #memoryClient: AgentMemoryRuntimeClient | null;
+  readonly #checkProviderHealth: (() => Promise<ProviderHealth>) | null;
 
   constructor(
     config: DesktopRuntimeConfig,
     adapters: readonly ProviderAdapter[],
-    options: { readonly memoryClient?: AgentMemoryRuntimeClient | null } = {},
+    options: {
+      readonly memoryClient?: AgentMemoryRuntimeClient | null;
+      readonly checkProviderHealth?: (() => Promise<ProviderHealth>) | null;
+    } = {},
   ) {
     this.#config = config;
     this.#client = new DesktopRuntimeControlPlaneClient({
@@ -40,6 +46,7 @@ export class DesktopRuntime {
       baseUrl: config.controlPlaneUrl,
     });
     this.#memoryClient = options.memoryClient ?? null;
+    this.#checkProviderHealth = options.checkProviderHealth ?? null;
     for (const adapter of adapters) {
       this.#adapters.set(adapter.kind, adapter);
     }
@@ -126,6 +133,9 @@ export class DesktopRuntime {
     client: {
       readonly pollCommands: (runtimeDeviceId: string) => Promise<readonly RuntimeCommand[]>;
       readonly publishProviderEvent: (event: ProviderRuntimeEvent) => Promise<void>;
+      readonly publishRuntimeConnectionCheckResult?: (
+        result: RuntimeConnectionCheckResult,
+      ) => Promise<void>;
     } = this.#client,
   ): Promise<void> {
     const commands = await client.pollCommands(runtimeDeviceId);
@@ -136,10 +146,19 @@ export class DesktopRuntime {
 
   async handleCommand(
     command: RuntimeCommand,
-    eventPublisher: { readonly publishProviderEvent: (event: ProviderRuntimeEvent) => Promise<void> } = this.#client,
+    eventPublisher: {
+      readonly publishProviderEvent: (event: ProviderRuntimeEvent) => Promise<void>;
+      readonly publishRuntimeConnectionCheckResult?: (
+        result: RuntimeConnectionCheckResult,
+      ) => Promise<void>;
+    } = this.#client,
   ): Promise<void> {
     if (command.type === "run.cancel") {
       await this.cancelRun(command.payload.runId);
+      return;
+    }
+    if (command.type === "connection.check") {
+      await this.handleConnectionCheckCommand(command, eventPublisher);
       return;
     }
     const payload = command.payload;
@@ -202,5 +221,47 @@ export class DesktopRuntime {
       },
     );
     await Promise.all(observationPromises);
+  }
+
+  async handleConnectionCheckCommand(
+    command: Extract<RuntimeCommand, { readonly type: "connection.check" }>,
+    resultPublisher: {
+      readonly publishRuntimeConnectionCheckResult?: (
+        result: RuntimeConnectionCheckResult,
+      ) => Promise<void>;
+    } = this.#client,
+  ): Promise<void> {
+    const checkedAt = new Date().toISOString();
+    const result: RuntimeConnectionCheckResult = {
+      runtimeDeviceId: command.runtimeDeviceId,
+      ...(command.payload.targets.includes("provider")
+        ? {
+            providerHealth: this.#checkProviderHealth
+              ? await this.#checkProviderHealth()
+              : {
+                  providerMode: "smoke" as const,
+                  status: "unavailable" as const,
+                  binaryPathLabel: "Unavailable",
+                  checkedAt,
+                  failureReason: "Provider health checker is not configured",
+                },
+          }
+        : {}),
+      ...(command.payload.targets.includes("memory")
+        ? {
+            memoryHealth: this.#memoryClient?.checkHealth
+              ? await this.#memoryClient.checkHealth()
+              : {
+                  enabled: false,
+                  status: "disabled" as const,
+                  url: "Unavailable",
+                  viewerUrl: "Unavailable",
+                  checkedAt,
+                  failureReason: "agentmemory health checker is not configured",
+                },
+          }
+        : {}),
+    };
+    await resultPublisher.publishRuntimeConnectionCheckResult?.(result);
   }
 }

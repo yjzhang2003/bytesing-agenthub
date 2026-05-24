@@ -432,12 +432,63 @@ function agentsPageFromSnapshot(
   };
 }
 
+function connectionTone(status: string, disabled = false): "connected" | "warning" | "disabled" {
+  if (disabled) {
+    return "disabled";
+  }
+  return status === "connected" || status === "online" ? "connected" : "warning";
+}
+
 function connectionsFromSnapshot(
   runtimeSummary: RuntimeSummaryViewModel,
+  checkingConnectionIds: readonly string[] = [],
 ): WorkbenchViewModel["connections"] {
   const providerHealth = runtimeSummary.providerHealth;
   const memoryHealth = runtimeSummary.memoryHealth;
+  const runtimeOnline = runtimeSummary.status === "online" || runtimeSummary.status === "active-running";
+  const localDisabledReason = runtimeOnline ? null : "Desktop Runtime must be online to check this connection.";
+  const providerDisabledReason = localDisabledReason;
+  const items = [
+    {
+      checkTarget: "provider" as const,
+      checkable: runtimeOnline,
+      checkedAt: providerHealth?.checkedAt ?? "Unavailable",
+      checking: checkingConnectionIds.includes("provider"),
+      description: "Local provider connection",
+      disabledReason: providerDisabledReason,
+      failureReason: providerHealth?.failureReason ?? null,
+      id: "provider",
+      kind: "provider" as const,
+      label: "Claude Code",
+      metadata: [
+        { label: "Mode", value: providerHealth?.providerMode ?? "claude-code" },
+        { label: "Binary", value: providerHealth?.binaryPathLabel ?? "Unavailable" },
+      ],
+      status: providerHealth?.status ?? "unknown",
+      statusTone: connectionTone(providerHealth?.status ?? "unknown"),
+    },
+    {
+      checkTarget: null,
+      checkable: false,
+      checkedAt: "Unavailable",
+      checking: false,
+      description: "Future provider slot",
+      disabledReason: "Not configured yet.",
+      failureReason: null,
+      id: "codex",
+      kind: "future-provider" as const,
+      label: "Codex",
+      metadata: [
+        { label: "Mode", value: "codex" },
+        { label: "Binary", value: "Not configured" },
+      ],
+      status: "disabled",
+      statusTone: "disabled" as const,
+    },
+  ];
   return {
+    checkableIds: items.filter((item) => item.checkable).map((item) => item.id),
+    items,
     memory: {
       checkedAt: memoryHealth?.checkedAt ?? "Unavailable",
       enabled: memoryHealth?.enabled ?? false,
@@ -536,6 +587,7 @@ export function createWorkbenchViewModel(
     readonly activeDiff?: DiffViewModel | null;
     readonly artifacts?: readonly Artifact[];
     readonly selection?: InspectorSelection | null;
+    readonly checkingConnectionIds?: readonly string[];
   } = {},
 ): WorkbenchViewModel {
   const workspace = firstWorkspace(snapshot);
@@ -545,7 +597,7 @@ export function createWorkbenchViewModel(
   const composer = composerFromSnapshot(snapshot, runtimeSummary);
   const chatInfo = chatInfoFromSnapshot(snapshot, workspace, runtimeSummary);
   const agentsPage = agentsPageFromSnapshot(snapshot);
-  const connections = connectionsFromSnapshot(runtimeSummary);
+  const connections = connectionsFromSnapshot(runtimeSummary, options.checkingConnectionIds ?? []);
   const plan = options.activePlan
     ? {
         agents: options.activePlan.steps.map((step) =>

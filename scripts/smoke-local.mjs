@@ -74,6 +74,29 @@ async function main() {
     throw new Error("Desktop Runtime did not register as online");
   }
 
+  await fetchJson("/connections/checks", {
+    body: JSON.stringify({
+      workspaceId: snapshot.activeWorkspaceId,
+      targets: ["provider", "memory"],
+    }),
+    method: "POST",
+  });
+
+  for (let index = 0; index < 40; index += 1) {
+    snapshot = await fetchJson("/workbench/snapshot");
+    if (snapshot.providerHealth?.status === "connected" && snapshot.memoryHealth?.status) {
+      break;
+    }
+    await delay(250);
+  }
+
+  if (snapshot?.providerHealth?.status !== "connected") {
+    throw new Error("Provider connection check did not report connected");
+  }
+  if (!snapshot?.memoryHealth?.status) {
+    throw new Error("Memory connection check did not report a status");
+  }
+
   const runResponse = await fetchJson("/runs", {
     body: JSON.stringify({
       workspaceId: snapshot.activeWorkspaceId,
@@ -115,7 +138,9 @@ async function main() {
     throw new Error("Smoke provider output was not recorded in the workbench snapshot");
   }
 
-  console.log("[smoke] Control Plane, Desktop Runtime, command delivery, provider output, and snapshot lifecycle verified");
+  console.log(
+    "[smoke] Control Plane, Desktop Runtime, connection checks, command delivery, provider output, and snapshot lifecycle verified",
+  );
 }
 
 try {

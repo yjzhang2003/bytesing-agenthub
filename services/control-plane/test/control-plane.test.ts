@@ -477,6 +477,102 @@ describe("control plane registry", () => {
     expect(registry.latestProviderHealth("user_1")).toMatchObject({ status: "connected" });
     expect(registry.latestMemoryHealth("user_1")).toMatchObject({ status: "connected" });
   });
+
+  it("queues local connection checks and stores returned health results", () => {
+    const registry = new ControlPlaneRegistry();
+    const device = registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:smoke"],
+      workspace: {
+        workspaceId: "workspace_1",
+        displayName: "Project",
+        localPathLabel: "/tmp/project",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+        providerCapabilities: ["provider:smoke"],
+      },
+    });
+
+    const request = registry.requestConnectionChecks("user_1", {
+      workspaceId: "workspace_1",
+      targets: ["runtime", "provider", "memory"],
+    });
+
+    expect(request).toMatchObject({
+      acceptedTargets: ["runtime", "provider", "memory"],
+      queuedTargets: ["provider", "memory"],
+      runtimeOnline: true,
+    });
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toMatchObject([
+      {
+        type: "connection.check",
+        payload: {
+          workspaceId: "workspace_1",
+          targets: ["provider", "memory"],
+        },
+      },
+    ]);
+
+    registry.recordRuntimeConnectionCheckResult("user_1", {
+      runtimeDeviceId: device.id,
+      providerHealth: {
+        providerMode: "smoke",
+        status: "connected",
+        binaryPathLabel: "smoke",
+        checkedAt: "2026-05-24T00:00:00.000Z",
+        failureReason: null,
+      },
+      memoryHealth: {
+        enabled: true,
+        status: "unavailable",
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt: "2026-05-24T00:00:00.000Z",
+        failureReason: "agentmemory health returned HTTP 500",
+      },
+    });
+
+    expect(registry.createWorkbenchSnapshot("user_1")).toMatchObject({
+      providerHealth: { status: "connected", checkedAt: "2026-05-24T00:00:00.000Z" },
+      memoryHealth: {
+        status: "unavailable",
+        failureReason: "agentmemory health returned HTTP 500",
+      },
+    });
+  });
+
+  it("rejects local connection checks when the bound runtime is offline", () => {
+    const registry = new ControlPlaneRegistry();
+    const device = registry.registerRuntimeDevice("user_1", {
+      id: "runtime_1",
+      displayName: "MacBook Pro",
+      platform: "macos",
+      appVersion: "0.1.0",
+      capabilities: ["provider:smoke"],
+      workspace: {
+        workspaceId: "workspace_1",
+        displayName: "Project",
+        localPathLabel: "/tmp/project",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+        providerCapabilities: ["provider:smoke"],
+      },
+    });
+    registry.markRuntimeOffline("user_1", device.id);
+
+    expect(() =>
+      registry.requestConnectionChecks("user_1", {
+        workspaceId: "workspace_1",
+        targets: ["provider"],
+      }),
+    ).toThrow("Desktop Runtime must be online");
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toHaveLength(0);
+  });
 });
 
 describe("control plane HTTP local mode", () => {
@@ -636,6 +732,16 @@ describe("control plane HTTP local mode", () => {
       const memoryStatus = await fetch(`${baseUrl}/memory/status`, { headers });
       expect(memoryStatus.status).toBe(200);
 
+      const checkResponse = await fetch(`${baseUrl}/connections/checks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: snapshotBody.activeWorkspaceId,
+          targets: ["provider", "memory"],
+        }),
+      });
+      expect(checkResponse.status).toBe(202);
+
       const runResponse = await fetch(`${baseUrl}/runs`, {
         method: "POST",
         headers,
@@ -652,7 +758,13 @@ describe("control plane HTTP local mode", () => {
       const commands = await fetch(`${baseUrl}/runtime/commands?deviceId=runtime_local_demo`, {
         headers,
       });
-      expect((await commands.json()).commands[0].type).toBe("run.start");
+      const commandBody = await commands.json();
+      expect(commandBody.commands.map((command: { type: string }) => command.type)).toContain(
+        "connection.check",
+      );
+      expect(commandBody.commands.map((command: { type: string }) => command.type)).toContain(
+        "run.start",
+      );
 
       const eventResponse = await fetch(`${baseUrl}/runtime/events`, {
         method: "POST",
@@ -665,6 +777,29 @@ describe("control plane HTTP local mode", () => {
         }),
       });
       expect(eventResponse.status).toBe(202);
+
+      const checkResultResponse = await fetch(`${baseUrl}/runtime/connection-check-results`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          runtimeDeviceId: "runtime_local_demo",
+          providerHealth: {
+            providerMode: "smoke",
+            status: "connected",
+            binaryPathLabel: "smoke",
+            checkedAt: "2026-05-24T00:00:00.000Z",
+            failureReason: null,
+          },
+        }),
+      });
+      expect(checkResultResponse.status).toBe(202);
+      const providerStatusAfterCheck = await fetch(`${baseUrl}/runtime/provider-status`, {
+        headers,
+      });
+      expect((await providerStatusAfterCheck.json()).providerHealth).toMatchObject({
+        status: "connected",
+        checkedAt: "2026-05-24T00:00:00.000Z",
+      });
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }

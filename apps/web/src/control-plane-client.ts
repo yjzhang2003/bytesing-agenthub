@@ -3,7 +3,9 @@ import {
   agentHubLocalDefaults,
   type AgentHubEventType,
   type AgentHubEvent,
+  type ConnectionCheckTarget,
   type CreateAgentConversationRequest,
+  type CreateConnectionCheckRequest,
   type CreateAgentRequest,
   type CreateLocalRunRequest,
   type UpdateAgentRequest,
@@ -87,6 +89,20 @@ export class WebControlPlaneClient {
 
   async cancelRun(runId: string) {
     return this.#post(`/runs/${runId}/cancel`, {});
+  }
+
+  async checkConnection(input: {
+    readonly workspaceId: string;
+    readonly target: ConnectionCheckTarget;
+  }) {
+    return this.checkConnections({
+      workspaceId: input.workspaceId,
+      targets: [input.target],
+    });
+  }
+
+  async checkConnections(input: CreateConnectionCheckRequest) {
+    return this.#post(agentHubApiPaths.connectionChecks, input);
   }
 
   async getSnapshot(): Promise<WorkbenchSnapshot> {

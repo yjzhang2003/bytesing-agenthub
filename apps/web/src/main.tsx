@@ -1,9 +1,21 @@
 import { createRoot } from "react-dom/client";
 import { AgentHubWorkbench } from "@agenthub/ui";
 import { type WorkbenchSnapshot } from "@agenthub/contracts";
-import { applyAgentHubEventToSnapshot, createRunRequestFromSnapshot } from "./app-state.js";
+import {
+  applyAgentHubEventToSnapshot,
+  connectionCheckTimestamps,
+  createRunRequestFromSnapshot,
+  hasFreshConnectionCheckResults,
+} from "./app-state.js";
 import { createDefaultWebControlPlaneClient } from "./control-plane-client.js";
 import React from "react";
+
+const CONNECTION_CHECK_POLL_INTERVAL_MS = 500;
+const CONNECTION_CHECK_MAX_POLLS = 20;
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
 
 function AgentHubWebApp(): React.ReactElement {
   const [snapshot, setSnapshot] = React.useState<WorkbenchSnapshot | undefined>();
@@ -18,9 +30,12 @@ function AgentHubWebApp(): React.ReactElement {
       }
       setError(null);
       try {
-        setSnapshot(await client.getSnapshot());
+        const nextSnapshot = await client.getSnapshot();
+        setSnapshot(nextSnapshot);
+        return nextSnapshot;
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Unable to reach Control Plane");
+        return undefined;
       } finally {
         setLoading(false);
       }
@@ -94,7 +109,9 @@ function AgentHubWebApp(): React.ReactElement {
             workspaceId: active.activeWorkspaceId,
             agentId,
           })
-          .then(() => loadSnapshot());
+          .then(async () => {
+            await loadSnapshot();
+          });
       }}
       onOpenConversation={(conversationId) => {
         setSnapshot((current) =>
@@ -107,6 +124,28 @@ function AgentHubWebApp(): React.ReactElement {
       }}
       onRemoveAgentFromChat={(conversationId, agentId) => {
         void client.removeAgentFromConversation(conversationId, agentId).then(() => loadSnapshot());
+      }}
+      onCheckConnections={(targets) => {
+        const active = snapshot;
+        if (!active) {
+          return;
+        }
+        const previous = connectionCheckTimestamps(active, targets);
+        return client
+          .checkConnections({
+            workspaceId: active.activeWorkspaceId,
+            targets,
+          })
+          .then(async () => {
+            for (let attempt = 0; attempt < CONNECTION_CHECK_MAX_POLLS; attempt += 1) {
+              const nextSnapshot = await loadSnapshot();
+              if (nextSnapshot && hasFreshConnectionCheckResults(nextSnapshot, previous, targets)) {
+                return;
+              }
+              await wait(CONNECTION_CHECK_POLL_INTERVAL_MS);
+            }
+            await loadSnapshot();
+          });
       }}
       onRefreshConnections={() => void loadSnapshot()}
       {...(snapshot ? { snapshot } : {})}

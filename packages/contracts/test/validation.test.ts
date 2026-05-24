@@ -3,9 +3,11 @@ import {
   agentHubApiPaths,
   isDiffMetadataStale,
   validateAddConversationAgentRequest,
+  validateCreateConnectionCheckRequest,
   validateCreateAgentConversationRequest,
   validateCreateLocalRunRequest,
   validateCreateAgentRequest,
+  validateRuntimeConnectionCheckResult,
   validateRuntimeRegistrationPayload,
   validateServiceHealth,
   validateWorkbenchSnapshot,
@@ -63,6 +65,19 @@ describe("contract validation", () => {
     expect(validateRuntimeCommand(claudeCodeRunStartCommandFixture).ok).toBe(true);
 
     expect(validateRuntimeCommand(runCancelCommandFixture).ok).toBe(true);
+
+    expect(
+      validateRuntimeCommand({
+        id: "command_check_1",
+        type: "connection.check",
+        runtimeDeviceId: "runtime_local_demo",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        payload: {
+          workspaceId: "workspace_local_demo",
+          targets: ["provider", "memory"],
+        },
+      }).ok,
+    ).toBe(true);
 
     for (const event of smokeProviderOutputFixtures) {
       expect(validateProviderRuntimeEvent(event).ok).toBe(true);
@@ -157,6 +172,34 @@ describe("contract validation", () => {
         failureReason: null,
       }).ok,
     ).toBe(true);
+
+    expect(
+      validateCreateConnectionCheckRequest({
+        workspaceId: "workspace_local_demo",
+        targets: ["runtime", "provider", "memory"],
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateRuntimeConnectionCheckResult({
+        runtimeDeviceId: "runtime_local_demo",
+        providerHealth: {
+          providerMode: "claude-code",
+          status: "connected",
+          binaryPathLabel: "/usr/local/bin/claude",
+          checkedAt: now,
+          failureReason: null,
+        },
+        memoryHealth: {
+          enabled: true,
+          status: "connected",
+          url: "http://127.0.0.1:3111",
+          viewerUrl: "http://127.0.0.1:3113",
+          checkedAt: now,
+          failureReason: null,
+        },
+      }).ok,
+    ).toBe(true);
   });
 
   it("accepts create and update agent role contracts", () => {
@@ -198,6 +241,10 @@ describe("contract validation", () => {
     expect(agentHubApiPaths.agentConversations("agent_1")).toBe("/agents/agent_1/conversations");
     expect(agentHubApiPaths.runtimeProviderStatus).toBe("/runtime/provider-status");
     expect(agentHubApiPaths.memoryStatus).toBe("/memory/status");
+    expect(agentHubApiPaths.connectionChecks).toBe("/connections/checks");
+    expect(agentHubApiPaths.runtimeConnectionCheckResults).toBe(
+      "/runtime/connection-check-results",
+    );
   });
 
   it("accepts a control-plane backed workbench snapshot", () => {

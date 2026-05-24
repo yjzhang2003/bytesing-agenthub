@@ -730,7 +730,7 @@ describe("@agenthub/ui components", () => {
     expect(html).not.toContain("Choose template");
   });
 
-  it("renders a dedicated connections page for Claude Code, memory, and future Codex", () => {
+  it("renders a dedicated connections page for provider-level connections", () => {
     const model = createWorkbenchViewModel(snapshot());
     const html = renderToStaticMarkup(
       <AgentHubWorkbench initialCenterView="connections" viewModel={model} />,
@@ -739,19 +739,59 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('data-center-view="connections"');
     expect(html).toContain('data-view="connections"');
     expect(html).toContain("Connections");
+    expect(html).toContain('aria-label="Provider connections"');
+    expect(html).toContain("agenthub-connection-directory");
+    expect(html).toContain("agenthub-agent-directory-sidebar");
+    expect(html).toContain("agenthub-agent-detail");
+    expect(html).toContain("agenthub-agent-settings-group");
     expect(html).toContain("Claude Code");
     expect(html).toContain("agenthub-avatar");
     expect(html).toContain("agenthub-badge");
     expect(html).toContain('aria-label="Resize provider list"');
     expect(html).toContain("connected");
     expect(html).toContain("/usr/local/bin/claude");
-    expect(html).toContain("Refresh status");
+    expect(html).toContain("Check connection");
+    expect(html).toContain("Check all");
     expect(html).toContain("Codex");
-    expect(html).toContain("Coming soon");
-    expect(html).toContain("Long-term memory");
-    expect(html).toContain("http://127.0.0.1:3111");
+    expect(html).toContain("disabled");
+    expect(html).not.toContain("Desktop Runtime");
+    expect(html).not.toContain("agentmemory");
     expect(html).not.toContain('aria-label="Conversation navigation"');
     expect(html).not.toContain("Conversation details");
+    expect(html).not.toContain("agenthub-connections-panel");
+  });
+
+  it("renders Connections offline, failed, disabled, and checking states", () => {
+    const failedSnapshot = {
+      ...snapshot("offline"),
+      providerHealth: {
+        providerMode: "claude-code" as const,
+        status: "missing" as const,
+        binaryPathLabel: "claude",
+        checkedAt: now,
+        failureReason: "Claude Code binary was not found",
+      },
+      memoryHealth: {
+        enabled: false,
+        status: "disabled" as const,
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+        checkedAt: now,
+        failureReason: null,
+      },
+    };
+    const model = createWorkbenchViewModel(failedSnapshot, {
+      checkingConnectionIds: ["provider"],
+    });
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="connections" viewModel={model} />,
+    );
+
+    expect(html).toContain("Checking");
+    expect(html).toContain("Claude Code binary was not found");
+    expect(html).toContain("Desktop Runtime must be online");
+    expect(html).toContain("Not configured yet");
+    expect(html).not.toContain("agentmemory is disabled");
   });
 
   it("uses rail tools to open agents and connections pages", () => {
@@ -801,10 +841,14 @@ describe("@agenthub/ui components", () => {
     expect(model.runtime.providerStatusLabel).toBe("Claude Code connected");
     expect(model.runtime.memoryStatusLabel).toBe("Memory connected");
     expect(model.agentsPage.agents.map((agent) => agent.label)).toContain("Researcher");
-    expect(model.connections.providers.map((provider) => provider.label)).toEqual([
+    expect(model.connections.items.map((connection) => connection.label)).toEqual([
       "Claude Code",
       "Codex",
     ]);
+    expect(model.connections.items.find((connection) => connection.id === "provider")?.checkable).toBe(
+      true,
+    );
+    expect(model.connections.items.find((connection) => connection.id === "memory")).toBeUndefined();
     expect(model.timeline.map((item) => item.kind)).toEqual([
       "message",
       "message",
@@ -814,6 +858,24 @@ describe("@agenthub/ui components", () => {
     ]);
     expect(model.workspace.pendingPermissionCount).toBe(1);
     expect(model.inspector.selection?.mode).toBe("permission");
+  });
+
+  it("tracks connection checking state and runtime-gated disabled reasons", () => {
+    const model = createWorkbenchViewModel(snapshot("offline"), {
+      checkingConnectionIds: ["provider"],
+    });
+
+    const provider = model.connections.items.find((connection) => connection.id === "provider");
+    const codex = model.connections.items.find((connection) => connection.id === "codex");
+
+    expect(model.connections.items.find((connection) => connection.id === "runtime")).toBeUndefined();
+    expect(provider?.checking).toBe(true);
+    expect(provider?.status).toBe("connected");
+    expect(provider?.checkable).toBe(false);
+    expect(provider?.disabledReason).toContain("Desktop Runtime");
+    expect(model.connections.items.find((connection) => connection.id === "memory")).toBeUndefined();
+    expect(codex?.checkable).toBe(false);
+    expect(codex?.statusTone).toBe("disabled");
   });
 
   it("scopes timeline and composer to the active same-agent conversation", () => {

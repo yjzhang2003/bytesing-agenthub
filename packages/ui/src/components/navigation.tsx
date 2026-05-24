@@ -12,8 +12,14 @@ import {
 } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
-import type { ConversationListItem, InspectorSelection, WorkbenchViewModel } from "../types.js";
+import type {
+  ConnectionCheckTargetId,
+  ConversationListItem,
+  InspectorSelection,
+  WorkbenchViewModel,
+} from "../types.js";
 import { AgentDirectory } from "./agents.js";
+import { ConnectionsDirectory } from "./connections.js";
 import { HoverButton, Icon, RuntimeStatusBadge, SidebarSearchField } from "./primitives.js";
 import { SettingsDirectory, type SettingsCategoryId } from "./settings.js";
 
@@ -99,6 +105,9 @@ export function LeftNavigation(props: {
   readonly onOpenSettings: () => void;
   readonly selectedAgentId: string | null;
   readonly onSelectAgent: (agentId: string | null) => void;
+  readonly selectedConnectionId: string | null;
+  readonly onSelectConnection: (connectionId: string) => void;
+  readonly onCheckConnections?: (targets: readonly ConnectionCheckTargetId[]) => void;
   readonly selectedSettingsCategory: SettingsCategoryId;
   readonly onSelectSettingsCategory: (category: SettingsCategoryId) => void;
   readonly collapsed: boolean;
@@ -227,6 +236,13 @@ export function LeftNavigation(props: {
           model={props.model}
           selectedAgentId={props.selectedAgentId}
           onSelectAgent={props.onSelectAgent}
+        />
+      ) : props.connectionsActive ? (
+        <ConnectionsDirectory
+          model={props.model}
+          selectedConnectionId={props.selectedConnectionId}
+          onSelectConnection={props.onSelectConnection}
+          {...(props.onCheckConnections ? { onCheckConnections: props.onCheckConnections } : {})}
         />
       ) : props.settingsActive ? (
         <SettingsDirectory

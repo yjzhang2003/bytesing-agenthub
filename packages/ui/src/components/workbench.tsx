@@ -9,7 +9,12 @@ import {
   readStoredAgentHubLocale,
   writeStoredAgentHubLocale,
 } from "../i18n.js";
-import type { InspectorSelection, WorkbenchLayoutMode, WorkbenchViewModel } from "../types.js";
+import type {
+  ConnectionCheckTargetId,
+  InspectorSelection,
+  WorkbenchLayoutMode,
+  WorkbenchViewModel,
+} from "../types.js";
 import { createWorkbenchViewModel, workbenchLayoutForWidth } from "../view-model.js";
 import { workbenchCss } from "../styles.js";
 import { AgentMentionComposer } from "./composer.js";
@@ -52,6 +57,7 @@ export function AgentHubWorkbench(props: {
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onRefreshConnections?: () => void;
+  readonly onCheckConnections?: (targets: readonly ConnectionCheckTargetId[]) => void | Promise<void>;
 }): React.ReactElement {
   const [storedLocale, setStoredLocale] = React.useState<AgentHubLocale>(() => {
     if (props.locale) {
@@ -67,6 +73,10 @@ export function AgentHubWorkbench(props: {
   const [activeConversationIdOverride, setActiveConversationIdOverride] = React.useState<
     string | null
   >(null);
+  const [checkingConnectionIds, setCheckingConnectionIds] = React.useState<
+    readonly ConnectionCheckTargetId[]
+  >([]);
+  const [connectionCheckError, setConnectionCheckError] = React.useState<string | null>(null);
   const effectiveSnapshot = React.useMemo(() => {
     if (!props.snapshot || !activeConversationIdOverride) {
       return props.snapshot;
@@ -83,7 +93,8 @@ export function AgentHubWorkbench(props: {
       activeConversationId: activeConversationIdOverride,
     };
   }, [activeConversationIdOverride, props.snapshot]);
-  const model = props.viewModel ?? createWorkbenchViewModel(effectiveSnapshot);
+  const model =
+    props.viewModel ?? createWorkbenchViewModel(effectiveSnapshot, { checkingConnectionIds });
   const [selection, setSelection] = React.useState<InspectorSelection | null>(
     props.initialInspectorSelection ?? model.inspector.selection,
   );
@@ -95,6 +106,11 @@ export function AgentHubWorkbench(props: {
   );
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(
     model.agentsPage.selectedAgentId ?? model.agentsPage.agents[0]?.id ?? null,
+  );
+  const [selectedConnectionId, setSelectedConnectionId] = React.useState<string | null>(
+    model.connections.items.find((connection) => connection.id === "provider")?.id ??
+      model.connections.items[0]?.id ??
+      null,
   );
   const [selectedSettingsCategory, setSelectedSettingsCategory] =
     React.useState<SettingsCategoryId>("general");
@@ -119,7 +135,6 @@ export function AgentHubWorkbench(props: {
   const [leftCollapsed, setLeftCollapsed] = React.useState(props.initialLeftCollapsed ?? false);
   const [rightCollapsed, setRightCollapsed] = React.useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(316);
-  const [directoryPanelWidth, setDirectoryPanelWidth] = React.useState(316);
   const [mobileLeftOpen, setMobileLeftOpen] = React.useState(false);
   const [mobileRightOpen, setMobileRightOpen] = React.useState(false);
   const [detectedLayoutMode, setDetectedLayoutMode] = React.useState<WorkbenchLayoutMode>("wide");
@@ -177,7 +192,7 @@ export function AgentHubWorkbench(props: {
   const mobileLayout = layoutMode === "narrow" || layoutMode === "mobile-web";
   const overlayInspectorLayout = mobileLayout || layoutMode === "standard";
   const managementPage = centerView !== "conversation";
-  const compactLeftNavigation = centerView === "connections";
+  const compactLeftNavigation = false;
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
   const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
@@ -232,7 +247,7 @@ export function AgentHubWorkbench(props: {
   );
   const workbenchStyle = {
     "--agenthub-left-column": `${leftPanelWidth}px`,
-    "--agenthub-directory-column": `${directoryPanelWidth}px`,
+    "--agenthub-directory-column": `${leftPanelWidth}px`,
   } as React.CSSProperties;
   const openConversation = React.useCallback(
     (conversationId?: string) => {
@@ -249,6 +264,29 @@ export function AgentHubWorkbench(props: {
       setMobileLeftOpen(false);
     },
     [props.onOpenConversation, selection?.mode],
+  );
+  const checkConnections = React.useCallback(
+    async (targets: readonly ConnectionCheckTargetId[]) => {
+      const uniqueTargets = [...new Set(targets)];
+      setConnectionCheckError(null);
+      setCheckingConnectionIds((current) => [...new Set([...current, ...uniqueTargets])]);
+      try {
+        if (props.onCheckConnections) {
+          await props.onCheckConnections(uniqueTargets);
+        } else {
+          props.onRefreshConnections?.();
+        }
+      } catch (caught) {
+        setConnectionCheckError(
+          caught instanceof Error ? caught.message : "Connection check failed",
+        );
+      } finally {
+        setCheckingConnectionIds((current) =>
+          current.filter((target) => !uniqueTargets.includes(target)),
+        );
+      }
+    },
+    [props],
   );
 
   if (props.loading) {
@@ -358,7 +396,15 @@ export function AgentHubWorkbench(props: {
                     setSelection(nextSelection);
                   }}
                   selectedAgentId={selectedAgentId}
+                  selectedConnectionId={selectedConnectionId}
                   selectedSettingsCategory={selectedSettingsCategory}
+                  onCheckConnections={(targets) => {
+                    void checkConnections(targets);
+                  }}
+                  onSelectConnection={(connectionId) => {
+                    setSelectedConnectionId(connectionId);
+                    setCenterView("connections");
+                  }}
                   onSelectSettingsCategory={setSelectedSettingsCategory}
                   onSelectAgent={(agentId) => {
                     setSelectedAgentId(agentId);
@@ -376,10 +422,12 @@ export function AgentHubWorkbench(props: {
                 />
                 {!leftCollapsed && !compactLeftNavigation ? (
                   <div
-                    aria-label={
-                      centerView === "agents" || centerView === "settings"
-                        ? i18n.t("nav.resizeAgentDirectory")
-                        : i18n.t("nav.resizeConversationList")
+                      aria-label={
+                      centerView === "connections"
+                        ? i18n.t("connections.resizeProviderList")
+                        : centerView === "agents" || centerView === "settings"
+                          ? i18n.t("nav.resizeAgentDirectory")
+                          : i18n.t("nav.resizeConversationList")
                     }
                     className="agenthub-resize-handle agenthub-panel-resize-handle"
                     onPointerDown={(event) =>
@@ -434,7 +482,16 @@ export function AgentHubWorkbench(props: {
                       setMobileLeftOpen(false);
                     }}
                     selectedAgentId={selectedAgentId}
+                    selectedConnectionId={selectedConnectionId}
                     selectedSettingsCategory={selectedSettingsCategory}
+                    onCheckConnections={(targets) => {
+                      void checkConnections(targets);
+                    }}
+                    onSelectConnection={(connectionId) => {
+                      setSelectedConnectionId(connectionId);
+                      setCenterView("connections");
+                      setMobileLeftOpen(false);
+                    }}
                     onSelectSettingsCategory={(category) => {
                       setSelectedSettingsCategory(category);
                       setCenterView("settings");
@@ -583,18 +640,12 @@ export function AgentHubWorkbench(props: {
                 />
               ) : centerView === "connections" ? (
                 <ConnectionsPage
-                  onResizeProviders={(event) =>
-                    beginHorizontalResize(event, {
-                      startWidth: directoryPanelWidth,
-                      min: 260,
-                      max: 500,
-                      onResize: setDirectoryPanelWidth,
-                    })
-                  }
+                  checkError={connectionCheckError}
+                  onCheckConnections={(targets) => {
+                    void checkConnections(targets);
+                  }}
+                  selectedConnectionId={selectedConnectionId}
                   model={model}
-                  {...(props.onRefreshConnections
-                    ? { onRefreshConnections: props.onRefreshConnections }
-                    : {})}
                 />
               ) : centerView === "settings" ? (
                 <SettingsPage

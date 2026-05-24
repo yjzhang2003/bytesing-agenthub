@@ -4,10 +4,12 @@ import {
   agentHubLocalDefaults,
   addConversationAgentRequestSchema,
   createAgentConversationRequestSchema,
+  createConnectionCheckRequestSchema,
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   updateAgentRequestSchema,
   providerRuntimeEventSchema,
+  runtimeConnectionCheckResultSchema,
   runtimeHeartbeatPayloadSchema,
   runtimeRegistrationPayloadSchema,
   type AgentHubAuthMode,
@@ -135,6 +137,13 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
+      if (request.method === "POST" && url.pathname === agentHubApiPaths.connectionChecks) {
+        const body = createConnectionCheckRequestSchema.parse(await readJson(request));
+        const result = registry.requestConnectionChecks(auth.userId, body);
+        sendJson(response, 202, result);
+        return;
+      }
+
       if (request.method === "GET" && url.pathname === agentHubApiPaths.agents) {
         const workspaceId = url.searchParams.get("workspaceId") ?? undefined;
         sendJson(response, 200, { agents: registry.listAgents(auth.userId, workspaceId) });
@@ -254,6 +263,20 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
       if (request.method === "POST" && url.pathname === agentHubApiPaths.runtimeEvents) {
         const event = providerRuntimeEventSchema.parse(await readJson(request));
         registry.recordProviderRuntimeEvent(auth.userId, event);
+        sendJson(response, 202, { ok: true });
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        url.pathname === agentHubApiPaths.runtimeConnectionCheckResults
+      ) {
+        const result = runtimeConnectionCheckResultSchema.parse(await readJson(request));
+        registry.recordRuntimeConnectionCheckResult(auth.userId, {
+          runtimeDeviceId: result.runtimeDeviceId,
+          ...(result.providerHealth ? { providerHealth: result.providerHealth } : {}),
+          ...(result.memoryHealth ? { memoryHealth: result.memoryHealth } : {}),
+        });
         sendJson(response, 202, { ok: true });
         return;
       }

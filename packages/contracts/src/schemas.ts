@@ -156,6 +156,24 @@ export const runtimeHeartbeatPayloadSchema = z.object({
   runtimeDeviceId: idSchema,
 });
 
+export const connectionCheckTargetSchema = z.enum(["runtime", "provider", "memory"]);
+export const localConnectionCheckTargetSchema = z.enum(["provider", "memory"]);
+
+export const createConnectionCheckRequestSchema = z.object({
+  workspaceId: idSchema,
+  targets: z.array(connectionCheckTargetSchema).min(1),
+});
+
+export const runtimeConnectionCheckResultSchema = z
+  .object({
+    runtimeDeviceId: idSchema,
+    providerHealth: providerHealthSchema.optional(),
+    memoryHealth: memoryHealthSchema.optional(),
+  })
+  .refine((value) => value.providerHealth || value.memoryHealth, {
+    message: "At least one connection health result must be provided",
+  });
+
 export const createLocalRunRequestSchema = z.object({
   workspaceId: idSchema,
   conversationId: idSchema,
@@ -219,6 +237,16 @@ export const runtimeCommandSchema = z.discriminatedUnion("type", [
     createdAt: z.string().datetime(),
     payload: z.object({
       runId: idSchema,
+    }),
+  }),
+  z.object({
+    id: idSchema,
+    type: z.literal("connection.check"),
+    runtimeDeviceId: idSchema,
+    createdAt: z.string().datetime(),
+    payload: z.object({
+      workspaceId: idSchema,
+      targets: z.array(localConnectionCheckTargetSchema).min(1),
     }),
   }),
 ]);
@@ -354,8 +382,16 @@ export type CreateAgentConversationRequestPayload = z.infer<
 >;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
+export type CreateConnectionCheckRequestPayload = z.infer<
+  typeof createConnectionCheckRequestSchema
+>;
 export type DiffMetadataPayload = z.infer<typeof diffMetadataSchema>;
+export type ConnectionCheckTargetPayload = z.infer<typeof connectionCheckTargetSchema>;
+export type LocalConnectionCheckTargetPayload = z.infer<typeof localConnectionCheckTargetSchema>;
 export type MemoryHealthPayload = z.infer<typeof memoryHealthSchema>;
+export type RuntimeConnectionCheckResultPayload = z.infer<
+  typeof runtimeConnectionCheckResultSchema
+>;
 export type RuntimeCommandPayload = z.infer<typeof runtimeCommandSchema>;
 export type ProviderHealthPayload = z.infer<typeof providerHealthSchema>;
 export type ServiceHealthPayload = z.infer<typeof serviceHealthSchema>;

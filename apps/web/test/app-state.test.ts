@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentHubLocalDefaults } from "@agenthub/contracts";
 import {
   applyAgentHubEventToSnapshot,
+  connectionCheckTimestamps,
   createDemoWorkspaceFlow,
   createRunRequestFromSnapshot,
+  hasFreshConnectionCheckResults,
 } from "../src/app-state.js";
 import { createDefaultWebControlPlaneClient } from "../src/control-plane-client.js";
 import { readWebSupabaseConfig } from "../src/supabase.js";
@@ -129,6 +131,102 @@ describe("web app state", () => {
       "POST /conversations/conversation_new/active",
       "GET /agents",
     ]);
+  });
+
+  it("calls Control Plane connection check APIs", async () => {
+    const requests: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        requests.push({ url, init });
+        return new Response(JSON.stringify({ acceptedTargets: ["provider"] }), { status: 202 });
+      }),
+    );
+    const client = createDefaultWebControlPlaneClient({
+      VITE_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
+      VITE_AGENTHUB_LOCAL_AUTH_TOKEN: agentHubLocalDefaults.authToken,
+    } as ImportMetaEnv);
+
+    await client.checkConnection({ workspaceId: "workspace_1", target: "provider" });
+    await client.checkConnections({
+      workspaceId: "workspace_1",
+      targets: ["runtime", "provider", "memory"],
+    });
+
+    expect(requests.map((request) => `${request.init.method ?? "GET"} ${new URL(request.url).pathname}`)).toEqual([
+      "POST /connections/checks",
+      "POST /connections/checks",
+    ]);
+    expect(JSON.parse(String(requests[0]?.init.body))).toEqual({
+      workspaceId: "workspace_1",
+      targets: ["provider"],
+    });
+    expect(JSON.parse(String(requests[1]?.init.body))).toEqual({
+      workspaceId: "workspace_1",
+      targets: ["runtime", "provider", "memory"],
+    });
+  });
+
+  it("tracks fresh connection check results by health timestamps", () => {
+    const flow = createDemoWorkspaceFlow();
+    const baseSnapshot = {
+      ...flow.state,
+      activeConversationId: flow.activeConversation.id,
+      activeWorkspaceId: flow.activeWorkspace.id,
+      availableActions: ["run.create"],
+      memoryHealth: {
+        checkedAt: "2026-05-21T00:00:00.000Z",
+        enabled: true,
+        failureReason: null,
+        status: "connected" as const,
+        url: "http://127.0.0.1:3111",
+        viewerUrl: "http://127.0.0.1:3113",
+      },
+      providerHealth: {
+        binaryPathLabel: "/usr/local/bin/claude",
+        checkedAt: "2026-05-21T00:00:00.000Z",
+        failureReason: null,
+        providerMode: "claude-code" as const,
+        status: "connected" as const,
+      },
+      userId: "user_1",
+    };
+    const previous = connectionCheckTimestamps(baseSnapshot, ["provider", "memory"]);
+
+    expect(previous).toEqual({
+      provider: "2026-05-21T00:00:00.000Z",
+      memory: "2026-05-21T00:00:00.000Z",
+    });
+    expect(
+      hasFreshConnectionCheckResults(
+        {
+          ...baseSnapshot,
+          providerHealth: {
+            ...baseSnapshot.providerHealth,
+            checkedAt: "2026-05-21T00:00:01.000Z",
+          },
+        },
+        previous,
+        ["provider", "memory"],
+      ),
+    ).toBe(false);
+    expect(
+      hasFreshConnectionCheckResults(
+        {
+          ...baseSnapshot,
+          memoryHealth: {
+            ...baseSnapshot.memoryHealth,
+            checkedAt: "2026-05-21T00:00:02.000Z",
+          },
+          providerHealth: {
+            ...baseSnapshot.providerHealth,
+            checkedAt: "2026-05-21T00:00:01.000Z",
+          },
+        },
+        previous,
+        ["provider", "memory"],
+      ),
+    ).toBe(true);
   });
 
   it("creates direct run requests for the selected worker target", () => {

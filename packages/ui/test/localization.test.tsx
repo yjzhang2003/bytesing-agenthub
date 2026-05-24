@@ -101,7 +101,8 @@ describe("@agenthub/ui localization", () => {
     expect(agents).toContain("高级配置");
     expect(agents).not.toContain("保存更改");
     expect(connections).toContain("连接");
-    expect(connections).toContain("刷新状态");
+    expect(connections).toContain("检查连接");
+    expect(connections).toContain("全部检查");
     expect(narrow).toContain("打开工作区导航");
     expect(narrow).toContain("打开会话详情");
     expect(narrow).toContain("给智能体发送消息");

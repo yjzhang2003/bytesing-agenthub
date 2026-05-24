@@ -1,6 +1,7 @@
 import {
   agentHubApiPaths,
   type ProviderRuntimeEvent,
+  type RuntimeConnectionCheckResult,
   type RuntimeCommand,
   type RuntimeDevice,
   type RuntimeHeartbeatPayload,
@@ -49,6 +50,10 @@ export class DesktopRuntimeControlPlaneClient {
 
   async publishProviderEvent(event: ProviderRuntimeEvent): Promise<void> {
     await this.#post<{ readonly ok: true }>(agentHubApiPaths.runtimeEvents, event);
+  }
+
+  async publishRuntimeConnectionCheckResult(result: RuntimeConnectionCheckResult): Promise<void> {
+    await this.#post<{ readonly ok: true }>(agentHubApiPaths.runtimeConnectionCheckResults, result);
   }
 
   openEventStream(): EventSource {

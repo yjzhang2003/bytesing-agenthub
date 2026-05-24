@@ -4,13 +4,16 @@ import type {
   AgentHubProviderMode,
   Conversation,
   ConversationParticipant,
+  CreateConnectionCheckRequest,
   CreateAgentConversationRequest,
   CreateAgentRequest,
   Id,
+  LocalConnectionCheckTarget,
   MemoryHealth,
   Message,
   ProviderHealth,
   ProviderRuntimeEvent,
+  RuntimeConnectionCheckResult,
   RuntimeCommand,
   RuntimeDevice,
   Run,
@@ -48,6 +51,12 @@ export interface CreateRunInput {
   readonly agentId: Id;
   readonly prompt?: string;
   readonly planId?: Id | null;
+}
+
+export interface ConnectionCheckRequestResult {
+  readonly acceptedTargets: readonly CreateConnectionCheckRequest["targets"][number][];
+  readonly queuedTargets: readonly LocalConnectionCheckTarget[];
+  readonly runtimeOnline: boolean;
 }
 
 export class ControlPlaneRegistry {
@@ -418,6 +427,56 @@ export class ControlPlaneRegistry {
 
   latestMemoryHealth(ownerUserId: Id): MemoryHealth | null {
     return this.#memoryHealth.get(ownerUserId) ?? null;
+  }
+
+  requestConnectionChecks(
+    ownerUserId: Id,
+    input: CreateConnectionCheckRequest,
+  ): ConnectionCheckRequestResult {
+    this.#requireWorkspaceAvailable(ownerUserId, input.workspaceId);
+    const binding = this.#workspaceBindings.get(input.workspaceId);
+    if (!binding || binding.ownerUserId !== ownerUserId) {
+      throw new Error("Workspace is not bound to this user runtime");
+    }
+
+    const device = this.#requireOwnedDevice(ownerUserId, binding.runtimeDeviceId);
+    const runtimeOnline = device.status === "online" || device.status === "active-running";
+    const queuedTargets = input.targets.filter(
+      (target): target is LocalConnectionCheckTarget => target === "provider" || target === "memory",
+    );
+    if (queuedTargets.length > 0 && !runtimeOnline) {
+      throw new Error("Desktop Runtime must be online to check local connections");
+    }
+    if (queuedTargets.length > 0) {
+      this.#enqueueCommand(binding.runtimeDeviceId, {
+        id: crypto.randomUUID(),
+        type: "connection.check",
+        runtimeDeviceId: binding.runtimeDeviceId,
+        createdAt: this.#now().toISOString(),
+        payload: {
+          workspaceId: input.workspaceId,
+          targets: [...new Set(queuedTargets)],
+        },
+      });
+    }
+    return {
+      acceptedTargets: input.targets,
+      queuedTargets: [...new Set(queuedTargets)],
+      runtimeOnline,
+    };
+  }
+
+  recordRuntimeConnectionCheckResult(
+    ownerUserId: Id,
+    result: RuntimeConnectionCheckResult,
+  ): void {
+    this.#requireOwnedDevice(ownerUserId, result.runtimeDeviceId);
+    if (result.providerHealth) {
+      this.#providerHealth.set(ownerUserId, result.providerHealth);
+    }
+    if (result.memoryHealth) {
+      this.#memoryHealth.set(ownerUserId, result.memoryHealth);
+    }
   }
 
   updateRunStatus(ownerUserId: Id, runId: Id, status: RunStatus, failureReason?: string): Run {

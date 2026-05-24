@@ -22,6 +22,7 @@ export interface AgentMemoryObservationInput {
 }
 
 export interface AgentMemoryRuntimeClient {
+  checkHealth?(): Promise<MemoryHealth>;
   fetchContext(input: AgentMemoryContextInput): Promise<string>;
   observe(input: AgentMemoryObservationInput): Promise<void>;
 }

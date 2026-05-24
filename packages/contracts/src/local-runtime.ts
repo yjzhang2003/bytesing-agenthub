@@ -14,6 +14,8 @@ export type AgentHubAuthMode = "local-demo" | "supabase";
 export type AgentHubProviderMode = "smoke" | "claude-code";
 export type ProviderConnectionStatus = "connected" | "missing" | "unavailable" | "misconfigured";
 export type MemoryConnectionStatus = "connected" | "disabled" | "unavailable" | "misconfigured";
+export type ConnectionCheckTarget = "runtime" | "provider" | "memory";
+export type LocalConnectionCheckTarget = "provider" | "memory";
 
 export interface ProviderHealth {
   readonly providerMode: AgentHubProviderMode;
@@ -74,6 +76,17 @@ export interface RuntimeRegistrationPayload {
 
 export interface RuntimeHeartbeatPayload {
   readonly runtimeDeviceId: Id;
+}
+
+export interface CreateConnectionCheckRequest {
+  readonly workspaceId: Id;
+  readonly targets: readonly ConnectionCheckTarget[];
+}
+
+export interface RuntimeConnectionCheckResult {
+  readonly runtimeDeviceId: Id;
+  readonly providerHealth?: ProviderHealth;
+  readonly memoryHealth?: MemoryHealth;
 }
 
 export interface WorkbenchSnapshot {
@@ -151,8 +164,18 @@ export type RuntimeCommand =
       readonly type: "run.cancel";
       readonly runtimeDeviceId: Id;
       readonly createdAt: ISODateTime;
+    readonly payload: {
+      readonly runId: Id;
+    };
+  }
+  | {
+      readonly id: Id;
+      readonly type: "connection.check";
+      readonly runtimeDeviceId: Id;
+      readonly createdAt: ISODateTime;
       readonly payload: {
-        readonly runId: Id;
+        readonly workspaceId: Id;
+        readonly targets: readonly LocalConnectionCheckTarget[];
       };
     };
 
@@ -179,6 +202,8 @@ export const agentHubApiPaths = {
   runtimeCommands: "/runtime/commands",
   runtimeProviderStatus: "/runtime/provider-status",
   runtimeEvents: "/runtime/events",
+  connectionChecks: "/connections/checks",
+  runtimeConnectionCheckResults: "/runtime/connection-check-results",
   memoryStatus: "/memory/status",
   agents: "/agents",
   conversations: "/conversations",

@@ -2,6 +2,7 @@ import type { z } from "zod";
 import {
   addConversationAgentRequestSchema,
   createAgentConversationRequestSchema,
+  createConnectionCheckRequestSchema,
   createLocalRunRequestSchema,
   createAgentRequestSchema,
   diffMetadataSchema,
@@ -10,6 +11,7 @@ import {
   providerHealthSchema,
   providerRuntimeEventSchema,
   runtimeCommandSchema,
+  runtimeConnectionCheckResultSchema,
   runtimeHeartbeatPayloadSchema,
   runtimeRegistrationPayloadSchema,
   serviceHealthSchema,
@@ -85,6 +87,18 @@ export function validateRuntimeHeartbeatPayload(
   value: unknown,
 ): ValidationResult<z.infer<typeof runtimeHeartbeatPayloadSchema>> {
   return parseWithSchema(runtimeHeartbeatPayloadSchema, value);
+}
+
+export function validateCreateConnectionCheckRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof createConnectionCheckRequestSchema>> {
+  return parseWithSchema(createConnectionCheckRequestSchema, value);
+}
+
+export function validateRuntimeConnectionCheckResult(
+  value: unknown,
+): ValidationResult<z.infer<typeof runtimeConnectionCheckResultSchema>> {
+  return parseWithSchema(runtimeConnectionCheckResultSchema, value);
 }
 
 export function validateWorkspaceMetadata(

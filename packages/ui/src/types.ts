@@ -131,7 +131,33 @@ export interface ProviderConnectionViewModel {
   readonly comingSoon: boolean;
 }
 
+export type ConnectionItemKind = "runtime" | "provider" | "memory" | "future-provider";
+export type ConnectionCheckTargetId = "runtime" | "provider" | "memory";
+
+export interface ConnectionMetadataRow {
+  readonly label: string;
+  readonly value: string;
+}
+
+export interface ConnectionItemViewModel {
+  readonly id: string;
+  readonly kind: ConnectionItemKind;
+  readonly label: string;
+  readonly description: string;
+  readonly status: string;
+  readonly statusTone: "connected" | "warning" | "disabled";
+  readonly checkedAt: string;
+  readonly failureReason: string | null;
+  readonly checkable: boolean;
+  readonly checking: boolean;
+  readonly disabledReason: string | null;
+  readonly checkTarget: ConnectionCheckTargetId | null;
+  readonly metadata: readonly ConnectionMetadataRow[];
+}
+
 export interface ConnectionsPageViewModel {
+  readonly items: readonly ConnectionItemViewModel[];
+  readonly checkableIds: readonly string[];
   readonly providers: readonly ProviderConnectionViewModel[];
   readonly memory: {
     readonly enabled: boolean;

@@ -3,6 +3,7 @@ import type {
   AgentHubEvent,
   AgentHubClientState,
   Conversation,
+  ConnectionCheckTarget,
   CreateLocalRunRequest,
   Message,
   PermissionRequest,
@@ -18,6 +19,8 @@ export interface DemoWorkspaceFlow {
   readonly activeWorkspace: Workspace;
   readonly activeConversation: Conversation;
 }
+
+export type ConnectionCheckTimestampMap = Partial<Record<ConnectionCheckTarget, string | null>>;
 
 const now = "2026-05-21T00:00:00.000Z";
 
@@ -163,6 +166,48 @@ export function createRunRequestFromSnapshot(
     agentId: selectedAgent.id,
     prompt,
   };
+}
+
+export function connectionCheckTimestamps(
+  snapshot: Pick<
+    WorkbenchSnapshot,
+    "activeWorkspaceId" | "memoryHealth" | "providerHealth" | "runtimeDevices" | "workspaces"
+  >,
+  targets: readonly ConnectionCheckTarget[],
+): ConnectionCheckTimestampMap {
+  const activeWorkspace =
+    snapshot.workspaces.find((workspace) => workspace.id === snapshot.activeWorkspaceId) ??
+    snapshot.workspaces[0];
+  const activeRuntime =
+    snapshot.runtimeDevices.find((runtime) => runtime.id === activeWorkspace?.runtimeDeviceId) ??
+    snapshot.runtimeDevices[0];
+
+  return Object.fromEntries(
+    [...new Set(targets)].map((target) => {
+      if (target === "provider") {
+        return [target, snapshot.providerHealth?.checkedAt ?? null] as const;
+      }
+      if (target === "memory") {
+        return [target, snapshot.memoryHealth?.checkedAt ?? null] as const;
+      }
+      return [target, activeRuntime?.lastHeartbeatAt ?? null] as const;
+    }),
+  );
+}
+
+export function hasFreshConnectionCheckResults(
+  snapshot: Pick<
+    WorkbenchSnapshot,
+    "activeWorkspaceId" | "memoryHealth" | "providerHealth" | "runtimeDevices" | "workspaces"
+  >,
+  previous: ConnectionCheckTimestampMap,
+  targets: readonly ConnectionCheckTarget[],
+): boolean {
+  const current = connectionCheckTimestamps(snapshot, targets);
+  return [...new Set(targets)].every((target) => {
+    const nextTimestamp = current[target] ?? null;
+    return nextTimestamp !== null && nextTimestamp !== (previous[target] ?? null);
+  });
 }
 
 export function applyAgentHubEventToSnapshot(

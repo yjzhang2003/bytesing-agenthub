@@ -278,6 +278,59 @@ describe("AgentHub component behavior", () => {
     expect(directoryText).not.toContain("Shortcuts");
   });
 
+  it("requests connection checks and shows pending state", async () => {
+    let resolveCheck: (() => void) | null = null;
+    const onCheckConnections = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCheck = resolve;
+        }),
+    );
+    await render(
+      <AgentHubWorkbench
+        initialCenterView="connections"
+        onCheckConnections={onCheckConnections}
+        snapshot={snapshot()}
+      />,
+    );
+
+    const claudeCode = Array.from(document.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Claude Code"),
+    ) as HTMLButtonElement;
+    await act(async () => {
+      claudeCode.click();
+      await settle();
+    });
+
+    const checkConnection = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Check connection",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      checkConnection.click();
+      await settle();
+    });
+
+    expect(onCheckConnections).toHaveBeenCalledWith(["provider"]);
+    expect(document.querySelector(".agenthub-connection-detail")?.textContent).toContain(
+      "Checking",
+    );
+
+    await act(async () => {
+      resolveCheck?.();
+      await settle();
+    });
+
+    const checkAll = document.querySelector(
+      'button[aria-label="Check all"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      checkAll.click();
+      await settle();
+    });
+
+    expect(onCheckConnections).toHaveBeenLastCalledWith(["provider"]);
+  });
+
   it("shows add-agent empty and no-results states", async () => {
     const onAddAgentToChat = vi.fn();
     const chatSnapshot = {

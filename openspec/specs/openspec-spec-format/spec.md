@@ -18,3 +18,14 @@ Maintained OpenSpec capability files SHALL use the current required top-level st
 #### Scenario: Specs are validated after normalization
 - **WHEN** the legacy spec migration is complete
 - **THEN** OpenSpec spec validation is run to confirm the normalized files satisfy the current validator format
+
+### Requirement: Completed OpenSpec changes are committed
+Completed OpenSpec change work SHALL include a git commit before the work is considered handed off or archived, unless the user explicitly requests no commit.
+
+#### Scenario: Change implementation is ready
+- **WHEN** an OpenSpec change implementation has passed required validation and is ready for review, handoff, or archive
+- **THEN** the agent stages the relevant implementation, test, and OpenSpec files and creates a concise git commit without requiring a separate user request
+
+#### Scenario: Commit cannot be created safely
+- **WHEN** validation fails, git identity is missing, unrelated dirty files cannot be separated safely, or the user explicitly asks not to commit
+- **THEN** the agent reports the blocker and does not claim the OpenSpec change is fully handed off until the commit path is resolved

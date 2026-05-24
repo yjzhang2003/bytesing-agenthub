@@ -219,6 +219,134 @@ describe("DesktopRuntime", () => {
     });
   });
 
+  it("handles connection check commands without starting a provider run", async () => {
+    let startRunCount = 0;
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        controlPlaneUrl: "http://localhost:5310",
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [
+        {
+          kind: "fake-provider",
+          async startRun() {
+            startRunCount += 1;
+            throw new Error("connection checks must not start runs");
+          },
+        },
+      ],
+      {
+        async checkProviderHealth() {
+          return {
+            providerMode: "smoke",
+            status: "connected",
+            binaryPathLabel: "smoke",
+            checkedAt: "2026-05-24T00:00:00.000Z",
+            failureReason: null,
+          };
+        },
+        memoryClient: {
+          async checkHealth() {
+            return {
+              enabled: true,
+              status: "unavailable",
+              url: "http://127.0.0.1:3111",
+              viewerUrl: "http://127.0.0.1:3113",
+              checkedAt: "2026-05-24T00:00:01.000Z",
+              failureReason: "agentmemory unavailable",
+            };
+          },
+          async fetchContext() {
+            return "";
+          },
+          async observe() {
+            return undefined;
+          },
+        },
+      },
+    );
+    const results: unknown[] = [];
+
+    await runtime.handleCommand(
+      {
+        id: "command_check_1",
+        type: "connection.check",
+        runtimeDeviceId: "runtime_1",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        payload: {
+          workspaceId: "workspace_1",
+          targets: ["provider", "memory"],
+        },
+      },
+      {
+        async publishProviderEvent() {
+          throw new Error("connection checks must not publish run events");
+        },
+        async publishRuntimeConnectionCheckResult(result) {
+          results.push(result);
+        },
+      },
+    );
+
+    expect(startRunCount).toBe(0);
+    expect(results).toMatchObject([
+      {
+        runtimeDeviceId: "runtime_1",
+        providerHealth: { status: "connected" },
+        memoryHealth: { status: "unavailable", failureReason: "agentmemory unavailable" },
+      },
+    ]);
+  });
+
+  it("reports unavailable connection check results when checkers are not configured", async () => {
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        controlPlaneUrl: "http://localhost:5310",
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [],
+    );
+    const results: unknown[] = [];
+
+    await runtime.handleCommand(
+      {
+        id: "command_check_unsupported",
+        type: "connection.check",
+        runtimeDeviceId: "runtime_1",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        payload: {
+          workspaceId: "workspace_1",
+          targets: ["provider", "memory"],
+        },
+      },
+      {
+        async publishProviderEvent() {
+          throw new Error("connection checks must not publish run events");
+        },
+        async publishRuntimeConnectionCheckResult(result) {
+          results.push(result);
+        },
+      },
+    );
+
+    expect(results).toMatchObject([
+      {
+        providerHealth: {
+          status: "unavailable",
+          failureReason: "Provider health checker is not configured",
+        },
+        memoryHealth: {
+          status: "disabled",
+          failureReason: "agentmemory health checker is not configured",
+        },
+      },
+    ]);
+  });
+
   it("exposes the Claude Code provider adapter boundary", () => {
     const adapter = new ClaudeCodeProviderAdapter({ binaryPath: "claude" });
     expect(adapter.kind).toBe("claude-code");

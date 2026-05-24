@@ -1,87 +1,216 @@
-import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { AlertTriangle, BrainCircuit, Cable, CheckCircle2, Cpu, RefreshCw } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
-import type { ProviderConnectionViewModel, WorkbenchViewModel } from "../types.js";
+import type {
+  ConnectionCheckTargetId,
+  ConnectionItemViewModel,
+  WorkbenchViewModel,
+} from "../types.js";
 import { AgentHubAvatar, AgentHubBadge, AgentHubButton } from "./system.js";
-import { DetailSection, Icon, RuntimeStatusBadge } from "./primitives.js";
+import { Icon, SidebarSearchField } from "./primitives.js";
 
-function ProviderConnectionRow(props: {
-  readonly provider: ProviderConnectionViewModel;
+function connectionIcon(connection: ConnectionItemViewModel) {
+  if (connection.kind === "runtime") {
+    return Cpu;
+  }
+  if (connection.kind === "memory") {
+    return BrainCircuit;
+  }
+  return connection.statusTone === "connected" ? CheckCircle2 : AlertTriangle;
+}
+
+function ConnectionRow(props: {
+  readonly connection: ConnectionItemViewModel;
   readonly selected: boolean;
   readonly onSelect: () => void;
 }): React.ReactElement {
-  const i18n = useAgentHubI18n();
-  const icon = props.provider.statusTone === "connected" ? CheckCircle2 : AlertTriangle;
+  const status = props.connection.statusTone === "connected" ? "success" : "warning";
   return (
     <AgentHubButton
       aria-pressed={props.selected}
-      className="agenthub-provider-row"
+      className="agenthub-agent-contact-row agenthub-connection-contact-row"
+      data-tone={props.connection.statusTone}
       htmlType="button"
       onClick={props.onSelect}
     >
-      <AgentHubAvatar className="agenthub-provider-avatar" icon={<Icon icon={icon} />} size={24} />
-      <span className="agenthub-row-main">{props.provider.label}</span>
-      <AgentHubBadge
-        status={props.provider.statusTone === "connected" ? "success" : "warning"}
-        text={props.provider.status}
-      />
-      <span className="agenthub-timeline-line">
-        {props.provider.comingSoon
-          ? props.provider.status || i18n.t("connections.notConfigured")
-          : props.provider.binaryPathLabel}
+      <AgentHubAvatar className="agenthub-agent-avatar" size={44}>
+        <Icon icon={connectionIcon(props.connection)} />
+      </AgentHubAvatar>
+      <span className="agenthub-agent-contact-copy">
+        <span className="agenthub-row-main">{props.connection.label}</span>
+        <small>
+          {props.connection.disabledReason ?? props.connection.description}
+          {" · "}
+          {props.connection.checkedAt}
+        </small>
       </span>
+      <AgentHubBadge
+        status={props.connection.statusTone === "disabled" ? "default" : status}
+        text={props.connection.checking ? "Checking" : props.connection.status}
+      />
     </AgentHubButton>
   );
 }
 
-function ProviderConnectionDetail(props: {
-  readonly provider: ProviderConnectionViewModel;
-  readonly runtime: WorkbenchViewModel["runtime"];
-  readonly onRefreshConnections?: () => void;
+export function ConnectionsDirectory(props: {
+  readonly model: WorkbenchViewModel;
+  readonly selectedConnectionId: string | null;
+  readonly onSelectConnection: (connectionId: string) => void;
+  readonly onCheckConnections?: (targets: readonly ConnectionCheckTargetId[]) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
+  const [query, setQuery] = React.useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredConnections = normalizedQuery
+    ? props.model.connections.items.filter((connection) =>
+        [
+          connection.label,
+          connection.description,
+          connection.status,
+          connection.disabledReason ?? "",
+          connection.failureReason ?? "",
+          ...connection.metadata.map((row) => `${row.label} ${row.value}`),
+        ].some((value) => value.toLowerCase().includes(normalizedQuery)),
+      )
+    : props.model.connections.items;
+  const checkableTargets = props.model.connections.items
+    .filter((connection) => connection.checkable && connection.checkTarget)
+    .map((connection) => connection.checkTarget)
+    .filter((target): target is ConnectionCheckTargetId => Boolean(target));
+
   return (
-    <section className="agenthub-settings-panel">
-      <header>
-        <div>
-          <strong>{props.provider.label}</strong>
-          <p className="agenthub-muted">
-            {props.provider.comingSoon
-              ? i18n.t("connections.futureProvider")
-              : i18n.t("connections.localProvider")}
-          </p>
-        </div>
-        <RuntimeStatusBadge status={props.runtime.status} />
-      </header>
-      <DetailSection title={i18n.t("connections.connection")}>
-        <dl>
-          <dt>{i18n.t("connections.status")}</dt>
-          <dd>{props.provider.status}</dd>
-          <dt>{i18n.t("connections.mode")}</dt>
-          <dd>{props.provider.providerMode}</dd>
-          <dt>{i18n.t("connections.binary")}</dt>
-          <dd>{props.provider.binaryPathLabel}</dd>
-          <dt>{i18n.t("connections.checked")}</dt>
-          <dd>{props.provider.checkedAt}</dd>
-          {props.provider.failureReason ? (
-            <>
-              <dt>{i18n.t("connections.issue")}</dt>
-              <dd>{props.provider.failureReason}</dd>
-            </>
-          ) : null}
-        </dl>
-      </DetailSection>
-      <div className="agenthub-action-row">
+    <section
+      aria-label={i18n.t("connections.providerConnections")}
+      className="agenthub-chat-list-panel agenthub-agent-directory-sidebar agenthub-connection-directory"
+    >
+      <header className="agenthub-chat-list-header">
+        <SidebarSearchField
+          label={i18n.t("connections.providerConnections")}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder={i18n.t("connections.providerConnections")}
+          value={query}
+        />
         <AgentHubButton
-          disabled={props.provider.comingSoon}
+          aria-label={i18n.t("connections.checkAll")}
+          className="agenthub-icon-button"
+          disabled={checkableTargets.length === 0}
           htmlType="button"
-          onClick={props.onRefreshConnections}
+          onClick={() => props.onCheckConnections?.(checkableTargets)}
         >
-          <Icon icon={RefreshCw} /> {i18n.t("actions.refreshStatus")}
+          <Icon icon={Cable} />
         </AgentHubButton>
-        {props.provider.comingSoon ? (
-          <span className="agenthub-muted">{i18n.t("connections.notConfigured")}</span>
-        ) : null}
+      </header>
+      <nav aria-label={i18n.t("connections.providerConnections")} className="agenthub-agent-directory-list">
+        <small className="agenthub-agent-directory-group">{i18n.t("connections.connections")}</small>
+        {filteredConnections.map((connection) => (
+          <ConnectionRow
+            connection={connection}
+            key={connection.id}
+            selected={connection.id === props.selectedConnectionId}
+            onSelect={() => props.onSelectConnection(connection.id)}
+          />
+        ))}
+      </nav>
+    </section>
+  );
+}
+
+function ConnectionReadOnlyRow(props: {
+  readonly title: string;
+  readonly value: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="agenthub-agent-readonly-row">
+      <span>{props.title}</span>
+      {typeof props.value === "string" ? <strong>{props.value}</strong> : props.value}
+    </div>
+  );
+}
+
+function ConnectionGroup(props: {
+  readonly children: React.ReactNode;
+  readonly title: string;
+}): React.ReactElement {
+  return (
+    <section className="agenthub-agent-settings-group">
+      <header>
+        <h3>{props.title}</h3>
+      </header>
+      <div className="agenthub-agent-settings-body">{props.children}</div>
+    </section>
+  );
+}
+
+function ConnectionDetail(props: {
+  readonly connection?: ConnectionItemViewModel | undefined;
+  readonly checkError?: string | null;
+  readonly onCheckConnection?: (target: ConnectionCheckTargetId) => void;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  if (!props.connection) {
+    return (
+      <section className="agenthub-agent-detail agenthub-connection-detail">
+        <p className="agenthub-muted">{i18n.t("connections.connectionsDescription")}</p>
+      </section>
+    );
+  }
+  const canCheck = Boolean(props.connection.checkable && props.connection.checkTarget);
+  const connection = props.connection;
+  const disabledReason = props.connection.disabledReason;
+  const status = props.connection.statusTone === "connected" ? "success" : "warning";
+  const ConnectionIcon = connectionIcon(connection);
+  return (
+    <section className="agenthub-agent-detail agenthub-connection-detail">
+      <header className="agenthub-agent-profile agenthub-connection-profile">
+        <AgentHubAvatar className="agenthub-agent-profile-avatar" size={52}>
+          <Icon icon={ConnectionIcon} />
+        </AgentHubAvatar>
+        <div className="agenthub-agent-profile-copy">
+          <strong>{props.connection.label}</strong>
+          <span className="agenthub-agent-status-pill">
+            {props.connection.description}
+          </span>
+        </div>
+        <AgentHubBadge
+          status={props.connection.statusTone === "disabled" ? "default" : status}
+          text={props.connection.checking ? i18n.t("connections.checking") : props.connection.status}
+        />
+      </header>
+      <div className="agenthub-agent-editor agenthub-connection-editor">
+        <ConnectionGroup title={i18n.t("connections.connection")}>
+          <ConnectionReadOnlyRow title={i18n.t("connections.status")} value={props.connection.status} />
+          <ConnectionReadOnlyRow title={i18n.t("connections.checked")} value={props.connection.checkedAt} />
+          {props.connection.metadata.map((row) => (
+            <ConnectionReadOnlyRow key={row.label} title={row.label} value={row.value} />
+          ))}
+          {props.connection.failureReason ? (
+            <ConnectionReadOnlyRow
+              title={i18n.t("connections.issue")}
+              value={props.connection.failureReason}
+            />
+          ) : null}
+          {disabledReason ? (
+            <ConnectionReadOnlyRow title={i18n.t("connections.unavailable")} value={disabledReason} />
+          ) : null}
+          {props.checkError ? (
+            <ConnectionReadOnlyRow title={i18n.t("connections.issue")} value={props.checkError} />
+          ) : null}
+        </ConnectionGroup>
+        <AgentHubButton
+          className="agenthub-connection-check-button"
+          disabled={!canCheck || connection.checking}
+          htmlType="button"
+          onClick={() => {
+            if (connection.checkTarget) {
+              props.onCheckConnection?.(connection.checkTarget);
+            }
+          }}
+        >
+          <Icon icon={RefreshCw} />{" "}
+          {props.connection.checking
+            ? i18n.t("connections.checking")
+            : i18n.t("connections.checkConnection")}
+        </AgentHubButton>
       </div>
     </section>
   );
@@ -89,84 +218,22 @@ function ProviderConnectionDetail(props: {
 
 export function ConnectionsPage(props: {
   readonly model: WorkbenchViewModel;
-  readonly onResizeProviders?: (event: React.PointerEvent) => void;
-  readonly onRefreshConnections?: () => void;
+  readonly selectedConnectionId: string | null;
+  readonly checkError?: string | null;
+  readonly onCheckConnections?: (targets: readonly ConnectionCheckTargetId[]) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
-  const [selectedProviderId, setSelectedProviderId] = React.useState("claude-code");
   const selected =
-    props.model.connections.providers.find((provider) => provider.id === selectedProviderId) ??
-    props.model.connections.providers[0];
+    props.model.connections.items.find((connection) => connection.id === props.selectedConnectionId) ??
+    props.model.connections.items[0];
 
   return (
-    <div aria-label={i18n.t("connections.connections")} className="agenthub-settings-page">
-      <section className="agenthub-settings-panel agenthub-connections-panel">
-        <header>
-          <div>
-            <strong>{i18n.t("connections.connections")}</strong>
-            <p className="agenthub-muted">{i18n.t("connections.connectionsDescription")}</p>
-          </div>
-        </header>
-        <div className="agenthub-connections-layout">
-          <nav
-            aria-label={i18n.t("connections.providerConnections")}
-            className="agenthub-provider-list"
-          >
-            {props.model.connections.providers.map((provider) => (
-              <ProviderConnectionRow
-                key={provider.id}
-                provider={provider}
-                selected={provider.id === selected?.id}
-                onSelect={() => setSelectedProviderId(provider.id)}
-              />
-            ))}
-          </nav>
-          <div
-            aria-label={i18n.t("connections.resizeProviderList")}
-            className="agenthub-resize-handle agenthub-directory-resize-handle"
-            onPointerDown={props.onResizeProviders}
-            role="separator"
-            tabIndex={0}
-          />
-          {selected ? (
-            <ProviderConnectionDetail
-              provider={selected}
-              runtime={props.model.runtime}
-              {...(props.onRefreshConnections
-                ? { onRefreshConnections: props.onRefreshConnections }
-                : {})}
-            />
-          ) : null}
-        </div>
-      </section>
-      <section className="agenthub-settings-panel">
-        <header>
-          <div>
-            <strong>{i18n.t("connections.longTermMemory")}</strong>
-            <p className="agenthub-muted">{i18n.t("connections.serviceStatus")}</p>
-          </div>
-        </header>
-        <DetailSection title={i18n.t("connections.agentmemory")}>
-          <dl>
-            <dt>{i18n.t("connections.enabled")}</dt>
-            <dd>{props.model.connections.memory.enabled ? "true" : "false"}</dd>
-            <dt>{i18n.t("connections.status")}</dt>
-            <dd>{props.model.connections.memory.status}</dd>
-            <dt>{i18n.t("connections.url")}</dt>
-            <dd>{props.model.connections.memory.url}</dd>
-            <dt>{i18n.t("connections.viewer")}</dt>
-            <dd>{props.model.connections.memory.viewerUrl}</dd>
-            <dt>{i18n.t("connections.checked")}</dt>
-            <dd>{props.model.connections.memory.checkedAt}</dd>
-            {props.model.connections.memory.failureReason ? (
-              <>
-                <dt>{i18n.t("connections.issue")}</dt>
-                <dd>{props.model.connections.memory.failureReason}</dd>
-              </>
-            ) : null}
-          </dl>
-        </DetailSection>
-      </section>
+    <div aria-label={i18n.t("connections.connections")} className="agenthub-agents-page agenthub-connections-page">
+      <ConnectionDetail
+        checkError={props.checkError ?? null}
+        connection={selected}
+        onCheckConnection={(target) => props.onCheckConnections?.([target])}
+      />
     </div>
   );
 }

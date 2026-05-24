@@ -57,7 +57,14 @@ if (process.env.AGENTHUB_DESKTOP_RUNTIME_ENTRY === "1") {
         binaryPath: config.claudeCodeBin,
       }),
     ],
-    { memoryClient },
+    {
+      memoryClient,
+      checkProviderHealth: () =>
+        checkClaudeCodeProviderHealth({
+          providerMode: config.providerMode,
+          binaryPath: config.claudeCodeBin,
+        }),
+    },
   );
   const [providerHealth, memoryHealth] = await Promise.all([
     checkClaudeCodeProviderHealth({
