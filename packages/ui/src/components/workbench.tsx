@@ -17,7 +17,7 @@ import { AgentsPage, type AgentRoleMutationInput } from "./agents.js";
 import { ConnectionsPage } from "./connections.js";
 import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
-import { AgentHubThemeProvider } from "./antd-primitives.js";
+import { AgentHubThemeProvider } from "./system.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";

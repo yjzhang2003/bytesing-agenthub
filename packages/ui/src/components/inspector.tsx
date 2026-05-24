@@ -13,7 +13,7 @@ import type {
 } from "../types.js";
 import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
-import { AgentHubAvatar, AgentHubModal, AgentHubSelect } from "./antd-primitives.js";
+import { AgentHubAvatar, AgentHubModal, AgentHubSelect } from "./system.js";
 import { DetailSection, HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 export function ContextInspector(props: {
@@ -234,7 +234,9 @@ function AddChatAgentDialog(props: {
   const i18n = useAgentHubI18n();
   return (
     <AgentHubModal
+      cancelText={i18n.t("actions.cancel")}
       className="agenthub-chat-add-agent-modal"
+      closeLabel={i18n.t("actions.cancel")}
       destroyOnHidden
       getContainer={false}
       okButtonProps={{

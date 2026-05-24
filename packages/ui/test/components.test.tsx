@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   AgentMentionComposer,
   AgentsPage,
+  Button,
+  Dialog,
   AgentHubWorkbench,
   AgentHubTextInput,
   AgentHubThemeProvider,
@@ -11,8 +13,10 @@ import {
   PermissionCard,
   PlanCard,
   RuntimeStatusBadge,
+  Select,
   SettingsPage,
-  createAgentHubAntdTheme,
+  Switch,
+  createAgentHubTheme,
   createWorkbenchViewModel,
   workbenchLayoutForWidth,
 } from "../src/index.js";
@@ -200,19 +204,63 @@ const artifact: Artifact = {
 };
 
 describe("@agenthub/ui components", () => {
-  it("maps AgentHub themes into Ant Design tokens and renders wrapped controls", () => {
-    const darkTheme = createAgentHubAntdTheme("dark");
-    const lightTheme = createAgentHubAntdTheme("light");
+  it("renders first-party component contracts without vendor classes", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubThemeProvider mode="light">
+        <Button loading tone="accent" variant="solid">
+          Save
+        </Button>
+        <Select
+          ariaLabel="Role"
+          value="worker"
+          onValueChange={() => undefined}
+          options={[{ label: "worker", value: "worker" }]}
+        />
+        <Switch ariaLabel="Dark mode" checked onCheckedChange={() => undefined} />
+        <Dialog
+          cancelText="Cancel"
+          closeLabel="Close"
+          open
+          title="Add agent"
+          okText="Add"
+        >
+          <p>Select an agent</p>
+        </Dialog>
+      </AgentHubThemeProvider>,
+    );
+    const forbiddenNeedles = [
+      ["a", "nt-"].join(""),
+      ["agenthub", ["a", "ntd"].join("")].join("-"),
+      "#62d98b",
+    ];
+
+    expect(html).toContain("agenthub-button");
+    expect(html).toContain('data-loading="true"');
+    expect(html).toContain('style="--agenthub-bg:#f4f4f1');
+    expect(html).toContain("agenthub-select");
+    expect(html).toContain('role="switch"');
+    expect(html).toContain('aria-label="Dark mode"');
+    expect(html).toContain('data-state="checked"');
+    expect(html).toContain("agenthub-dialog");
+    expect(html).toContain("aria-labelledby=");
+    for (const forbiddenNeedle of forbiddenNeedles) {
+      expect(html).not.toContain(forbiddenNeedle);
+    }
+  });
+
+  it("maps AgentHub themes into AgentHub tokens and renders wrapped controls", () => {
+    const darkTheme = createAgentHubTheme("dark");
+    const lightTheme = createAgentHubTheme("light");
     const html = renderToStaticMarkup(
       <AgentHubThemeProvider mode="dark">
         <AgentHubTextInput aria-label="Wrapped input" disabled placeholder="Wrapped input" />
       </AgentHubThemeProvider>,
     );
 
-    expect(darkTheme.token?.colorBgBase).toBe("#0f1110");
-    expect(lightTheme.token?.colorBgBase).toBe("#f6f7f4");
-    expect(darkTheme.token?.controlHeight).toBe(34);
-    expect(html).toContain("agenthub-antd-input");
+    expect(darkTheme.tokens.background).toBe("#10110f");
+    expect(lightTheme.tokens.background).toBe("#f4f4f1");
+    expect(darkTheme.tokens.controlHeight).toBe(34);
+    expect(html).toContain("agenthub-input");
     expect(html).toContain("Wrapped input");
     expect(html).toContain("disabled");
   });
@@ -338,8 +386,8 @@ describe("@agenthub/ui components", () => {
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
 
     expect(html).toContain("agenthub-composer-box");
-    expect(html).toContain("agenthub-antd-input");
-    expect(html).toContain("agenthub-antd-button");
+    expect(html).toContain("agenthub-input");
+    expect(html).toContain("agenthub-button");
     expect(html).toContain('data-multiline="false"');
     expect(html).toContain("agenthub-composer-actions");
     expect(html).toContain("agenthub-composer-send");
@@ -478,7 +526,7 @@ describe("@agenthub/ui components", () => {
     expect(settings).toContain("Enter sends message");
     expect(settings).toContain("Shift+Enter inserts a new line.");
     expect(settings).toContain("Appearance");
-    expect(settings).toContain("agenthub-antd-switch");
+    expect(settings).toContain("agenthub-switch");
     expect(settings).toContain("Permissions");
     expect(settings).toContain("Review");
     expect(settings).not.toContain("Claude Code");
@@ -504,10 +552,10 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Resize agent directory"');
     expect(html).toContain('aria-label="Search agents"');
     expect(html).toContain("agenthub-sidebar-search");
-    expect(html).not.toMatch(/agenthub-conversation-search[\s\S]*agenthub-antd-input/);
-    expect(html).toContain("agenthub-antd-avatar");
-    expect(html).toContain("agenthub-antd-badge");
-    expect(html).toContain("agenthub-antd-select");
+    expect(html).not.toMatch(/agenthub-conversation-search[\s\S]*agenthub-input/);
+    expect(html).toContain("agenthub-avatar");
+    expect(html).toContain("agenthub-badge");
+    expect(html).toContain("agenthub-select");
     expect(html).toContain("Researcher");
     expect(html).toContain("Plan work");
     expect(html).toContain("Responsibilities");
@@ -526,7 +574,7 @@ describe("@agenthub/ui components", () => {
     const formActionsCss = html.match(/\.agenthub-agent-form-actions \{[^}]*\}/)?.[0] ?? "";
     expect(formActionsCss).toContain("width: min(100%, 820px)");
     expect(formActionsCss).toContain("justify-content: flex-end");
-    const deleteButtonCss = html.match(/\.agenthub-antd-button\.ant-btn\.agenthub-agent-delete-button \{[^}]*\}/)?.[0] ?? "";
+    const deleteButtonCss = html.match(/\.agenthub-button\.agenthub-agent-delete-button \{[^}]*\}/)?.[0] ?? "";
     expect(deleteButtonCss).toContain("border-color: transparent");
     expect(html).toContain("--agenthub-type-title: 16px");
     expect(html).toContain(".agenthub-agent-settings-group > header,\n.agenthub-agent-advanced summary");
@@ -537,13 +585,13 @@ describe("@agenthub/ui components", () => {
     expect(agentEditorLabelCss).not.toContain("border-top");
     const agentEditorInputCss = html.match(/\.agenthub-agent-editor input,[\s\S]*?\.agenthub-role-form textarea \{[^}]*\}/)?.[0] ?? "";
     expect(agentEditorInputCss).toContain("border: 1px solid transparent");
-    expect(html).toContain(".agenthub-agent-editor .agenthub-antd-input.ant-input:hover");
+    expect(html).toContain(".agenthub-agent-editor .agenthub-input:hover");
     expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="Responsibilities")[^>]*\srows=/);
     expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="System prompt")[^>]*\srows=/);
     expect(html).not.toMatch(/<textarea(?=[^>]*aria-label="Policy JSON")[^>]*\srows=/);
     expect(html).toContain("max-height: 150px");
     expect(html).toContain(".agenthub-workbench textarea {\n  resize: none;");
-    expect(html).toContain(".agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-content");
+    expect(html).toContain(".agenthub-agent-editor .agenthub-select");
     expect(html).not.toMatch(/agenthub-agent-profile-actions[\s\S]*New agent/);
     expect(html).toContain("agenthub-agent-form-actions");
     expect(html).toContain("agenthub-agent-delete-button");
@@ -586,8 +634,8 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('data-view="connections"');
     expect(html).toContain("Connections");
     expect(html).toContain("Claude Code");
-    expect(html).toContain("agenthub-antd-avatar");
-    expect(html).toContain("agenthub-antd-badge");
+    expect(html).toContain("agenthub-avatar");
+    expect(html).toContain("agenthub-badge");
     expect(html).toContain('aria-label="Resize provider list"');
     expect(html).toContain("connected");
     expect(html).toContain("/usr/local/bin/claude");

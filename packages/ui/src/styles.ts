@@ -235,78 +235,153 @@ body { overflow: hidden; }
   background: transparent;
   opacity: .58;
 }
-.agenthub-antd-button.ant-btn {
+.agenthub-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
   color: inherit;
   font: inherit;
+  padding: 0 11px;
   box-shadow: none;
+  cursor: pointer;
+  transition:
+    background-color var(--agenthub-motion-fast),
+    border-color var(--agenthub-motion-fast),
+    color var(--agenthub-motion-fast),
+    opacity var(--agenthub-motion-fast);
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-contact-row,
-.agenthub-antd-button.ant-btn.agenthub-provider-row,
-.agenthub-antd-button.ant-btn.agenthub-composer-suggestion {
+.agenthub-button[data-variant="solid"] {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+  color: var(--agenthub-accent-text);
+}
+.agenthub-button[data-variant="outline"] {
+  border-color: var(--agenthub-border);
+  background: var(--agenthub-surface);
+}
+.agenthub-button[data-tone="danger"] {
+  color: var(--agenthub-danger);
+}
+.agenthub-button.agenthub-agent-contact-row,
+.agenthub-button.agenthub-provider-row,
+.agenthub-button.agenthub-composer-suggestion {
   display: grid;
   height: auto;
   justify-content: initial;
 }
-.agenthub-antd-button.ant-btn.agenthub-composer-send,
-.agenthub-antd-button.ant-btn.agenthub-icon-button {
+.agenthub-button.agenthub-composer-send,
+.agenthub-button.agenthub-icon-button {
   display: inline-grid;
 }
-.agenthub-antd-button.ant-btn-text:not(:disabled):not(.ant-btn-disabled):hover,
-.agenthub-antd-button.ant-btn-text:not(:disabled):not(.ant-btn-disabled):focus-visible {
+.agenthub-button:not(:disabled):hover,
+.agenthub-button:not(:disabled):focus-visible {
+  border-color: var(--agenthub-border-strong);
   color: var(--agenthub-text);
   background: var(--agenthub-surface-hover);
 }
-.agenthub-antd-input.ant-input,
-.agenthub-antd-input.ant-input-affix-wrapper,
-.agenthub-antd-input.ant-input-search .ant-input,
-.agenthub-antd-input.ant-input-search .ant-input-affix-wrapper,
-.agenthub-antd-select.ant-select .ant-select-selector {
+.agenthub-button:disabled {
+  color: var(--agenthub-text-muted);
+  cursor: not-allowed;
+  opacity: .58;
+}
+.agenthub-input,
+.agenthub-select {
+  width: 100%;
   border-color: var(--agenthub-border);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: var(--agenthub-radius);
   background: var(--agenthub-surface);
   color: var(--agenthub-text);
+  font: inherit;
+  padding: 7px 10px;
   box-shadow: none;
 }
-.agenthub-antd-input.ant-input,
-.agenthub-antd-input.ant-input-affix-wrapper,
-.agenthub-antd-select.ant-select .ant-select-selector {
+.agenthub-search-control {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+}
+.agenthub-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--agenthub-text-muted);
+  cursor: pointer;
+}
+.agenthub-search-clear:hover,
+.agenthub-search-clear:focus-visible {
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text);
+}
+.agenthub-input,
+.agenthub-select {
   min-height: 34px;
 }
-.agenthub-antd-input.ant-input,
+.agenthub-input,
 .agenthub-workbench textarea {
   resize: none;
 }
-.agenthub-antd-input.ant-input:hover,
-.agenthub-antd-input.ant-input-affix-wrapper:hover,
-.agenthub-antd-select.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+.agenthub-input:hover,
+.agenthub-select:not(:disabled):hover {
   border-color: var(--agenthub-border-strong);
 }
-.agenthub-antd-input.ant-input:focus,
-.agenthub-antd-input.ant-input-affix-wrapper-focused,
-.agenthub-antd-select.ant-select-focused .ant-select-selector {
+.agenthub-input:focus,
+.agenthub-select:focus {
   border-color: var(--agenthub-accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 28%, transparent);
 }
-.agenthub-antd-select {
-  width: 100%;
-}
-.agenthub-antd-avatar.ant-avatar {
+.agenthub-avatar {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
   background: color-mix(in srgb, var(--agenthub-accent) 12%, var(--agenthub-surface-hover));
   color: var(--agenthub-text);
   font-weight: 750;
 }
-.agenthub-antd-badge .ant-badge-count {
+.agenthub-avatar[data-shape="square"] {
+  border-radius: var(--agenthub-radius);
+}
+.agenthub-badge {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
   background: var(--agenthub-surface-hover);
   color: var(--agenthub-text-muted);
+  font-size: 11px;
+  font-weight: 700;
   box-shadow: none;
 }
-.agenthub-antd-empty.ant-empty {
+.agenthub-badge[data-tone="success"] { color: var(--agenthub-status); }
+.agenthub-badge[data-tone="warning"] { color: var(--agenthub-warning); }
+.agenthub-badge[data-tone="danger"] { color: var(--agenthub-danger); }
+.agenthub-empty-state {
   color: var(--agenthub-text-muted);
 }
-.agenthub-workbench .ant-form-item {
+.agenthub-form-field {
+  display: grid;
+  gap: 6px;
   margin-bottom: 14px;
 }
 .agenthub-sidebar-toggle {
@@ -731,7 +806,7 @@ body { overflow: hidden; }
   gap: 10px;
   flex-wrap: wrap;
 }
-.agenthub-composer .agenthub-antd-input.ant-input,
+.agenthub-composer .agenthub-input,
 .agenthub-composer textarea {
   grid-area: input;
   width: 100%;
@@ -749,9 +824,9 @@ body { overflow: hidden; }
   line-height: 22px;
   transition: height var(--agenthub-motion-medium);
 }
-.agenthub-composer .agenthub-antd-input.ant-input,
-.agenthub-composer .agenthub-antd-input.ant-input:hover,
-.agenthub-composer .agenthub-antd-input.ant-input:focus {
+.agenthub-composer .agenthub-input,
+.agenthub-composer .agenthub-input:hover,
+.agenthub-composer .agenthub-input:focus {
   border-color: transparent;
   box-shadow: none;
   outline: 0;
@@ -970,7 +1045,7 @@ body { overflow: hidden; }
   display: inline-flex;
   justify-content: end;
 }
-.agenthub-settings-group .agenthub-antd-select {
+.agenthub-settings-group .agenthub-select {
   min-width: 172px;
 }
 .agenthub-agents-page {
@@ -1171,7 +1246,7 @@ body { overflow: hidden; }
   gap: 8px;
   padding: 14px 18px 16px;
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-template-option {
+.agenthub-button.agenthub-agent-template-option {
   min-width: 0;
   height: auto;
   min-height: 76px;
@@ -1230,7 +1305,7 @@ body { overflow: hidden; }
   justify-content: flex-end;
   margin: 0;
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-delete-button {
+.agenthub-button.agenthub-agent-delete-button {
   min-height: 34px;
   padding-inline: 12px;
   border-color: transparent;
@@ -1243,8 +1318,8 @@ body { overflow: hidden; }
     border-color var(--agenthub-motion-fast),
     color var(--agenthub-motion-fast);
 }
-.agenthub-antd-button.ant-btn.agenthub-agent-delete-button:hover,
-.agenthub-antd-button.ant-btn.agenthub-agent-delete-button:focus-visible {
+.agenthub-button.agenthub-agent-delete-button:hover,
+.agenthub-button.agenthub-agent-delete-button:focus-visible {
   border-color: var(--agenthub-danger);
   background: color-mix(in srgb, var(--agenthub-danger) 10%, var(--agenthub-surface));
   color: var(--agenthub-danger);
@@ -1349,39 +1424,24 @@ body { overflow: hidden; }
   padding: 8px 10px;
   min-height: 34px;
 }
-.agenthub-agent-editor .agenthub-antd-select.ant-select {
+.agenthub-agent-editor .agenthub-select {
   font-size: var(--agenthub-type-md);
 }
-.agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selector {
-  align-items: center;
-  display: flex;
-  min-height: 34px;
-  padding: 0 10px;
-}
-.agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-content {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-.agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selector,
-.agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selection-item {
+.agenthub-agent-editor .agenthub-select {
   font: 600 var(--agenthub-type-md)/1.45 var(--agenthub-font);
 }
-.agenthub-agent-editor .agenthub-antd-input.ant-input,
-.agenthub-agent-editor .agenthub-antd-input.ant-input-affix-wrapper,
-.agenthub-agent-editor .agenthub-antd-select.ant-select .ant-select-selector {
+.agenthub-agent-editor .agenthub-input,
+.agenthub-agent-editor .agenthub-select {
   border-color: transparent;
 }
-.agenthub-agent-editor .agenthub-antd-input.ant-input:hover,
-.agenthub-agent-editor .agenthub-antd-input.ant-input-affix-wrapper:hover,
+.agenthub-agent-editor .agenthub-input:hover,
 .agenthub-agent-editor textarea:hover,
-.agenthub-agent-editor .agenthub-antd-select.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+.agenthub-agent-editor .agenthub-select:not(:disabled):hover {
   border-color: var(--agenthub-border-strong);
 }
-.agenthub-agent-editor .agenthub-antd-input.ant-input:focus,
-.agenthub-agent-editor .agenthub-antd-input.ant-input-affix-wrapper-focused,
+.agenthub-agent-editor .agenthub-input:focus,
 .agenthub-agent-editor textarea:focus,
-.agenthub-agent-editor .agenthub-antd-select.ant-select-focused .ant-select-selector {
+.agenthub-agent-editor .agenthub-select:focus {
   border-color: var(--agenthub-accent);
 }
 .agenthub-agent-editor [aria-invalid="true"] {
@@ -1544,7 +1604,7 @@ body { overflow: hidden; }
   background: transparent;
   text-align: center;
 }
-.agenthub-chat-participant-tile .agenthub-antd-avatar.ant-avatar {
+.agenthub-chat-participant-tile .agenthub-avatar {
   width: 42px;
   height: 42px;
   line-height: 42px;
@@ -1564,7 +1624,7 @@ body { overflow: hidden; }
   border-style: dashed;
   padding: 0;
 }
-.agenthub-chat-agent-select.agenthub-antd-select {
+.agenthub-chat-agent-select.agenthub-select {
   width: 100%;
 }
 .agenthub-chat-add-agent-button {
@@ -1602,48 +1662,75 @@ body { overflow: hidden; }
   align-items: center;
   padding-top: 4px;
 }
-.agenthub-chat-add-agent-modal .ant-modal-content {
+.agenthub-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 40;
+  max-width: calc(100vw - 32px);
+  transform: translate(-50%, -50%);
   background: var(--agenthub-surface);
   color: var(--agenthub-text);
   border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .22);
 }
-.agenthub-chat-add-agent-modal .ant-modal-title {
+.agenthub-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0, 0, 0, .42);
+}
+.agenthub-dialog-header {
+  min-height: 54px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agenthub-dialog-header h2 {
+  margin: 0;
+  font-size: var(--agenthub-type-title);
+  line-height: 1.2;
   color: var(--agenthub-text);
 }
-.agenthub-chat-add-agent-modal .ant-modal-close {
+.agenthub-dialog-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
   color: var(--agenthub-text-muted);
+  cursor: pointer;
+  font: inherit;
 }
-.agenthub-chat-add-agent-modal .ant-modal-close:hover {
+.agenthub-dialog-close:hover {
   color: var(--agenthub-text);
   background: var(--agenthub-surface-hover);
 }
-.agenthub-chat-add-agent-modal .ant-btn {
-  border-color: var(--agenthub-border);
-  background: var(--agenthub-surface);
-  color: var(--agenthub-text);
-  box-shadow: none;
+.agenthub-dialog-body {
+  padding: 0 18px 14px;
 }
-.agenthub-chat-add-agent-modal .ant-btn:not(:disabled):not(.ant-btn-disabled):hover,
-.agenthub-chat-add-agent-modal .ant-btn:not(:disabled):not(.ant-btn-disabled):focus-visible {
-  border-color: var(--agenthub-border-strong);
-  background: var(--agenthub-surface-hover);
-  color: var(--agenthub-text);
+.agenthub-dialog-footer {
+  padding: 0 18px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
-.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled) {
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled) {
   border-color: var(--agenthub-accent);
   background: var(--agenthub-accent);
   color: var(--agenthub-accent-text);
 }
-.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled):hover,
-.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):not(.ant-btn-disabled):focus-visible {
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):hover,
+.agenthub-chat-add-agent-modal .agenthub-modal-confirm-button:not(:disabled):focus-visible {
   border-color: var(--agenthub-accent);
   background: color-mix(in srgb, var(--agenthub-accent) 88%, var(--agenthub-surface));
   color: var(--agenthub-accent-text);
 }
-.agenthub-chat-add-agent-modal .agenthub-antd-select.ant-select-focused .ant-select-selector,
-.agenthub-chat-add-agent-modal .agenthub-antd-select.ant-select-open .ant-select-selector {
-  border-color: var(--agenthub-accent) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 24%, transparent) !important;
+.agenthub-chat-add-agent-modal .agenthub-select:focus {
+  border-color: var(--agenthub-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 24%, transparent);
 }
 .agenthub-file-list {
   display: grid;

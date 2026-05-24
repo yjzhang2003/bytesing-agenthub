@@ -9,7 +9,7 @@ import {
   AgentHubSelect,
   AgentHubTextArea,
   AgentHubTextInput,
-} from "./antd-primitives.js";
+} from "./system.js";
 import { Icon, SidebarSearchField } from "./primitives.js";
 
 export interface AgentRoleMutationInput {

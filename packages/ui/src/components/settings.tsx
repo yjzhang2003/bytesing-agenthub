@@ -3,7 +3,7 @@ import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
 import { supportedAgentHubLocales, useAgentHubI18n } from "../i18n.js";
 import type { InspectorSelection, WorkbenchViewModel } from "../types.js";
-import { AgentHubButton, AgentHubSelect, AgentHubSwitch } from "./antd-primitives.js";
+import { AgentHubButton, AgentHubSelect, AgentHubSwitch } from "./system.js";
 import { Icon, RuntimeStatusBadge } from "./primitives.js";
 
 function SettingsNavItem(props: {
@@ -105,7 +105,11 @@ export function SettingsPage(props: {
 
         <SettingsGroup
           action={
-            <AgentHubSwitch checked={props.theme === "dark"} onChange={props.onToggleTheme} />
+            <AgentHubSwitch
+              ariaLabel={i18n.t("settings.darkMode", { fallback: "Dark mode" })}
+              checked={props.theme === "dark"}
+              onChange={props.onToggleTheme}
+            />
           }
           title={i18n.t("settings.appearance", { fallback: "Appearance" })}
         >
@@ -120,7 +124,11 @@ export function SettingsPage(props: {
         <SettingsGroup title={i18n.t("settings.keyboard", { fallback: "Keyboard" })}>
           <SettingsRow
             control={
-              <AgentHubSwitch checked={props.enterToSend} onChange={props.onToggleEnterToSend} />
+              <AgentHubSwitch
+                ariaLabel={i18n.t("settings.enterToSend", { fallback: "Enter sends message" })}
+                checked={props.enterToSend}
+                onChange={props.onToggleEnterToSend}
+              />
             }
             description={i18n.t("settings.shiftEnter", {
               fallback: "Shift+Enter inserts a new line.",

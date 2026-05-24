@@ -9,12 +9,9 @@
   },
   "dependencies": {
     "@agenthub/contracts": "workspace:*",
-    "@ant-design/icons": "^6.2.3",
-    "@ant-design/x": "^2.7.0",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "antd": "^6.4.3",
     "lucide-react": "^1.16.0",
     "marked": "16.4.2",
     "motion": "^12.40.0",

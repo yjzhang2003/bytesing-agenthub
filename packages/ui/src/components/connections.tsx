@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
 import type { ProviderConnectionViewModel, WorkbenchViewModel } from "../types.js";
-import { AgentHubAvatar, AgentHubBadge, AgentHubButton } from "./antd-primitives.js";
+import { AgentHubAvatar, AgentHubBadge, AgentHubButton } from "./system.js";
 import { DetailSection, Icon, RuntimeStatusBadge } from "./primitives.js";
 
 function ProviderConnectionRow(props: {

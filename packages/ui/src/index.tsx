@@ -41,6 +41,25 @@ export { ConnectionsPage } from "./components/connections.js";
 export { DiffCard, PermissionCard, PlanCard } from "./components/cards.js";
 export { ParticipantChip, RuntimeStatusBadge } from "./components/primitives.js";
 export {
+  Avatar,
+  Badge,
+  Button,
+  Checkbox,
+  Dialog,
+  DropdownMenu,
+  EmptyState,
+  FormField,
+  IconButton,
+  LoadingState,
+  SearchInput,
+  Select,
+  Switch,
+  Tabs,
+  TextArea,
+  TextInput,
+  ThemeRoot,
+  Toast,
+  Tooltip,
   AgentHubAvatar,
   AgentHubBadge,
   AgentHubButton,
@@ -60,6 +79,6 @@ export {
   AgentHubThemeProvider,
   AgentHubTooltip,
   agentHubMessage,
-  createAgentHubAntdTheme,
-} from "./components/antd-primitives.js";
-export type { AgentHubThemeMode } from "./components/antd-primitives.js";
+  createAgentHubTheme,
+} from "./components/system.js";
+export type { AgentHubThemeMode } from "./components/system.js";

@@ -2,11 +2,10 @@ import type { Agent } from "@agenthub/contracts";
 import { Send } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React from "react";
-import type { TextAreaRef } from "antd/es/input/TextArea.js";
 import type { AgentHubLocale } from "../i18n.js";
 import { useAgentHubI18n } from "../i18n.js";
 import type { AgentTargetViewModel } from "../types.js";
-import { AgentHubButton, AgentHubTextArea } from "./antd-primitives.js";
+import { AgentHubButton, AgentHubTextArea } from "./system.js";
 import { Icon } from "./primitives.js";
 
 const SLASH_COMMANDS = [
@@ -42,7 +41,7 @@ export function AgentMentionComposer(props: {
   const [message, setMessage] = React.useState("");
   const [target, setTarget] = React.useState(props.selectedTarget);
   const [isMultiline, setIsMultiline] = React.useState(false);
-  const textareaRef = React.useRef<TextAreaRef | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const selected =
     normalizedTargets.find((candidate) => candidate.target === target) ?? normalizedTargets[0];
   const planTarget =
@@ -71,7 +70,7 @@ export function AgentMentionComposer(props: {
   }, [props.selectedTarget]);
 
   const updateMultilineState = React.useCallback(() => {
-    const textarea = textareaRef.current?.resizableTextArea?.textArea;
+    const textarea = textareaRef.current;
     if (!textarea) {
       setIsMultiline(message.includes("\n") || message.length > 56);
       return;
