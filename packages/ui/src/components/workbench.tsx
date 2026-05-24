@@ -1,5 +1,5 @@
 import type { WorkbenchSnapshot } from "@agenthub/contracts";
-import { Moon, PanelLeftClose, PanelRightClose, Sun } from "lucide-react";
+import { PanelLeftClose, PanelRightClose } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
@@ -348,6 +348,9 @@ export function AgentHubWorkbench(props: {
                     setCenterView("connections");
                     setMobileLeftOpen(false);
                   }}
+                  onToggleTheme={() =>
+                    setTheme((current) => (current === "dark" ? "light" : "dark"))
+                  }
                   onSelect={(nextSelection) => {
                     setCenterView("conversation");
                     setSelection(nextSelection);
@@ -361,6 +364,7 @@ export function AgentHubWorkbench(props: {
                   settingsActive={centerView === "settings"}
                   agentsActive={centerView === "agents"}
                   connectionsActive={centerView === "connections"}
+                  theme={theme}
                   onToggleCollapsed={() => {
                     setMobileLeftOpen(false);
                     setLeftCollapsed((current) => !current);
@@ -417,6 +421,9 @@ export function AgentHubWorkbench(props: {
                       setCenterView("connections");
                       setMobileLeftOpen(false);
                     }}
+                    onToggleTheme={() =>
+                      setTheme((current) => (current === "dark" ? "light" : "dark"))
+                    }
                     onSelect={(nextSelection) => {
                       setCenterView("conversation");
                       setSelection(nextSelection);
@@ -432,6 +439,7 @@ export function AgentHubWorkbench(props: {
                     settingsActive={centerView === "settings"}
                     agentsActive={centerView === "agents"}
                     connectionsActive={centerView === "connections"}
+                    theme={theme}
                     onToggleCollapsed={() => {
                       setMobileLeftOpen(false);
                       setLeftCollapsed((current) => !current);
@@ -533,18 +541,6 @@ export function AgentHubWorkbench(props: {
                       <Icon icon={PanelRightClose} />
                     </HoverButton>
                   ) : null}
-                  <HoverButton
-                    aria-label={
-                      theme === "dark"
-                        ? i18n.t("actions.switchToLight", { fallback: "Switch to light mode" })
-                        : i18n.t("actions.switchToDark", { fallback: "Switch to dark mode" })
-                    }
-                    className="agenthub-icon-button"
-                    onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
-                    type="button"
-                  >
-                    <Icon icon={theme === "dark" ? Sun : Moon} />
-                  </HoverButton>
                 </div>
               </header>
               {centerView === "agents" ? (

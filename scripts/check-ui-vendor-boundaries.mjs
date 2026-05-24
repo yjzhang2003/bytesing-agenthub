@@ -1,22 +1,38 @@
 import { execFile } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
 
 const root = process.cwd();
-const uiRoot = path.join(root, "packages", "ui");
+const fixtureRootIndex = process.argv.indexOf("--fixture-root");
+const fixtureRoot =
+  fixtureRootIndex >= 0 && process.argv[fixtureRootIndex + 1]
+    ? path.resolve(root, process.argv[fixtureRootIndex + 1])
+    : null;
+const expectFailures = process.argv.includes("--expect-failures");
+const uiRoot = fixtureRoot ?? path.join(root, "packages", "ui");
 const sourceRoots = [
-  path.join(uiRoot, "src"),
-  path.join(uiRoot, "test"),
+  ...(fixtureRoot ? [fixtureRoot] : [path.join(uiRoot, "src"), path.join(uiRoot, "test")]),
 ];
 
 const forbiddenPackageNames = new Set(["antd", "@ant-design/icons", "@ant-design/x"]);
 const forbiddenImportPattern =
   /(?:from\s+["']|import\s*\(\s*["']|import\s+["'])(antd(?:\/[^"']*)?|@ant-design\/(?:icons|x)(?:\/[^"']*)?)["']/g;
 const forbiddenCssPattern = /\.(?:ant-[A-Za-z0-9_-]+|agenthub-antd-[A-Za-z0-9_-]+)/g;
+const forbiddenClassStringPattern =
+  /["'`](?:[^"'`]*\s)?((?:ant-[A-Za-z0-9_-]+|agenthub-antd-[A-Za-z0-9_-]+)(?:\s[^"'`]*)?)["'`]/g;
 const forbiddenLockfilePattern = /(?:^|[\s'"/])(?:antd|@ant-design\/(?:icons|x))(?:@|[\s:'"/]|$)/m;
 const execFileAsync = promisify(execFile);
+
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
@@ -41,46 +57,55 @@ function formatPath(filePath) {
 const failures = [];
 
 const packageJsonPath = path.join(uiRoot, "package.json");
-const packageJson = await readJson(packageJsonPath);
-for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
-  const deps = packageJson[field] ?? {};
-  for (const depName of Object.keys(deps)) {
-    if (forbiddenPackageNames.has(depName)) {
-      failures.push(`${formatPath(packageJsonPath)}: forbidden ${field} entry "${depName}"`);
+if (await fileExists(packageJsonPath)) {
+  const packageJson = await readJson(packageJsonPath);
+  for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+    const deps = packageJson[field] ?? {};
+    for (const depName of Object.keys(deps)) {
+      if (forbiddenPackageNames.has(depName)) {
+        failures.push(`${formatPath(packageJsonPath)}: forbidden ${field} entry "${depName}"`);
+      }
     }
   }
 }
 
-const lockfilePath = path.join(root, "pnpm-lock.yaml");
-const lockfile = await readFile(lockfilePath, "utf8");
-if (forbiddenLockfilePattern.test(lockfile)) {
-  failures.push(`${formatPath(lockfilePath)}: forbidden Ant Design package remains in lockfile`);
+const lockfilePath = fixtureRoot ? path.join(fixtureRoot, "pnpm-lock.yaml") : path.join(root, "pnpm-lock.yaml");
+if (await fileExists(lockfilePath)) {
+  const lockfile = await readFile(lockfilePath, "utf8");
+  if (forbiddenLockfilePattern.test(lockfile)) {
+    failures.push(`${formatPath(lockfilePath)}: forbidden Ant Design package remains in lockfile`);
+  }
 }
 
-try {
-  const { stdout } = await execFileAsync("pnpm", [
-    "list",
-    "--filter",
-    "@agenthub/ui",
-    "--depth",
-    "Infinity",
-    "--json",
-  ], {
-    cwd: root,
-    maxBuffer: 1024 * 1024 * 8,
-  });
-  const dependencyGraph = JSON.stringify(JSON.parse(stdout));
-  for (const depName of forbiddenPackageNames) {
-    if (dependencyGraph.includes(`"name":"${depName}"`) || dependencyGraph.includes(`"/${depName}@`)) {
-      failures.push(`pnpm list @agenthub/ui: forbidden resolved dependency "${depName}"`);
+if (!fixtureRoot) {
+  try {
+    const { stdout } = await execFileAsync("pnpm", [
+      "list",
+      "--filter",
+      "@agenthub/ui",
+      "--depth",
+      "Infinity",
+      "--json",
+    ], {
+      cwd: root,
+      maxBuffer: 1024 * 1024 * 8,
+    });
+    const dependencyGraph = JSON.stringify(JSON.parse(stdout));
+    for (const depName of forbiddenPackageNames) {
+      if (dependencyGraph.includes(`"name":"${depName}"`) || dependencyGraph.includes(`"/${depName}@`)) {
+        failures.push(`pnpm list @agenthub/ui: forbidden resolved dependency "${depName}"`);
+      }
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push(`pnpm list @agenthub/ui: unable to inspect resolved dependency graph (${message})`);
   }
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  failures.push(`pnpm list @agenthub/ui: unable to inspect resolved dependency graph (${message})`);
 }
 
 for (const sourceRoot of sourceRoots) {
+  if (!(await fileExists(sourceRoot))) {
+    continue;
+  }
   for await (const filePath of walk(sourceRoot)) {
     const text = await readFile(filePath, "utf8");
     for (const match of text.matchAll(forbiddenImportPattern)) {
@@ -89,10 +114,23 @@ for (const sourceRoot of sourceRoots) {
     for (const match of text.matchAll(forbiddenCssPattern)) {
       failures.push(`${formatPath(filePath)}: forbidden vendor selector "${match[0]}"`);
     }
+    for (const match of text.matchAll(forbiddenClassStringPattern)) {
+      failures.push(`${formatPath(filePath)}: forbidden vendor class string "${match[1]}"`);
+    }
   }
 }
 
-if (failures.length > 0) {
+if (expectFailures) {
+  if (failures.length > 0) {
+    console.log("AgentHub UI vendor boundary negative fixture produced expected failures:");
+    for (const failure of failures) {
+      console.log(`- ${failure}`);
+    }
+  } else {
+    console.error("AgentHub UI vendor boundary negative fixture did not produce failures.");
+    process.exitCode = 1;
+  }
+} else if (failures.length > 0) {
   console.error("AgentHub UI vendor boundary check failed:");
   for (const failure of failures) {
     console.error(`- ${failure}`);

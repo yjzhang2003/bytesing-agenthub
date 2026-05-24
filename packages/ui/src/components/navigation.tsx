@@ -4,9 +4,11 @@ import {
   Cable,
   ClipboardCheck,
   MessageSquare,
+  Moon,
   PanelLeftClose,
   Play,
   Settings,
+  Sun,
 } from "lucide-react";
 import React from "react";
 import { useAgentHubI18n } from "../i18n.js";
@@ -103,6 +105,8 @@ export function LeftNavigation(props: {
   readonly agentsActive: boolean;
   readonly connectionsActive: boolean;
   readonly compact?: boolean;
+  readonly onToggleTheme: () => void;
+  readonly theme: "light" | "dark";
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   return (
@@ -186,6 +190,23 @@ export function LeftNavigation(props: {
           <small>{props.model.workspace.pendingPermissionCount}</small>
         </HoverButton>
         <div className="agenthub-nav-bottom">
+          <HoverButton
+            aria-label={
+              props.theme === "dark"
+                ? i18n.t("actions.switchToLight", { fallback: "Switch to light mode" })
+                : i18n.t("actions.switchToDark", { fallback: "Switch to dark mode" })
+            }
+            className="agenthub-rail-button"
+            onClick={props.onToggleTheme}
+            title={
+              props.theme === "dark"
+                ? i18n.t("actions.switchToLight", { fallback: "Switch to light mode" })
+                : i18n.t("actions.switchToDark", { fallback: "Switch to dark mode" })
+            }
+            type="button"
+          >
+            <Icon icon={props.theme === "dark" ? Sun : Moon} />
+          </HoverButton>
           <HoverButton
             aria-current={props.settingsActive ? "page" : undefined}
             aria-label={i18n.t("nav.settings", { fallback: "Settings" })}

@@ -1,3 +1,461 @@
+export const componentSystemCss = `
+.agenthub-theme-root {
+  box-sizing: border-box;
+  color: var(--agenthub-text);
+  font-family: var(--agenthub-font);
+  font-size: var(--agenthub-type-md);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.agenthub-theme-root *, .agenthub-theme-root *::before, .agenthub-theme-root *::after {
+  box-sizing: border-box;
+}
+.agenthub-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 11px;
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    background-color var(--agenthub-motion-fast),
+    border-color var(--agenthub-motion-fast),
+    color var(--agenthub-motion-fast),
+    opacity var(--agenthub-motion-fast);
+}
+.agenthub-button[data-size="lg"] { min-height: 38px; padding-inline: 14px; }
+.agenthub-button[data-size="sm"] { min-height: 28px; padding-inline: 9px; font-size: var(--agenthub-type-sm); }
+.agenthub-button[data-variant="solid"] {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+  color: var(--agenthub-accent-text);
+}
+.agenthub-button[data-variant="outline"] {
+  border-color: var(--agenthub-border);
+  background: var(--agenthub-surface);
+}
+.agenthub-button[data-variant="subtle"] {
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-button[data-tone="danger"] {
+  color: var(--agenthub-danger);
+}
+.agenthub-button:not(:disabled):hover,
+.agenthub-button:not(:disabled):focus-visible {
+  border-color: var(--agenthub-border-strong);
+  color: var(--agenthub-text);
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-button:disabled {
+  color: var(--agenthub-text-muted);
+  cursor: not-allowed;
+  opacity: .58;
+}
+.agenthub-icon-button {
+  width: 32px;
+  padding: 0 !important;
+  display: inline-grid;
+  place-items: center;
+}
+.agenthub-input,
+.agenthub-select {
+  width: 100%;
+  min-height: 34px;
+  border-color: var(--agenthub-border);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  font: inherit;
+  padding: 7px 10px;
+  box-shadow: none;
+}
+.agenthub-input[data-size="sm"],
+.agenthub-select[data-size="sm"] {
+  min-height: 30px;
+  padding-block: 5px;
+  font-size: var(--agenthub-type-sm);
+}
+.agenthub-input[data-invalid="true"],
+.agenthub-select[data-invalid="true"] {
+  border-color: var(--agenthub-danger);
+}
+.agenthub-input:hover,
+.agenthub-select:not(:disabled):hover {
+  border-color: var(--agenthub-border-strong);
+}
+.agenthub-input:focus,
+.agenthub-select:focus {
+  border-color: var(--agenthub-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 28%, transparent);
+  outline: 0;
+}
+.agenthub-textarea {
+  resize: none;
+}
+.agenthub-search-control {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+}
+.agenthub-search-input {
+  padding-right: 32px;
+}
+.agenthub-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--agenthub-text-muted);
+  cursor: pointer;
+}
+.agenthub-search-clear:hover,
+.agenthub-search-clear:focus-visible {
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text);
+}
+.agenthub-checkbox {
+  accent-color: var(--agenthub-accent);
+}
+.agenthub-switch {
+  position: relative;
+  width: 38px;
+  min-width: 38px;
+  height: 22px;
+  border: 1px solid var(--agenthub-border-strong);
+  border-radius: 999px;
+  background: var(--agenthub-surface-hover);
+  cursor: pointer;
+}
+.agenthub-switch > span[aria-hidden="true"] {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--agenthub-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+  transition: transform var(--agenthub-motion-fast), background-color var(--agenthub-motion-fast);
+}
+.agenthub-switch[data-state="checked"] {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+}
+.agenthub-switch[data-state="checked"] > span[aria-hidden="true"] {
+  transform: translateX(16px);
+  background: var(--agenthub-accent-text);
+}
+.agenthub-switch:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+.agenthub-switch-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.agenthub-form-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.agenthub-form-field small {
+  color: var(--agenthub-text-muted);
+}
+.agenthub-form-error {
+  color: var(--agenthub-danger);
+}
+.agenthub-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+.agenthub-tooltip-content {
+  position: absolute;
+  z-index: 45;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: min(260px, 80vw);
+  transform: translateX(-50%);
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  padding: 5px 8px;
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
+  font-size: var(--agenthub-type-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--agenthub-motion-fast);
+  transition-delay: var(--agenthub-tooltip-delay, 400ms);
+}
+.agenthub-tooltip[data-side="bottom"] .agenthub-tooltip-content {
+  top: calc(100% + 7px);
+  bottom: auto;
+}
+.agenthub-tooltip:focus-within .agenthub-tooltip-content,
+.agenthub-tooltip:hover .agenthub-tooltip-content {
+  opacity: 1;
+}
+.agenthub-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+.agenthub-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 42;
+  min-width: 156px;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .22);
+}
+.agenthub-dropdown-menu[data-align="end"] {
+  right: 0;
+  left: auto;
+}
+.agenthub-dropdown-menu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--agenthub-text);
+  font: inherit;
+  text-align: left;
+  padding: 0 9px;
+  cursor: pointer;
+}
+.agenthub-dropdown-menu button[data-tone="danger"] {
+  color: var(--agenthub-danger);
+}
+.agenthub-dropdown-menu button:disabled {
+  color: var(--agenthub-text-muted);
+  cursor: not-allowed;
+}
+.agenthub-dropdown-menu button:not(:disabled):hover,
+.agenthub-dropdown-menu button:not(:disabled):focus-visible {
+  background: var(--agenthub-surface-hover);
+  outline: 0;
+}
+.agenthub-dialog-root {
+  color: var(--agenthub-text);
+  font-family: var(--agenthub-font);
+}
+.agenthub-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 40;
+  max-width: calc(100vw - 32px);
+  transform: translate(-50%, -50%);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .22);
+}
+.agenthub-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0, 0, 0, .42);
+}
+.agenthub-dialog-header {
+  min-height: 54px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agenthub-dialog-header h2 {
+  margin: 0;
+  font-size: var(--agenthub-type-title);
+  line-height: 1.2;
+  color: var(--agenthub-text);
+}
+.agenthub-dialog-description {
+  margin: -6px 18px 12px;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-dialog-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
+  color: var(--agenthub-text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+.agenthub-dialog-close:hover,
+.agenthub-dialog-close:focus-visible {
+  color: var(--agenthub-text);
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-dialog-body {
+  padding: 0 18px 14px;
+}
+.agenthub-dialog-footer {
+  padding: 0 18px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.agenthub-tabs {
+  display: grid;
+  gap: 10px;
+}
+.agenthub-tabs [role="tablist"] {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-tabs [role="tab"] {
+  min-height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--agenthub-text-secondary);
+  font: inherit;
+  padding: 0 10px;
+  cursor: pointer;
+}
+.agenthub-tabs [role="tab"][data-state="active"] {
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
+.agenthub-avatar {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--agenthub-accent) 12%, var(--agenthub-surface-hover));
+  color: var(--agenthub-text);
+  font-weight: 750;
+}
+.agenthub-avatar[data-shape="square"] {
+  border-radius: var(--agenthub-radius);
+}
+.agenthub-badge {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: none;
+}
+.agenthub-badge[data-tone="success"] { color: var(--agenthub-status); }
+.agenthub-badge[data-tone="warning"] { color: var(--agenthub-warning); }
+.agenthub-badge[data-tone="danger"] { color: var(--agenthub-danger); }
+.agenthub-empty-state {
+  color: var(--agenthub-text-muted);
+}
+.agenthub-loading-spinner,
+.agenthub-loading-skeleton {
+  display: inline-grid;
+  gap: 6px;
+  color: var(--agenthub-text-muted);
+}
+.agenthub-loading-spinner::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--agenthub-border);
+  border-top-color: var(--agenthub-accent);
+  border-radius: 999px;
+  animation: agenthub-loading-spin 900ms linear infinite;
+}
+.agenthub-loading-skeleton > span {
+  width: 100%;
+  min-width: 120px;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--agenthub-surface-hover), var(--agenthub-border), var(--agenthub-surface-hover));
+  background-size: 200% 100%;
+  animation: agenthub-loading-skeleton 1100ms ease-in-out infinite;
+}
+.agenthub-toast-region {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+}
+.agenthub-toast {
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 36px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  padding: 9px 10px;
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .22);
+}
+.agenthub-toast[data-tone="error"] { border-color: var(--agenthub-danger); }
+.agenthub-toast[data-tone="success"] { border-color: var(--agenthub-status); }
+.agenthub-toast[data-tone="warning"] { border-color: var(--agenthub-warning); }
+.agenthub-toast button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--agenthub-text-muted);
+  cursor: pointer;
+}
+@keyframes agenthub-loading-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes agenthub-loading-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agenthub-loading-spinner::before,
+  .agenthub-loading-skeleton > span {
+    animation: none;
+  }
+}
+`;
+
 export const workbenchCss = `
 html, body, #root {
   min-width: 0;
@@ -204,6 +662,8 @@ body { overflow: hidden; }
 .agenthub-nav-bottom {
   flex: 0 0 auto;
   margin-top: auto;
+  display: grid;
+  gap: 9px;
 }
 .agenthub-hover-control {
   min-height: 30px;

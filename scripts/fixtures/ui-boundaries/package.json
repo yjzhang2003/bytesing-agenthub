@@ -1,0 +1,7 @@
+{
+  "name": "agenthub-ui-boundary-fixture",
+  "private": true,
+  "dependencies": {
+    "antd": "6.0.0"
+  }
+}

@@ -75,7 +75,16 @@ Stable state attributes:
 
 Use native attributes such as `disabled`, `aria-disabled`, `aria-invalid`, `aria-expanded`, `aria-selected`, and `aria-current` whenever the element semantics require them.
 
-## Allowed Behavior Primitives
+## Behavior Primitive Policy
+
+AgentHub component implementations may use local behavior code or unstyled behavior primitives. In either case, public APIs, class names, state attributes, tokens, copy, and visual treatment remain AgentHub-owned.
+
+Current hardened implementations:
+
+- `Dialog` uses AgentHub-owned portal, app-level background isolation, focus trap, focus return, Escape handling, and title/description wiring.
+- `DropdownMenu` uses AgentHub-owned open state, roving menu focus, Escape handling, disabled items, destructive tone, and focus return.
+- `Tooltip` uses AgentHub-owned accessible tooltip content and CSS timing instead of relying only on native `title`.
+- `Tabs`, `SearchInput`, `Toast`, and `LoadingState` are local AgentHub implementations.
 
 Allowed dependencies are behavior-only and must not own AgentHub styling:
 
@@ -85,7 +94,7 @@ Allowed dependencies are behavior-only and must not own AgentHub styling:
 - Marked for markdown rendering where already used.
 - Radix Scroll Area and Separator may remain.
 - Radix Tooltip may remain for tooltip behavior.
-- Radix Dialog, Select, Dropdown/Menu, Portal, Slot, and VisuallyHidden may be introduced only when their styling remains fully AgentHub-owned.
+- Radix Dialog, Select, Dropdown/Menu, Portal, Slot, and VisuallyHidden may be introduced only if future review shows local behavior is insufficient and styling remains fully AgentHub-owned.
 
 Forbidden for common controls:
 
@@ -105,7 +114,7 @@ Props: `children`, `mode: "light" | "dark"`, optional `density`, optional `class
 
 States and attributes: `data-theme`, `data-density`.
 
-Tests: renders identical token names in light and dark mode; preserves children; does not import AntD.
+Tests: renders identical token names in light and dark mode; preserves children; injects component-system CSS for isolated controls; does not import AntD.
 
 ### Button
 
@@ -127,7 +136,7 @@ Purpose: compact icon-only commands such as collapse, close, send, theme toggle,
 
 Props: all `Button` props except visible text is optional; `ariaLabel` is required.
 
-Accessibility: always maps `ariaLabel` to `aria-label`; fixed square hit area.
+Accessibility: always maps `ariaLabel` to `aria-label`; fixed square hit area; development builds warn when an icon-only button has no accessible name.
 
 Tests: fails review if unlabeled; renders fixed dimensions; exposes hover/focus states.
 
@@ -145,7 +154,7 @@ Tests: disabled, invalid, placeholder, value, and focus style.
 
 Purpose: filter/search entry in side panels.
 
-Props: `value`, `onValueChange`, `placeholder`, `ariaLabel`, `clearLabel`, `disabled`.
+Props: `value`, `defaultValue`, `onValueChange`, `placeholder`, `ariaLabel`, `clearLabel`, `disabled`, `size`, `density`.
 
 Behavior: owns clear affordance when value is non-empty. Do not use AntD search input.
 
@@ -159,7 +168,7 @@ Props: textarea-compatible subset, `minRows`, `maxRows`, `invalid`, `disabled`, 
 
 Behavior: composer keyboard behavior remains feature-owned, but the component must not expose AntD `TextAreaRef`.
 
-Tests: ref works with native textarea, disabled state renders, Enter-to-send features remain covered in composer tests.
+Tests: ref works with native textarea, disabled state renders, shortcut hooks can be invoked, Enter-to-send features remain covered in composer tests.
 
 ### Select
 
@@ -207,9 +216,9 @@ Tests: label association, error localization, compact spacing.
 
 Purpose: short helper labels for icon-only controls.
 
-Props: `content`, `children`, `side`, `delay`, `disabled`.
+Props: `content`, legacy `title`, `children`, `side`, `delay`, `disabled`.
 
-Behavior: Radix Tooltip is allowed; visual treatment is AgentHub-owned.
+Behavior: visible tooltip content uses `role="tooltip"` and `aria-describedby`; visual treatment is AgentHub-owned.
 
 Tests: trigger preserves child semantics; tooltip content inherits theme variables.
 
@@ -217,7 +226,7 @@ Tests: trigger preserves child semantics; tooltip content inherits theme variabl
 
 Purpose: compact command menus.
 
-Props: `trigger`, `items`, `align`, `onSelect`, optional item `tone`.
+Props: `trigger`, `items`, `align`, `open`, `defaultOpen`, `onOpenChange`, `onSelect`, optional item `tone`.
 
 Behavior: unstyled menu primitive is allowed; destructive items use AgentHub danger tone.
 
@@ -229,9 +238,9 @@ Tests: keyboard navigation, disabled items, destructive styling, focus return.
 
 Purpose: modal decisions and focused workflows such as add-agent.
 
-Props: `open`, `onOpenChange`, `title`, `description`, `children`, `footer`, `initialFocusRef`, `className`.
+Props: `open`, `onOpenChange`, `title`, `description`, `children`, `footer`, `initialFocusRef`, `className`, `closeLabel`, `cancelLabel`, `confirmLabel`, `onConfirm`, `closeOnEscape`, `closeOnOverlayClick`.
 
-Behavior: owns portal root, overlay, focus trap, Escape close where allowed, close button labeling, and focus return.
+Behavior: owns portal root, overlay, app-level isolation via `inert`/`aria-hidden`, focus trap, Escape close where allowed, close button labeling, initial focus, and focus return.
 
 Accessibility: `role="dialog"`, `aria-modal`, labelled title, optional description. Dialog overlays must inherit AgentHub theme variables.
 
@@ -241,7 +250,7 @@ Tests: open/close, Escape, close button, focus return, theme inheritance, no ven
 
 Purpose: compact mode switching inside a panel.
 
-Props: `value`, `onValueChange`, `items`.
+Props: `value`, `onValueChange`, `items`. Legacy `activeKey`/`onChange` remains only through compatibility usage during migration.
 
 Accessibility: tablist, tab, tabpanel semantics; selected tab uses `aria-selected` and `data-state="active"`.
 
@@ -251,7 +260,7 @@ Tests: selected state, keyboard movement, compact layout.
 
 Purpose: small status, count, and metadata indicators.
 
-Props: `children`, `count`, `tone`, `size`, `title`.
+Props: `children`, `count`, `tone`, `status`, `size`, `title`.
 
 Do not use vendor count bubble defaults.
 
@@ -281,9 +290,9 @@ Tests: compact rendering and localized copy.
 
 Purpose: loading skeletons and small spinners.
 
-Props: `variant`, `rows`, `size`, `label`.
+Props: `active`, `variant`, `rows`, `size`, `density`, `tone`, `label`.
 
-Accessibility: `aria-busy` or `role="status"` where appropriate; respect reduced motion.
+Accessibility: `aria-busy` or `role="status"` where appropriate; expose `aria-live="polite"` and localized labels; respect reduced motion.
 
 Tests: spinner/skeleton variants, accessible label, rows.
 
@@ -291,11 +300,11 @@ Tests: spinner/skeleton variants, accessible label, rows.
 
 Purpose: transient success, error, warning, and info feedback.
 
-Props: `tone`, `title`, `description`, `duration`, `onDismiss`.
+Props: `content`, `tone`, `duration`, `dismissLabel`, or `items` for controlled rendering.
 
-Behavior: placement, duration, theme, and localization are AgentHub-owned. Do not use AntD `message`.
+Behavior: placement, duration, theme, and localization are AgentHub-owned. Do not use AntD `message`. `agentHubMessage` remains only as a compatibility event bridge that emits `agenthub:feedback`.
 
-Tests: tone rendering, dismiss behavior, no duplicate live regions.
+Tests: live region, tone rendering, dismiss behavior, event bridge behavior, and no duplicate live regions.
 
 ## Migration Map
 
@@ -322,6 +331,8 @@ Tests: tone rendering, dismiss behavior, no duplicate live regions.
 | `agentHubMessage` | `Toast` / `Feedback` |
 
 Temporary aliases may exist during migration, but they must call AgentHub-owned implementations and must not expose AntD types or props.
+
+New feature code should import canonical names. Legacy aliases may accept old prop names such as `okText`, `cancelText`, `activeKey`, or `onChange`, but the canonical components must expose AgentHub names such as `confirmLabel`, `cancelLabel`, `value`, and `onValueChange`.
 
 ## Surface Review
 

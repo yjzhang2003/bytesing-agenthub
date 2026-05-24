@@ -218,11 +218,11 @@ describe("@agenthub/ui components", () => {
         />
         <Switch ariaLabel="Dark mode" checked onCheckedChange={() => undefined} />
         <Dialog
-          cancelText="Cancel"
+          cancelLabel="Cancel"
           closeLabel="Close"
+          confirmLabel="Add"
           open
           title="Add agent"
-          okText="Add"
         >
           <p>Select an agent</p>
         </Dialog>
@@ -509,6 +509,22 @@ describe("@agenthub/ui components", () => {
     );
 
     expect(workbench).toContain("agenthub-nav-bottom");
+    const navBottom = workbench.slice(
+      workbench.indexOf("agenthub-nav-bottom"),
+      workbench.indexOf("</div>", workbench.indexOf("agenthub-nav-bottom")),
+    );
+    expect(navBottom.indexOf("Switch to light mode")).toBeGreaterThanOrEqual(0);
+    expect(navBottom.indexOf("Switch to light mode")).toBeLessThan(
+      navBottom.indexOf('aria-label="Settings"'),
+    );
+    const renderedConversationHeaderStart = workbench.indexOf(
+      '<header class="agenthub-conversation-header"',
+    );
+    const conversationHeader = workbench.slice(
+      renderedConversationHeaderStart,
+      workbench.indexOf("</header>", renderedConversationHeaderStart),
+    );
+    expect(conversationHeader).not.toContain("Switch to light mode");
     expect(workbench).toContain('aria-current="page"');
     expect(workbench).toContain('data-view="settings"');
     expect(workbench).toContain('aria-label="Settings page"');
