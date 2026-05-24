@@ -19,7 +19,7 @@ import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
 import { AgentHubThemeProvider } from "./system.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
-import { SettingsPage } from "./settings.js";
+import { SettingsPage, type SettingsCategoryId } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
 
 type CenterView = "conversation" | "agents" | "connections" | "settings";
@@ -96,6 +96,8 @@ export function AgentHubWorkbench(props: {
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(
     model.agentsPage.selectedAgentId ?? model.agentsPage.agents[0]?.id ?? null,
   );
+  const [selectedSettingsCategory, setSelectedSettingsCategory] =
+    React.useState<SettingsCategoryId>("general");
   const [theme, setTheme] = React.useState<"light" | "dark">(() => {
     if (typeof window === "undefined") {
       return "dark";
@@ -175,7 +177,7 @@ export function AgentHubWorkbench(props: {
   const mobileLayout = layoutMode === "narrow" || layoutMode === "mobile-web";
   const overlayInspectorLayout = mobileLayout || layoutMode === "standard";
   const managementPage = centerView !== "conversation";
-  const compactLeftNavigation = centerView === "connections" || centerView === "settings";
+  const compactLeftNavigation = centerView === "connections";
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
   const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
@@ -356,6 +358,8 @@ export function AgentHubWorkbench(props: {
                     setSelection(nextSelection);
                   }}
                   selectedAgentId={selectedAgentId}
+                  selectedSettingsCategory={selectedSettingsCategory}
+                  onSelectSettingsCategory={setSelectedSettingsCategory}
                   onSelectAgent={(agentId) => {
                     setSelectedAgentId(agentId);
                     setCenterView("agents");
@@ -373,7 +377,7 @@ export function AgentHubWorkbench(props: {
                 {!leftCollapsed && !compactLeftNavigation ? (
                   <div
                     aria-label={
-                      centerView === "agents"
+                      centerView === "agents" || centerView === "settings"
                         ? i18n.t("nav.resizeAgentDirectory")
                         : i18n.t("nav.resizeConversationList")
                     }
@@ -430,6 +434,12 @@ export function AgentHubWorkbench(props: {
                       setMobileLeftOpen(false);
                     }}
                     selectedAgentId={selectedAgentId}
+                    selectedSettingsCategory={selectedSettingsCategory}
+                    onSelectSettingsCategory={(category) => {
+                      setSelectedSettingsCategory(category);
+                      setCenterView("settings");
+                      setMobileLeftOpen(false);
+                    }}
                     onSelectAgent={(agentId) => {
                       setSelectedAgentId(agentId);
                       setCenterView("agents");
@@ -600,6 +610,7 @@ export function AgentHubWorkbench(props: {
                   onToggleTheme={() =>
                     setTheme((current) => (current === "dark" ? "light" : "dark"))
                   }
+                  selectedCategory={selectedSettingsCategory}
                   theme={theme}
                 />
               ) : (

@@ -92,8 +92,9 @@ describe("@agenthub/ui localization", () => {
     expect(settings).toContain("语言");
     expect(settings).toContain("English");
     expect(settings).toContain("简体中文");
-    expect(settings).toContain("键盘");
-    expect(settings).toContain("审查");
+    expect(settings).toContain("搜索设置");
+    expect(settings).toContain("快捷键");
+    expect(settings).toContain("权限");
     expect(agents).toContain("智能体角色");
     expect(agents).toContain("新对话");
     expect(agents).toContain("能力标签");

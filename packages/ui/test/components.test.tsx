@@ -404,7 +404,7 @@ describe("@agenthub/ui components", () => {
     const workbench = renderToStaticMarkup(
       <AgentHubWorkbench locale="zh-CN" snapshot={snapshot()} />,
     );
-    const settings = renderToStaticMarkup(
+    const settingsGeneral = renderToStaticMarkup(
       <SettingsPage
         enterToSend
         locale="zh-CN"
@@ -412,6 +412,31 @@ describe("@agenthub/ui components", () => {
         onSelect={() => undefined}
         onToggleEnterToSend={() => undefined}
         onToggleTheme={() => undefined}
+        selectedCategory="general"
+        theme="dark"
+      />,
+    );
+    const settingsShortcuts = renderToStaticMarkup(
+      <SettingsPage
+        enterToSend
+        locale="zh-CN"
+        model={model}
+        onSelect={() => undefined}
+        onToggleEnterToSend={() => undefined}
+        onToggleTheme={() => undefined}
+        selectedCategory="shortcuts"
+        theme="dark"
+      />,
+    );
+    const settingsNotifications = renderToStaticMarkup(
+      <SettingsPage
+        enterToSend
+        locale="zh-CN"
+        model={model}
+        onSelect={() => undefined}
+        onToggleEnterToSend={() => undefined}
+        onToggleTheme={() => undefined}
+        selectedCategory="notifications"
         theme="dark"
       />,
     );
@@ -426,9 +451,10 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain("工作区导航");
     expect(workbench).toContain("上下文检查器");
     expect(workbench).toContain("切换到浅色模式");
-    expect(settings).toContain("工作区");
-    expect(settings).toContain("回车发送消息");
-    expect(settings).toContain("权限");
+    expect(settingsGeneral).toContain("通用");
+    expect(settingsGeneral).toContain("外观");
+    expect(settingsShortcuts).toContain("回车发送消息");
+    expect(settingsNotifications).toContain("权限");
     expect(composer).toContain("给智能体发送消息");
     expect(composer).toContain("发送消息");
   });
@@ -500,6 +526,18 @@ describe("@agenthub/ui components", () => {
         onSelect={() => undefined}
         onToggleEnterToSend={() => undefined}
         onToggleTheme={() => undefined}
+        selectedCategory="general"
+        theme="dark"
+      />,
+    );
+    const settingsAccount = renderToStaticMarkup(
+      <SettingsPage
+        enterToSend
+        model={model}
+        onSelect={() => undefined}
+        onToggleEnterToSend={() => undefined}
+        onToggleTheme={() => undefined}
+        selectedCategory="account"
         theme="dark"
       />,
     );
@@ -524,26 +562,71 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain('aria-current="page"');
     expect(workbench).toContain('data-view="settings"');
     expect(workbench).toContain('aria-label="Settings page"');
-    expect(workbench).toContain("~/IdeaProjects/agenthub");
-    expect(settings).toContain("agenthub-settings-sidebar");
-    expect(settings).toContain("agenthub-settings-nav-item");
-    expect(settings).toContain("agenthub-settings-content");
-    expect(settings).toContain("agenthub-settings-group");
-    expect(settings).toContain("agenthub-settings-row");
-    expect(settings).toContain("Account &amp; storage");
+    expect(settingsAccount).toContain("~/IdeaProjects/agenthub");
+    expect(workbench).toContain("agenthub-agent-directory-sidebar agenthub-settings-directory");
+    expect(workbench).toContain("agenthub-agent-contact-row agenthub-settings-category-row");
+    expect(workbench).toContain('aria-label="Search settings"');
+    expect(settings).toContain("agenthub-agent-detail agenthub-settings-detail");
+    expect(settings).toContain("agenthub-agent-profile");
+    expect(settings).toContain("agenthub-agent-editor agenthub-settings-editor");
+    expect(settings).toContain("agenthub-agent-settings-group");
+    expect(settings).toContain("agenthub-agent-settings-body");
+    expect(settings).toContain("agenthub-agent-readonly-row");
+    expect(workbench).toContain("Account &amp; storage");
+    expect(workbench).toContain("Shortcuts");
+    expect(workbench).toContain("Notifications");
+    expect(workbench).toContain("Plugins");
     expect(settings).toContain("General");
-    expect(settings).toContain("Workspace");
-    expect(settings).toContain("Runtime");
-    expect(settings).toContain("Keyboard");
-    expect(settings).toContain("Enter sends message");
-    expect(settings).toContain("Shift+Enter inserts a new line.");
     expect(settings).toContain("Appearance");
     expect(settings).toContain("agenthub-switch");
-    expect(settings).toContain("Permissions");
-    expect(settings).toContain("Review");
     expect(settings).not.toContain("Claude Code");
     expect(settings).not.toContain("Long-term memory");
     expect(settings).not.toContain("Create agent role");
+  });
+
+  it("uses compact tokenized Settings typography and density", () => {
+    const model = createWorkbenchViewModel(snapshot(), { pendingPermissions: [pendingPermission] });
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="settings" viewModel={model} />,
+    );
+
+    const settingsGridCss =
+      html.match(
+        /\.agenthub-workbench\[data-center-view="settings"\] \{[^}]*\}/,
+      )?.[0] ?? "";
+    const contactRowCss = html.match(/\.agenthub-agent-contact-row \{[^}]*\}/)?.[0] ?? "";
+    const detailCss = html.match(/\.agenthub-agent-detail \{[^}]*\}/)?.[0] ?? "";
+    const groupCss = html.match(/\.agenthub-agent-settings-group \{[^}]*\}/)?.[0] ?? "";
+    const rowCss =
+      html.match(
+        /\.agenthub-agent-editor label,[\s\S]*?\.agenthub-agent-readonly-row \{[^}]*\}/,
+      )?.[0] ?? "";
+    const settingsCss = html.slice(
+      html.indexOf(".agenthub-settings-page"),
+      html.indexOf(".agenthub-agents-page"),
+    );
+
+    expect(settingsGridCss).toContain(
+      "grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr) 0px",
+    );
+    expect(html).toContain("agenthub-agent-directory-sidebar agenthub-settings-directory");
+    expect(html).toContain("agenthub-agent-contact-row agenthub-settings-category-row");
+    expect(html).toContain("agenthub-agent-detail agenthub-settings-detail");
+    expect(html).toContain("agenthub-agent-profile");
+    expect(html).toContain("agenthub-agent-settings-group");
+    expect(contactRowCss).toContain("min-height: 64px");
+    expect(detailCss).toContain("padding: 28px var(--agenthub-agent-detail-x) 104px");
+    expect(groupCss).toContain("border-radius: var(--agenthub-radius)");
+    expect(rowCss).toContain("grid-template-columns: minmax(136px, 28%) minmax(0, 1fr)");
+    expect(rowCss).toContain("min-height: 54px");
+    expect(rowCss).toContain("gap: 14px");
+    expect(settingsCss).not.toContain(".agenthub-settings-nav-item {");
+    expect(settingsCss).not.toContain(".agenthub-settings-content {");
+    expect(settingsCss).not.toContain(".agenthub-settings-group {");
+    expect(settingsCss).not.toContain(".agenthub-settings-row {");
+    expect(settingsCss).not.toContain("font-size: 20px");
+    expect(settingsCss).not.toContain("font-size: 22px");
+    expect(settingsCss).not.toContain("font-size: 19px");
   });
 
   it("renders a dedicated agents page with a shared search field and readable configuration", () => {

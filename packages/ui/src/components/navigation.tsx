@@ -15,6 +15,7 @@ import { useAgentHubI18n } from "../i18n.js";
 import type { ConversationListItem, InspectorSelection, WorkbenchViewModel } from "../types.js";
 import { AgentDirectory } from "./agents.js";
 import { HoverButton, Icon, RuntimeStatusBadge, SidebarSearchField } from "./primitives.js";
+import { SettingsDirectory, type SettingsCategoryId } from "./settings.js";
 
 export function ConversationList(props: {
   readonly conversations: readonly ConversationListItem[];
@@ -98,6 +99,8 @@ export function LeftNavigation(props: {
   readonly onOpenSettings: () => void;
   readonly selectedAgentId: string | null;
   readonly onSelectAgent: (agentId: string | null) => void;
+  readonly selectedSettingsCategory: SettingsCategoryId;
+  readonly onSelectSettingsCategory: (category: SettingsCategoryId) => void;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
   readonly conversationActive: boolean;
@@ -224,6 +227,12 @@ export function LeftNavigation(props: {
           model={props.model}
           selectedAgentId={props.selectedAgentId}
           onSelectAgent={props.onSelectAgent}
+        />
+      ) : props.settingsActive ? (
+        <SettingsDirectory
+          pendingPermissionCount={props.model.workspace.pendingPermissionCount}
+          selectedCategory={props.selectedSettingsCategory}
+          onSelectCategory={props.onSelectSettingsCategory}
         />
       ) : (
         <section

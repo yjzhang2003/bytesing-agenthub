@@ -242,6 +242,42 @@ describe("AgentHub component behavior", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it("switches Settings categories and filters the Settings directory", async () => {
+    await render(<AgentHubWorkbench initialCenterView="settings" snapshot={snapshot()} />);
+
+    expect(document.querySelector('input[aria-label="Search settings"]')).toBeTruthy();
+    expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Language");
+    expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Appearance");
+
+    const shortcuts = Array.from(
+      document.querySelectorAll(".agenthub-settings-category-row"),
+    ).find((button) => button.textContent?.includes("Shortcuts")) as HTMLButtonElement;
+    await act(async () => {
+      shortcuts.click();
+      await settle();
+    });
+
+    expect(shortcuts.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Keyboard");
+    expect(document.querySelector(".agenthub-settings-detail")?.textContent).not.toContain(
+      "Language",
+    );
+
+    const search = document.querySelector('input[aria-label="Search settings"]') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        search,
+        "permission",
+      );
+      search.dispatchEvent(new InputEvent("input", { bubbles: true }));
+      await settle();
+    });
+
+    const directoryText = document.querySelector(".agenthub-settings-directory")?.textContent ?? "";
+    expect(directoryText).toContain("Notifications");
+    expect(directoryText).not.toContain("Shortcuts");
+  });
+
   it("shows add-agent empty and no-results states", async () => {
     const onAddAgentToChat = vi.fn();
     const chatSnapshot = {
