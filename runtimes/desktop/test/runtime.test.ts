@@ -321,6 +321,64 @@ describe("DesktopRuntime", () => {
     });
   });
 
+  it("inherits Claude Code user settings when a run does not request isolation", async () => {
+    const profileRoot = await mkdtemp(join(tmpdir(), "agenthub-runtime-profile-"));
+    const seenRequests: AgentRunRequest[] = [];
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        claudeCode: { profileRoot },
+        controlPlaneUrl: "http://localhost:5310",
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [
+        {
+          kind: "claude-code",
+          async startRun(request, sink) {
+            seenRequests.push(request);
+            sink({
+              type: "run.status",
+              runId: request.runId,
+              agentId: request.agentId,
+              status: "completed",
+            });
+            return { runId: request.runId, async cancel() {}, done: Promise.resolve() };
+          },
+        },
+      ],
+    );
+
+    await runtime.handleCommand(
+      {
+        id: "command_1",
+        type: "run.start",
+        runtimeDeviceId: "runtime_1",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        payload: {
+          runId: "run_1",
+          workspaceId: "workspace_1",
+          conversationId: "conversation_1",
+          agentId: "agent_1",
+          workspacePath: "/tmp/project",
+          prompt: "hello",
+          systemPrompt: "worker",
+          providerMode: "claude-code",
+          claudeCode: {
+            permissionPreset: "ask-first",
+          },
+        },
+      },
+      { async publishProviderEvent() {} },
+    );
+
+    expect(seenRequests[0]?.claudeCode).toMatchObject({
+      settingSources: "user,project,local",
+      strictMcpConfig: false,
+    });
+    expect(seenRequests[0]?.claudeCode?.settingsPath).toBeUndefined();
+  });
+
   it("handles connection check commands without starting a provider run", async () => {
     let startRunCount = 0;
     const runtime = new DesktopRuntime(
@@ -677,6 +735,85 @@ console.log(JSON.stringify({ type: "result", subtype: "success", result: "done" 
       { type: "message.delta", delta: "hello" },
       { type: "run.status", status: "completed" },
     ]);
+  });
+
+  it("captures Claude Code session ids from stream-json output", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "agenthub-claude-session-"));
+    const binary = join(directory, "claude");
+    await writeFile(
+      binary,
+      `#!/usr/bin/env node
+console.log(JSON.stringify({ type: "system", session_id: "session_abc123" }));
+console.log(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "hello" }] } }));
+`,
+    );
+    await chmod(binary, 0o755);
+    const adapter = new ClaudeCodeProviderAdapter({ binaryPath: binary });
+    const events: unknown[] = [];
+
+    const handle = await adapter.startRun(
+      {
+        runId: "run_1",
+        agentId: "agent_1",
+        workspacePath: process.cwd(),
+        prompt: "hello",
+        systemPrompt: "worker",
+        conversationContext: [],
+      },
+      (event) => events.push(event),
+    );
+    await handle.done;
+
+    expect(events).toContainEqual({
+      type: "provider.session",
+      runId: "run_1",
+      agentId: "agent_1",
+      providerMode: "claude-code",
+      sessionId: "session_abc123",
+    });
+    expect(events).toContainEqual({
+      type: "message.delta",
+      runId: "run_1",
+      agentId: "agent_1",
+      delta: "hello",
+    });
+  });
+
+  it("keeps Claude Code streaming output working when no session id is present", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "agenthub-claude-no-session-"));
+    const binary = join(directory, "claude");
+    await writeFile(
+      binary,
+      `#!/usr/bin/env node
+console.log(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "hello" }] } }));
+`,
+    );
+    await chmod(binary, 0o755);
+    const adapter = new ClaudeCodeProviderAdapter({ binaryPath: binary });
+    const events: unknown[] = [];
+
+    const handle = await adapter.startRun(
+      {
+        runId: "run_1",
+        agentId: "agent_1",
+        workspacePath: process.cwd(),
+        prompt: "hello",
+        systemPrompt: "worker",
+        conversationContext: [],
+      },
+      (event) => events.push(event),
+    );
+    await handle.done;
+
+    expect(events.some((event) => (event as { type?: string }).type === "provider.session")).toBe(
+      false,
+    );
+    expect(events).toContainEqual({
+      type: "message.delta",
+      runId: "run_1",
+      agentId: "agent_1",
+      delta: "hello",
+    });
   });
 
   it("uses Claude Code stream-json partial text deltas without duplicating final messages", async () => {

@@ -251,7 +251,7 @@ export class DesktopRuntime {
       agentId: payload.agentId,
       profileRoot,
       runId: payload.runId,
-      settingsSource: payload.claudeCode.settingsSource ?? "managed",
+      settingsSource: payload.claudeCode.settingsSource ?? "inherit",
       workspaceId: payload.workspaceId,
       workspacePath: payload.workspacePath,
     });

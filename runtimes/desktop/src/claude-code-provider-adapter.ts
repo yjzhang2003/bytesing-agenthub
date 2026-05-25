@@ -32,7 +32,7 @@ export class ClaudeCodeProviderAdapter implements ProviderAdapter {
 
     let stdoutBuffer = "";
     let stderrBuffer = "";
-    const streamState: ClaudeStreamState = { sawPartialText: false };
+    const streamState: ClaudeStreamState = { sawPartialText: false, sessionId: null };
     child.stdout.on("data", (chunk: Buffer) => {
       stdoutBuffer = this.#handleStdoutChunk(
         request,
@@ -193,6 +193,17 @@ export class ClaudeCodeProviderAdapter implements ProviderAdapter {
       if (!line.trim()) {
         continue;
       }
+      const sessionId = parseClaudeSessionId(line);
+      if (sessionId && streamState.sessionId !== sessionId) {
+        streamState.sessionId = sessionId;
+        sink({
+          type: "provider.session",
+          runId: request.runId,
+          agentId: request.agentId,
+          providerMode: "claude-code",
+          sessionId,
+        });
+      }
       const parsed = parseClaudeStreamText(line);
       if (parsed === null) {
         continue;
@@ -216,6 +227,7 @@ export class ClaudeCodeProviderAdapter implements ProviderAdapter {
 
 interface ClaudeStreamState {
   sawPartialText: boolean;
+  sessionId: string | null;
 }
 
 type ParsedClaudeStreamText = {
@@ -287,4 +299,40 @@ function parseClaudeStreamText(line: string): ParsedClaudeStreamText | null {
   } catch {
     return { partial: false, text: line };
   }
+}
+
+function parseClaudeSessionId(line: string): string | null {
+  try {
+    const parsed = JSON.parse(line) as unknown;
+    return findSessionId(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function findSessionId(value: unknown): string | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findSessionId(item);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const direct = record["session_id"] ?? record["sessionId"];
+  if (typeof direct === "string" && direct.trim()) {
+    return direct;
+  }
+  for (const item of Object.values(record)) {
+    const found = findSessionId(item);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
 }

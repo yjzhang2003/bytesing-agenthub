@@ -8,6 +8,7 @@ import {
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   updateAgentRequestSchema,
+  updateConversationAgentSettingsRequestSchema,
   updateConversationRequestSchema,
   providerRuntimeEventSchema,
   runtimeConnectionCheckResultSchema,
@@ -220,6 +221,21 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
       const removeConversationAgentMatch = url.pathname.match(
         /^\/conversations\/([^/]+)\/agents\/([^/]+)$/,
       );
+      if (
+        request.method === "PATCH" &&
+        removeConversationAgentMatch?.[1] &&
+        removeConversationAgentMatch[2]
+      ) {
+        const body = updateConversationAgentSettingsRequestSchema.parse(await readJson(request));
+        const participant = registry.updateConversationAgentSettings(
+          auth.userId,
+          removeConversationAgentMatch[1],
+          removeConversationAgentMatch[2],
+          body,
+        );
+        sendJson(response, 200, { participant });
+        return;
+      }
       if (
         request.method === "DELETE" &&
         removeConversationAgentMatch?.[1] &&

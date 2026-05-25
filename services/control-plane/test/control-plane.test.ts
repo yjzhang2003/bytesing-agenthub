@@ -165,7 +165,6 @@ describe("control plane registry", () => {
           mcpProfileId: "mcp_project",
           hooksPolicy: "disabled",
           effort: "high",
-          session: { behavior: "new" },
         },
       },
     });
@@ -199,7 +198,6 @@ describe("control plane registry", () => {
           mcpProfileId: "mcp_project",
           hooksPolicy: "disabled",
           effort: "high",
-          session: { behavior: "new" },
         },
       },
     });
@@ -265,6 +263,161 @@ describe("control plane registry", () => {
         effort: "medium",
       },
     });
+  });
+
+  it("binds one hidden Claude Code session per conversation agent and resumes subsequent runs", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Builder",
+      role: "worker",
+      systemPrompt: "Build carefully.",
+      capabilityTags: ["code"],
+      policy: {
+        claudeCode: {
+          permissionPreset: "ask-first",
+          settingsSource: "inherit",
+          effort: "medium",
+        },
+      },
+    });
+    const { conversation } = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: agent.id,
+    });
+
+    const firstRun = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: conversation.id,
+      agentId: agent.id,
+      prompt: "first",
+    });
+    const firstCommand = registry.takeRuntimeCommands("user_1", device.id).at(-1);
+    expect(firstCommand).toMatchObject({
+      type: "run.start",
+      payload: {
+        runId: firstRun.id,
+        claudeCode: {
+          permissionPreset: "ask-first",
+          settingsSource: "inherit",
+          effort: "medium",
+        },
+      },
+    });
+    expect(firstCommand?.type === "run.start" ? firstCommand.payload.claudeCode?.session : null).toBeUndefined();
+
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "provider.session",
+      runId: firstRun.id,
+      agentId: agent.id,
+      providerMode: "claude-code",
+      sessionId: "session_builder_1",
+    });
+
+    const secondRun = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: conversation.id,
+      agentId: agent.id,
+      prompt: "second",
+      claudeCode: {
+        permissionPreset: "full-access",
+        settingsSource: "isolated",
+        effort: "high",
+      },
+    });
+    const secondCommand = registry.takeRuntimeCommands("user_1", device.id).at(-1);
+    expect(secondRun.claudeCode).toMatchObject({
+      permissionPreset: "ask-first",
+      settingsSource: "inherit",
+      effort: "high",
+    });
+    expect(secondCommand).toMatchObject({
+      type: "run.start",
+      payload: {
+        claudeCode: {
+          permissionPreset: "ask-first",
+          settingsSource: "inherit",
+          effort: "high",
+          session: { behavior: "continue", sessionId: "session_builder_1" },
+        },
+      },
+    });
+  });
+
+  it("keeps Claude Code sessions isolated by conversation and agent", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const firstAgent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Builder",
+      role: "worker",
+      systemPrompt: "Build carefully.",
+      policy: { claudeCode: { settingsSource: "inherit" } },
+    });
+    const secondAgent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Reviewer",
+      role: "worker",
+      systemPrompt: "Review carefully.",
+      policy: { claudeCode: { settingsSource: "inherit" } },
+    });
+    const firstConversation = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: firstAgent.id,
+    }).conversation;
+    const secondConversation = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: firstAgent.id,
+    }).conversation;
+    registry.addAgentToConversation("user_1", firstConversation.id, secondAgent.id);
+
+    const firstRun = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: firstConversation.id,
+      agentId: firstAgent.id,
+      prompt: "first",
+    });
+    registry.recordProviderRuntimeEvent("user_1", {
+      type: "provider.session",
+      runId: firstRun.id,
+      agentId: firstAgent.id,
+      providerMode: "claude-code",
+      sessionId: "session_first_agent",
+    });
+    registry.takeRuntimeCommands("user_1", device.id);
+
+    registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: firstConversation.id,
+      agentId: secondAgent.id,
+      prompt: "review",
+    });
+    registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: secondConversation.id,
+      agentId: firstAgent.id,
+      prompt: "other conversation",
+    });
+    const commands = registry.takeRuntimeCommands("user_1", device.id);
+    expect(commands).toHaveLength(2);
+    expect(
+      commands.map((command) =>
+        command.type === "run.start" ? command.payload.claudeCode?.session : null,
+      ),
+    ).toEqual([undefined, undefined]);
+  });
+
+  it("ignores provider session metadata for unknown runs", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+
+    expect(() => {
+      registry.recordProviderRuntimeEvent("user_1", {
+        type: "provider.session",
+        runId: "missing_run",
+        agentId: "agent_1",
+        providerMode: "claude-code",
+        sessionId: "session_1",
+      });
+    }).not.toThrow();
   });
 
   it("records provider output into the workbench snapshot", () => {
@@ -454,6 +607,190 @@ describe("control plane registry", () => {
     });
   });
 
+  it("updates conversation-scoped agent settings without mutating global agent configuration or history", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Reviewer",
+      role: "worker",
+      systemPrompt: "Review carefully.",
+      capabilityTags: ["review"],
+      policy: {
+        runtime: { provider: "claude-code" },
+        claudeCode: { permissionPreset: "ask-first", effort: "medium" },
+      },
+    });
+    const firstParticipant = registry.addAgentToConversation(
+      "user_1",
+      agentHubLocalDefaults.conversationId,
+      agent.id,
+    );
+    const second = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: agent.id,
+    });
+    const run = registry.createRun(
+      "user_1",
+      {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "review this",
+      },
+      "claude-code",
+    );
+
+    const updated = registry.updateConversationAgentSettings(
+      "user_1",
+      agentHubLocalDefaults.conversationId,
+      agent.id,
+      {
+        displayNameOverride: "Security reviewer",
+        responsibilityOverride: "Focus on auth and data access.",
+        notes: "Only for this group chat.",
+        enabled: false,
+        participationMode: "manual",
+        priority: "high",
+        quietMode: true,
+        contextScope: "conversation-artifacts",
+        includeHistorySummary: false,
+        scopedInstructions: "Do not comment on formatting.",
+        requireRunConfirmation: true,
+        allowAutoDispatch: false,
+      },
+    );
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    const globalAgent = snapshot.agents.find((candidate) => candidate.id === agent.id);
+    const firstSnapshotParticipant = snapshot.conversationParticipants?.find(
+      (participant) => participant.id === firstParticipant.id,
+    );
+    const secondSnapshotParticipant = snapshot.conversationParticipants?.find(
+      (participant) => participant.id === second.participant.id,
+    );
+
+    expect(updated.conversationAgentSettings).toMatchObject({
+      displayNameOverride: "Security reviewer",
+      enabled: false,
+      participationMode: "manual",
+      priority: "high",
+      contextScope: "conversation-artifacts",
+      allowAutoDispatch: false,
+    });
+    expect(firstSnapshotParticipant?.conversationAgentSettings).toMatchObject({
+      displayNameOverride: "Security reviewer",
+      scopedInstructions: "Do not comment on formatting.",
+    });
+    expect(secondSnapshotParticipant?.conversationAgentSettings).toBeUndefined();
+    expect(globalAgent).toMatchObject({
+      displayName: "Reviewer",
+      systemPrompt: "Review carefully.",
+      policy: agent.policy,
+    });
+    expect(snapshot.messages.some((message) => message.parts[0]?.text === "review this")).toBe(
+      true,
+    );
+    expect(snapshot.runs.find((candidate) => candidate.id === run.id)?.agentId).toBe(agent.id);
+  });
+
+  it("rejects conversation-scoped agent setting updates for non-participants", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Observer",
+      role: "worker",
+      systemPrompt: "Observe.",
+      capabilityTags: [],
+      policy: {},
+    });
+
+    expect(() =>
+      registry.updateConversationAgentSettings(
+        "user_1",
+        agentHubLocalDefaults.conversationId,
+        agent.id,
+        { displayNameOverride: "Not in chat" },
+      ),
+    ).toThrow("Conversation participant not found");
+  });
+
+  it("applies conversation-scoped participant settings during run preparation", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Reviewer",
+      role: "worker",
+      systemPrompt: "Review carefully.",
+      capabilityTags: ["review"],
+      policy: {},
+    });
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+    registry.updateConversationAgentSettings(
+      "user_1",
+      agentHubLocalDefaults.conversationId,
+      agent.id,
+      {
+        responsibilityOverride: "Focus on security.",
+        scopedInstructions: "Only report high-risk issues.",
+      },
+    );
+
+    registry.createRun(
+      "user_1",
+      {
+        workspaceId: "workspace_1",
+        conversationId: agentHubLocalDefaults.conversationId,
+        agentId: agent.id,
+        prompt: "review this",
+      },
+      "claude-code",
+    );
+    const command = registry.takeRuntimeCommands("user_1", device.id).at(-1);
+
+    expect(command).toMatchObject({ type: "run.start" });
+    expect(command?.type === "run.start" ? command.payload.systemPrompt : "").toContain(
+      "Review carefully.",
+    );
+    expect(command?.type === "run.start" ? command.payload.systemPrompt : "").toContain(
+      "Focus on security.",
+    );
+    expect(command?.type === "run.start" ? command.payload.systemPrompt : "").toContain(
+      "Only report high-risk issues.",
+    );
+  });
+
+  it("prevents runs for disabled conversation participants", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Reviewer",
+      role: "worker",
+      systemPrompt: "Review carefully.",
+      capabilityTags: ["review"],
+      policy: {},
+    });
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
+    registry.updateConversationAgentSettings(
+      "user_1",
+      agentHubLocalDefaults.conversationId,
+      agent.id,
+      { enabled: false },
+    );
+
+    expect(() =>
+      registry.createRun(
+        "user_1",
+        {
+          workspaceId: "workspace_1",
+          conversationId: agentHubLocalDefaults.conversationId,
+          agentId: agent.id,
+          prompt: "review this",
+        },
+        "claude-code",
+      ),
+    ).toThrow("Agent is disabled in this conversation");
+    expect(registry.takeRuntimeCommands("user_1", device.id)).toHaveLength(0);
+  });
+
   it("creates separate single-agent conversations for the same agent and routes runs there", () => {
     const { registry, device } = createRegisteredRunLoopRegistry();
     const agent = registry.createAgent("user_1", {
@@ -602,6 +939,7 @@ describe("control plane registry", () => {
       capabilityTags: [],
       policy: {},
     });
+    registry.addAgentToConversation("user_1", agentHubLocalDefaults.conversationId, agent.id);
 
     registry.createRun("user_1", {
       workspaceId: "workspace_1",
@@ -888,6 +1226,25 @@ describe("control plane HTTP local mode", () => {
           (participant: { agentId: string }) => participant.agentId,
         ),
       ).toContain(createdAgent.agent.id);
+
+      const updateMembershipSettingsResponse = await fetch(
+        `${baseUrl}/conversations/${snapshotBody.activeConversationId}/agents/${createdAgent.agent.id}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({
+            displayNameOverride: "Chat researcher",
+            participationMode: "orchestrated",
+            enabled: true,
+          }),
+        },
+      );
+      expect(updateMembershipSettingsResponse.status).toBe(200);
+      const updatedMembership = await updateMembershipSettingsResponse.json();
+      expect(updatedMembership.participant.conversationAgentSettings).toMatchObject({
+        displayNameOverride: "Chat researcher",
+        participationMode: "orchestrated",
+      });
 
       const removeMembershipResponse = await fetch(
         `${baseUrl}/conversations/${snapshotBody.activeConversationId}/agents/${createdAgent.agent.id}`,

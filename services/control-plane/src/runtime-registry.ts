@@ -5,6 +5,8 @@ import type {
   ClaudeCodeDiscoverySummary,
   ClaudeCodeRunOptions,
   Conversation,
+  ConversationAgentSettings,
+  ConversationAgentClaudeSession,
   ConversationParticipant,
   CreateConnectionCheckRequest,
   CreateAgentConversationRequest,
@@ -21,12 +23,17 @@ import type {
   Run,
   RunStatus,
   UpdateAgentRequest,
+  UpdateConversationAgentSettingsRequest,
   UpdateConversationRequest,
   WorkbenchSnapshot,
   Workspace,
   WorkspaceMetadata,
 } from "@agenthub/contracts";
-import { agentHubLocalDefaults, claudeCodeRunOptionsSchema } from "@agenthub/contracts";
+import {
+  agentHubLocalDefaults,
+  claudeCodeRunOptionsSchema,
+  conversationAgentSettingsSchema,
+} from "@agenthub/contracts";
 import type { AgentHubEvent } from "@agenthub/contracts";
 import { ControlPlaneEventBus } from "./events.js";
 
@@ -79,6 +86,7 @@ export class ControlPlaneRegistry {
   readonly #activeConversationIds = new Map<Id, Id>();
   readonly #archivedAgentIds = new Set<Id>();
   readonly #conversationParticipants = new Map<Id, ConversationParticipant>();
+  readonly #conversationAgentClaudeSessions = new Map<Id, ConversationAgentClaudeSession>();
   readonly #providerHealth = new Map<Id, ProviderHealth>();
   readonly #memoryHealth = new Map<Id, MemoryHealth>();
   readonly #claudeCodeDiscovery = new Map<Id, ClaudeCodeDiscoverySummary>();
@@ -213,15 +221,42 @@ export class ControlPlaneRegistry {
     }
     const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
     const effectiveProviderMode = this.#effectiveProviderMode(agent, providerMode);
-    if (conversation) {
-      const activeParticipants = this.listConversationParticipants(ownerUserId, conversation.id);
-      if (!activeParticipants.some((participant) => participant.agentId === agent.id)) {
-        throw new Error("Agent is not a participant in this conversation");
-      }
+    const activeParticipants = this.listConversationParticipants(ownerUserId, input.conversationId);
+    const conversationParticipant =
+      activeParticipants.find((participant) => participant.agentId === agent.id) ?? null;
+    if (!conversationParticipant) {
+      throw new Error("Agent is not a participant in this conversation");
+    }
+    if (conversationParticipant.conversationAgentSettings?.enabled === false) {
+      throw new Error("Agent is disabled in this conversation");
     }
 
     const now = this.#now().toISOString();
     const claudeCodeOptions = this.#effectiveClaudeCodeOptions(agent, input.claudeCode);
+    let claudeSession =
+      effectiveProviderMode === "claude-code"
+        ? this.#ensureConversationAgentClaudeSession({
+            ownerUserId,
+            workspaceId: input.workspaceId,
+            conversationId: input.conversationId,
+            agent,
+            ...(claudeCodeOptions?.options
+              ? { claudeCodeOptions: claudeCodeOptions.options }
+              : {}),
+          })
+        : null;
+    if (claudeSession && !claudeSession.sessionId && claudeCodeOptions?.options) {
+      claudeSession = this.#touchConversationAgentClaudeSession(claudeSession, {
+        claudeCode: this.#sessionDefiningClaudeCodeOptions(claudeCodeOptions.options),
+      });
+    }
+    const effectiveClaudeCodeRunOptions = this.#effectiveRunClaudeCodeOptions(
+      claudeCodeOptions?.options,
+      claudeSession,
+    );
+    const claudeCodeOverrideSource = effectiveClaudeCodeRunOptions
+      ? (claudeCodeOptions?.overrideSource ?? "agent-default")
+      : null;
     const userMessage: Message = {
       id: crypto.randomUUID(),
       ownerUserId,
@@ -244,16 +279,16 @@ export class ControlPlaneRegistry {
       startedAt: null,
       completedAt: null,
       failureReason: null,
-      ...(claudeCodeOptions
+      ...(effectiveClaudeCodeRunOptions && claudeCodeOverrideSource
         ? {
             claudeCode: {
-              ...claudeCodeOptions.options,
-              overrideSource: claudeCodeOptions.overrideSource,
-              ...(claudeCodeOptions.options.permissionPreset
-                ? { effectivePermissionPreset: claudeCodeOptions.options.permissionPreset }
+              ...effectiveClaudeCodeRunOptions,
+              overrideSource: claudeCodeOverrideSource,
+              ...(effectiveClaudeCodeRunOptions.permissionPreset
+                ? { effectivePermissionPreset: effectiveClaudeCodeRunOptions.permissionPreset }
                 : {}),
-              ...(claudeCodeOptions.options.settingsSource
-                ? { effectiveSettingsSource: claudeCodeOptions.options.settingsSource }
+              ...(effectiveClaudeCodeRunOptions.settingsSource
+                ? { effectiveSettingsSource: effectiveClaudeCodeRunOptions.settingsSource }
                 : {}),
             },
           }
@@ -276,12 +311,15 @@ export class ControlPlaneRegistry {
         agentId: run.agentId,
         workspacePath: binding.localPath,
         prompt: input.prompt ?? "Run AgentHub local task",
-        systemPrompt: agent.systemPrompt,
+        systemPrompt: this.#scopedSystemPrompt(agent, conversationParticipant),
         providerMode: effectiveProviderMode,
         memory: this.#agentMemoryConfig(ownerUserId, run.workspaceId, input.agentId),
-        ...(claudeCodeOptions ? { claudeCode: claudeCodeOptions.options } : {}),
+        ...(effectiveClaudeCodeRunOptions ? { claudeCode: effectiveClaudeCodeRunOptions } : {}),
       },
     });
+    if (claudeSession) {
+      this.#touchConversationAgentClaudeSession(claudeSession, { lastRunId: run.id });
+    }
     return run;
   }
 
@@ -375,6 +413,12 @@ export class ControlPlaneRegistry {
       this.#participantKey(conversation.id, agent.id),
       participant,
     );
+    this.#ensureConversationAgentClaudeSession({
+      ownerUserId,
+      workspaceId: conversation.workspaceId,
+      conversationId: conversation.id,
+      agent,
+    });
     this.#activeConversationIds.set(ownerUserId, conversation.id);
     this.#publishMembershipChanged(participant, "added");
     return { conversation, participant };
@@ -505,6 +549,13 @@ export class ControlPlaneRegistry {
       updatedAt: now,
     };
     this.#conversationParticipants.set(key, participant);
+    const conversation = this.#requireConversationAvailable(ownerUserId, conversationId);
+    this.#ensureConversationAgentClaudeSession({
+      ownerUserId,
+      workspaceId: conversation?.workspaceId ?? agentHubLocalDefaults.workspaceId,
+      conversationId,
+      agent,
+    });
     this.#publishMembershipChanged(participant, "added");
     return participant;
   }
@@ -529,6 +580,34 @@ export class ControlPlaneRegistry {
     };
     this.#conversationParticipants.set(key, updated);
     this.#publishMembershipChanged(updated, "removed");
+    return updated;
+  }
+
+  updateConversationAgentSettings(
+    ownerUserId: Id,
+    conversationId: Id,
+    agentId: Id,
+    input: UpdateConversationAgentSettingsRequest,
+  ): ConversationParticipant {
+    this.#requireConversationAvailable(ownerUserId, conversationId);
+    this.#requireOwnedAgent(ownerUserId, agentId);
+    this.#ensureDefaultConversationMembership(ownerUserId, conversationId);
+    const key = this.#participantKey(conversationId, agentId);
+    const existing = this.#conversationParticipants.get(key);
+    if (!existing || existing.ownerUserId !== ownerUserId || existing.archivedAt) {
+      throw new Error("Conversation participant not found");
+    }
+    const parsed = conversationAgentSettingsSchema.parse(input);
+    const updated: ConversationParticipant = {
+      ...existing,
+      conversationAgentSettings: {
+        ...(existing.conversationAgentSettings ?? {}),
+        ...parsed,
+      },
+      updatedAt: this.#now().toISOString(),
+    };
+    this.#conversationParticipants.set(key, updated);
+    this.#publishMembershipChanged(updated, "settings-updated");
     return updated;
   }
 
@@ -642,7 +721,25 @@ export class ControlPlaneRegistry {
   }
 
   recordProviderRuntimeEvent(ownerUserId: Id, event: ProviderRuntimeEvent): void {
-    const run = this.#requireOwnedRun(ownerUserId, event.runId);
+    const run = this.#runs.get(event.runId);
+    if (!run || run.ownerUserId !== ownerUserId) {
+      if (event.type === "provider.session") {
+        return;
+      }
+      throw new Error("Run not found");
+    }
+    if (event.type === "provider.session") {
+      const session = this.#conversationAgentClaudeSessions.get(
+        this.#claudeSessionKey(run.workspaceId, run.conversationId, run.agentId),
+      );
+      if (session) {
+        this.#touchConversationAgentClaudeSession(session, {
+          sessionId: event.sessionId,
+          lastRunId: run.id,
+        });
+      }
+      return;
+    }
     if (event.type === "run.status") {
       this.updateRunStatus(ownerUserId, event.runId, event.status, event.message);
       return;
@@ -916,6 +1013,129 @@ export class ControlPlaneRegistry {
     return `${conversationId}:${agentId}`;
   }
 
+  #claudeSessionKey(workspaceId: Id, conversationId: Id, agentId: Id): Id {
+    return `${workspaceId}:${conversationId}:${agentId}`;
+  }
+
+  #isClaudeCodeBackedAgent(agent: Agent): boolean {
+    const runtime = agent.policy["runtime"];
+    const provider =
+      runtime && typeof runtime === "object" && !Array.isArray(runtime)
+        ? (runtime as Record<string, unknown>)["provider"]
+        : agent.policy["runtimeProvider"];
+    return provider !== "codex";
+  }
+
+  #ensureConversationAgentClaudeSession(input: {
+    readonly ownerUserId: Id;
+    readonly workspaceId: Id;
+    readonly conversationId: Id;
+    readonly agent: Agent;
+    readonly claudeCodeOptions?: ClaudeCodeRunOptions;
+  }): ConversationAgentClaudeSession | null {
+    if (!this.#isClaudeCodeBackedAgent(input.agent)) {
+      return null;
+    }
+    const key = this.#claudeSessionKey(input.workspaceId, input.conversationId, input.agent.id);
+    const existing = this.#conversationAgentClaudeSessions.get(key);
+    if (existing) {
+      return existing;
+    }
+    const parsed = claudeCodeRunOptionsSchema.safeParse(input.agent.policy["claudeCode"]);
+    const snapshot = this.#sessionDefiningClaudeCodeOptions(
+      input.claudeCodeOptions ?? (parsed.success ? (parsed.data as ClaudeCodeRunOptions) : {}),
+    );
+    const now = this.#now().toISOString();
+    const session: ConversationAgentClaudeSession = {
+      id: crypto.randomUUID(),
+      ownerUserId: input.ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      agentId: input.agent.id,
+      providerMode: "claude-code",
+      sessionId: null,
+      lastRunId: null,
+      claudeCode: snapshot,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.#conversationAgentClaudeSessions.set(key, session);
+    return session;
+  }
+
+  #touchConversationAgentClaudeSession(
+    session: ConversationAgentClaudeSession,
+    patch: Pick<
+      Partial<ConversationAgentClaudeSession>,
+      "sessionId" | "lastRunId" | "claudeCode"
+    >,
+  ): ConversationAgentClaudeSession {
+    const updated: ConversationAgentClaudeSession = {
+      ...session,
+      ...(patch.sessionId !== undefined ? { sessionId: patch.sessionId } : {}),
+      ...(patch.lastRunId !== undefined ? { lastRunId: patch.lastRunId } : {}),
+      ...(patch.claudeCode !== undefined ? { claudeCode: patch.claudeCode } : {}),
+      updatedAt: this.#now().toISOString(),
+    };
+    this.#conversationAgentClaudeSessions.set(
+      this.#claudeSessionKey(updated.workspaceId, updated.conversationId, updated.agentId),
+      updated,
+    );
+    return updated;
+  }
+
+  #sessionDefiningClaudeCodeOptions(
+    options: ClaudeCodeRunOptions,
+  ): ConversationAgentClaudeSession["claudeCode"] {
+    return {
+      ...(options.permissionPreset ? { permissionPreset: options.permissionPreset } : {}),
+      ...(options.settingsSource ? { settingsSource: options.settingsSource } : {}),
+      ...(options.runtimeProfileId !== undefined
+        ? { runtimeProfileId: options.runtimeProfileId }
+        : {}),
+      ...(options.mcpProfileId !== undefined ? { mcpProfileId: options.mcpProfileId } : {}),
+      ...(options.pluginProfileId !== undefined
+        ? { pluginProfileId: options.pluginProfileId }
+        : {}),
+      ...(options.hooksPolicy ? { hooksPolicy: options.hooksPolicy } : {}),
+      ...(options.allowedTools ? { allowedTools: [...options.allowedTools] } : {}),
+      ...(options.disallowedTools ? { disallowedTools: [...options.disallowedTools] } : {}),
+    };
+  }
+
+  #effectiveRunClaudeCodeOptions(
+    runOptions: ClaudeCodeRunOptions | undefined,
+    session: ConversationAgentClaudeSession | null,
+  ): ClaudeCodeRunOptions | undefined {
+    if (!session) {
+      return runOptions;
+    }
+    const effective: ClaudeCodeRunOptions = {
+      ...session.claudeCode,
+      ...(runOptions?.effort ? { effort: runOptions.effort } : {}),
+      ...(session.sessionId
+        ? { session: { behavior: "continue" as const, sessionId: session.sessionId } }
+        : {}),
+    };
+    return Object.keys(effective).length > 0 ? effective : undefined;
+  }
+
+  #scopedSystemPrompt(
+    agent: Agent,
+    participant: ConversationParticipant | null,
+  ): string {
+    const settings = participant?.conversationAgentSettings;
+    const additions = [
+      settings?.responsibilityOverride
+        ? `Conversation responsibility: ${settings.responsibilityOverride}`
+        : null,
+      settings?.scopedInstructions
+        ? `Conversation-scoped instructions: ${settings.scopedInstructions}`
+        : null,
+    ].filter(Boolean);
+    return additions.length ? [agent.systemPrompt, "", ...additions].join("\n") : agent.systemPrompt;
+  }
+
   #ensureDefaultConversationMembership(ownerUserId: Id, conversationId: Id): void {
     if (conversationId !== agentHubLocalDefaults.conversationId) {
       return;
@@ -946,12 +1166,18 @@ export class ControlPlaneRegistry {
         this.#participantKey(conversationId, agent.id),
         participant,
       );
+      this.#ensureConversationAgentClaudeSession({
+        ownerUserId,
+        workspaceId: agentHubLocalDefaults.workspaceId,
+        conversationId,
+        agent,
+      });
     }
   }
 
   #publishMembershipChanged(
     participant: ConversationParticipant,
-    action: "added" | "removed",
+    action: "added" | "removed" | "settings-updated",
   ): void {
     this.#events.publish({
       id: crypto.randomUUID(),
