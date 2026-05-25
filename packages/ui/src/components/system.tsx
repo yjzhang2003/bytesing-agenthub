@@ -241,11 +241,12 @@ export function AgentHubTextInput(
   props: React.InputHTMLAttributes<HTMLInputElement> & {
     readonly ariaLabel?: string;
     readonly density?: AgentHubDensity;
+    readonly inputRef?: React.Ref<HTMLInputElement>;
     readonly invalid?: boolean;
     readonly size?: AgentHubControlSize | AgentHubComponentSize;
   },
 ): React.ReactElement {
-  const { ariaLabel, className, density, invalid, size, ...inputProps } = props;
+  const { ariaLabel, className, density, inputRef, invalid, size, ...inputProps } = props;
   return (
     <input
       {...inputProps}
@@ -255,6 +256,7 @@ export function AgentHubTextInput(
       data-density={density}
       data-invalid={invalid ? "true" : undefined}
       data-size={mapSize(size)}
+      ref={inputRef}
     />
   );
 }

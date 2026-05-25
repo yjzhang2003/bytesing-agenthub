@@ -8,6 +8,7 @@ import {
   type CreateConnectionCheckRequest,
   type CreateAgentRequest,
   type CreateLocalRunRequest,
+  type UpdateConversationRequest,
   type UpdateAgentRequest,
   type WorkbenchSnapshot,
 } from "@agenthub/contracts";
@@ -27,6 +28,7 @@ const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
   "artifact.created",
   "artifact.updated",
   "diff.metadata.updated",
+  "conversation.updated",
   "conversation.membership_changed",
 ];
 
@@ -71,6 +73,14 @@ export class WebControlPlaneClient {
 
   async setActiveConversation(conversationId: string) {
     return this.#post(agentHubApiPaths.activeConversation(conversationId), {});
+  }
+
+  async updateConversation(conversationId: string, input: UpdateConversationRequest) {
+    return this.#post(agentHubApiPaths.conversation(conversationId), input, "PATCH");
+  }
+
+  async deleteConversation(conversationId: string) {
+    return this.#post(agentHubApiPaths.conversation(conversationId), {}, "DELETE");
   }
 
   async addAgentToConversation(conversationId: string, agentId: string) {

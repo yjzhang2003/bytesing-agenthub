@@ -55,6 +55,8 @@ export interface ConversationListItem {
   readonly participants: readonly string[];
   readonly pendingPermissions: number;
   readonly active: boolean;
+  readonly pinned: boolean;
+  readonly notificationsMuted: boolean;
   readonly activeRunStatus?: Run["status"];
 }
 
@@ -280,10 +282,13 @@ export interface ChatInfoViewModel {
   readonly id: string;
   readonly title: string;
   readonly kind: "single-agent" | "group";
+  readonly mutable: boolean;
   readonly workspaceName: string;
   readonly runtimeLabel: string;
   readonly createdAtLabel: string;
   readonly updatedAtLabel: string;
+  readonly pinned: boolean;
+  readonly notificationsMuted: boolean;
   readonly participantCount: number;
   readonly participants: readonly ChatInfoParticipantViewModel[];
   readonly availableAgents: readonly ChatInfoParticipantViewModel[];

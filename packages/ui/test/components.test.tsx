@@ -20,6 +20,7 @@ import {
   createWorkbenchViewModel,
   workbenchLayoutForWidth,
 } from "../src/index.js";
+import { workbenchCss } from "../src/styles.js";
 
 const now = "2026-05-21T00:00:00.000Z";
 
@@ -89,7 +90,9 @@ function snapshot(
         createdAt: now,
         id: "conversation_1",
         kind: "group",
+        notificationsMuted: false,
         ownerUserId: "user_1",
+        pinnedAt: null,
         title: "MVP workbench",
         updatedAt: now,
         workspaceId: "workspace_1",
@@ -499,7 +502,7 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("height: 100dvh");
     expect(html).toContain("min-height: 64px");
     expect(html).toContain("font-size: 14px");
-    expect(html).toContain("max-height: calc(100dvh - 64px)");
+    expect(html).toContain("max-height: 100%");
   });
 
   it("keeps the timeline scrollable while the composer stays anchored", () => {
@@ -1047,7 +1050,9 @@ describe("@agenthub/ui components", () => {
           createdAt: now,
           id: "conversation_direct_1",
           kind: "single-agent" as const,
+          notificationsMuted: false,
           ownerUserId: "user_1",
+          pinnedAt: null,
           title: "Researcher",
           updatedAt: now,
           workspaceId: "workspace_1",
@@ -1057,7 +1062,9 @@ describe("@agenthub/ui components", () => {
           createdAt: now,
           id: "conversation_direct_2",
           kind: "single-agent" as const,
+          notificationsMuted: false,
           ownerUserId: "user_1",
+          pinnedAt: null,
           title: "Researcher",
           updatedAt: now,
           workspaceId: "workspace_1",
@@ -1358,14 +1365,41 @@ describe("@agenthub/ui components", () => {
     expect(withoutCallbacks).toContain("Add agent");
     expect(withoutCallbacks).toContain("Implementer");
     expect(withoutCallbacks).toContain("disabled");
+    expect(withoutCallbacks).toContain("agenthub-desktop-inspector-toggle");
+    expect(withoutCallbacks).not.toContain('<div class="agenthub-inspector-floating-actions"');
     expect(withCallbacks).toContain("agenthub-chat-add-agent-list");
     expect(withCallbacks).toContain("agenthub-chat-add-agent-option");
     expect(withCallbacks).toContain("agenthub-chat-add-agent-check");
+    expect(withoutCallbacks).not.toContain("<h3>MVP workbench</h3>");
+    expect(withoutCallbacks).toContain("Conversation settings");
+    expect(withoutCallbacks).toContain("Pin conversation");
+    expect(withoutCallbacks).toContain("Notifications");
+    expect(withoutCallbacks).toContain("Delete conversation");
+    expect(withoutCallbacks).not.toContain("<dt>Runtime</dt>");
+    expect(withoutCallbacks).not.toContain("<dt>Created</dt>");
+    expect(withoutCallbacks).not.toContain("<dt>Updated</dt>");
     expect(withoutCallbacks).not.toContain("agent participant");
     expect(withoutCallbacks).not.toContain("<small>orchestrator</small>");
     expect(withoutCallbacks).not.toContain("<small>worker</small>");
     expect(withoutCallbacks).not.toContain(">Clear<");
     expect(withCallbacks).not.toContain("Remove Orchestrator from chat");
+  });
+
+  it("lays out chat participants in four columns with avatar-sized add control", () => {
+    expect(workbenchCss).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
+    expect(workbenchCss).toContain(".agenthub-chat-participant-tile {\n  position: relative;\n  width: 64px;");
+    expect(workbenchCss).toContain(".agenthub-chat-add-agent-button {\n  width: 48px;");
+    expect(workbenchCss).toContain("border: 1px dashed var(--agenthub-border);");
+    expect(workbenchCss).toContain("--agenthub-right-column: clamp(300px, 24vw, 340px);");
+    expect(workbenchCss).toContain("width: min(80vw, 340px);");
+    expect(workbenchCss).toContain(".agenthub-chat-settings-group");
+    expect(workbenchCss).toContain(".agenthub-inspector-floating-actions");
+    expect(workbenchCss).toContain(".agenthub-desktop-inspector-toggle");
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="narrow"] .agenthub-desktop-inspector-toggle',
+    );
+    expect(workbenchCss).toContain('inset: 64px 0 0 auto');
+    expect(workbenchCss).toContain(".agenthub-detail-section:first-child");
   });
 
   it("renders Control Plane offline and loading states", () => {

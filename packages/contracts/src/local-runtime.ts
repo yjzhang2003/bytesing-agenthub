@@ -202,6 +202,12 @@ export interface CreateAgentConversationRequest {
   readonly agentId: Id;
 }
 
+export interface UpdateConversationRequest {
+  readonly title?: string | undefined;
+  readonly pinned?: boolean | undefined;
+  readonly notificationsMuted?: boolean | undefined;
+}
+
 export type RuntimeCommand =
   | {
       readonly id: Id;
@@ -269,6 +275,7 @@ export const agentHubApiPaths = {
   memoryStatus: "/memory/status",
   agents: "/agents",
   conversations: "/conversations",
+  conversation: (conversationId: Id) => `/conversations/${encodeURIComponent(conversationId)}`,
   activeConversation: (conversationId: Id) =>
     `/conversations/${encodeURIComponent(conversationId)}/active`,
   agentConversations: (agentId: Id) => `/agents/${encodeURIComponent(agentId)}/conversations`,

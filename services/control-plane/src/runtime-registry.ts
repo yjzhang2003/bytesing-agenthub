@@ -21,6 +21,7 @@ import type {
   Run,
   RunStatus,
   UpdateAgentRequest,
+  UpdateConversationRequest,
   WorkbenchSnapshot,
   Workspace,
   WorkspaceMetadata,
@@ -353,6 +354,8 @@ export class ControlPlaneRegistry {
       workspaceId: input.workspaceId,
       kind: "single-agent",
       title: agent.displayName,
+      pinnedAt: null,
+      notificationsMuted: false,
       archivedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -381,6 +384,56 @@ export class ControlPlaneRegistry {
     const conversation = this.#requireConversationAvailable(ownerUserId, conversationId);
     this.#activeConversationIds.set(ownerUserId, conversationId);
     return conversation;
+  }
+
+  updateConversation(
+    ownerUserId: Id,
+    conversationId: Id,
+    input: UpdateConversationRequest,
+  ): Conversation {
+    const existing = this.#requireMutableConversation(ownerUserId, conversationId);
+    const now = this.#now().toISOString();
+    const updated: Conversation = {
+      ...existing,
+      ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+      ...(input.pinned !== undefined ? { pinnedAt: input.pinned ? (existing.pinnedAt ?? now) : null } : {}),
+      ...(input.notificationsMuted !== undefined
+        ? { notificationsMuted: input.notificationsMuted }
+        : {}),
+      updatedAt: now,
+    };
+    this.#conversations.set(updated.id, updated);
+    this.#publishConversationUpdated(updated);
+    return updated;
+  }
+
+  archiveConversation(ownerUserId: Id, conversationId: Id): Conversation {
+    const existing = this.#requireMutableConversation(ownerUserId, conversationId);
+    const now = this.#now().toISOString();
+    const updated: Conversation = {
+      ...existing,
+      archivedAt: now,
+      updatedAt: now,
+    };
+    this.#conversations.set(updated.id, updated);
+    for (const participant of this.#conversationParticipants.values()) {
+      if (
+        participant.ownerUserId === ownerUserId &&
+        participant.conversationId === conversationId &&
+        !participant.archivedAt
+      ) {
+        this.#conversationParticipants.set(this.#participantKey(conversationId, participant.agentId), {
+          ...participant,
+          archivedAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+    if (this.#activeConversationIds.get(ownerUserId) === conversationId) {
+      this.#activeConversationIds.set(ownerUserId, agentHubLocalDefaults.conversationId);
+    }
+    this.#publishConversationUpdated(updated);
+    return updated;
   }
 
   updateAgent(ownerUserId: Id, agentId: Id, input: UpdateAgentRequest): Agent {
@@ -684,6 +737,8 @@ export class ControlPlaneRegistry {
       workspaceId: workspace.id,
       kind: "group",
       title: "AgentHub local runnable demo",
+      pinnedAt: null,
+      notificationsMuted: false,
       archivedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -694,7 +749,7 @@ export class ControlPlaneRegistry {
       ...[...this.#conversations.values()].filter(
         (conversation) => conversation.ownerUserId === ownerUserId && !conversation.archivedAt,
       ),
-    ];
+    ].sort(this.#compareConversations);
     const activeConversationId = conversations.some(
       (conversation) => conversation.id === this.#activeConversationIds.get(ownerUserId),
     )
@@ -788,6 +843,30 @@ export class ControlPlaneRegistry {
       throw new Error("Conversation is not available in this local workspace");
     }
     return conversation;
+  }
+
+  #requireMutableConversation(ownerUserId: Id, conversationId: Id): Conversation {
+    if (conversationId === agentHubLocalDefaults.conversationId) {
+      throw new Error("Default conversation settings are managed by AgentHub");
+    }
+    const conversation = this.#requireConversationAvailable(ownerUserId, conversationId);
+    if (!conversation) {
+      throw new Error("Conversation is not available in this local workspace");
+    }
+    return conversation;
+  }
+
+  #compareConversations(a: Conversation, b: Conversation): number {
+    if (a.pinnedAt && b.pinnedAt && a.pinnedAt !== b.pinnedAt) {
+      return b.pinnedAt.localeCompare(a.pinnedAt);
+    }
+    if (a.pinnedAt && !b.pinnedAt) {
+      return -1;
+    }
+    if (!a.pinnedAt && b.pinnedAt) {
+      return 1;
+    }
+    return b.updatedAt.localeCompare(a.updatedAt);
   }
 
   #deviceStatusEvent(device: RuntimeDevice): AgentHubEvent {
@@ -886,6 +965,19 @@ export class ControlPlaneRegistry {
         agentId: participant.agentId,
         action,
       },
+    });
+  }
+
+  #publishConversationUpdated(conversation: Conversation): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "conversation.updated",
+      ownerUserId: conversation.ownerUserId,
+      workspaceId: conversation.workspaceId,
+      conversationId: conversation.id,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: conversation,
     });
   }
 

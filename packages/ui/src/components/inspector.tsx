@@ -1,5 +1,6 @@
-import { PanelRightClose, Plus } from "lucide-react";
+import { PanelRightClose, Plus, Trash2 } from "lucide-react";
 import React from "react";
+import type { UpdateConversationRequest } from "@agenthub/contracts";
 import type {
   ArtifactViewModel,
   ChatInfoViewModel,
@@ -13,7 +14,13 @@ import type {
 } from "../types.js";
 import { useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
-import { AgentHubAvatar, AgentHubModal } from "./system.js";
+import {
+  AgentHubAvatar,
+  AgentHubButton,
+  AgentHubModal,
+  AgentHubSwitch,
+  AgentHubTextInput,
+} from "./system.js";
 import {
   DetailSection,
   HoverButton,
@@ -28,9 +35,15 @@ export function ContextInspector(props: {
   readonly onSelect: (selection: InspectorSelection | null) => void;
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
+  readonly onUpdateConversation?: (
+    conversationId: string,
+    input: UpdateConversationRequest,
+  ) => void;
+  readonly onDeleteConversation?: (conversationId: string) => void;
   readonly onOpenFullScreenDiff: () => void;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
+  readonly showPanelToggle?: boolean;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const selection = normalizeSelection(props.selection, {
@@ -47,28 +60,29 @@ export function ContextInspector(props: {
       aria-label={i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}
       className="agenthub-inspector"
     >
-      <header>
-        <strong>{i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}</strong>
-        <div className="agenthub-header-actions">
+      {props.showPanelToggle || (selection && selection.mode !== "chat-info") ? (
+        <div className="agenthub-inspector-floating-actions">
           {selection && selection.mode !== "chat-info" ? (
             <HoverButton onClick={() => props.onSelect(null)} type="button">
               {i18n.t("actions.clear", { fallback: "Clear" })}
             </HoverButton>
           ) : null}
-          <HoverButton
-            aria-label={
-              props.collapsed
-                ? i18n.t("nav.expandInspector", { fallback: "Expand Context Inspector" })
-                : i18n.t("nav.collapseInspector", { fallback: "Collapse Context Inspector" })
-            }
-            className="agenthub-icon-button"
-            onClick={props.onToggleCollapsed}
-            type="button"
-          >
-            <Icon icon={PanelRightClose} />
-          </HoverButton>
+          {props.showPanelToggle ? (
+            <HoverButton
+              aria-label={
+                props.collapsed
+                  ? i18n.t("nav.expandInspector", { fallback: "Expand Context Inspector" })
+                  : i18n.t("nav.collapseInspector", { fallback: "Collapse Context Inspector" })
+              }
+              className="agenthub-icon-button"
+              onClick={props.onToggleCollapsed}
+              type="button"
+            >
+              <Icon icon={PanelRightClose} />
+            </HoverButton>
+          ) : null}
         </div>
-      </header>
+      ) : null}
       {renderInspectorBody(
         props.model,
         selection,
@@ -76,6 +90,8 @@ export function ContextInspector(props: {
         props.onOpenFullScreenDiff,
         props.onAddAgentToChat,
         props.onRemoveAgentFromChat,
+        props.onUpdateConversation,
+        props.onDeleteConversation,
       )}
     </aside>
   );
@@ -88,6 +104,8 @@ function renderInspectorBody(
   onOpenFullScreenDiff: () => void,
   onAddAgentToChat?: (conversationId: string, agentId: string) => void,
   onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void,
+  onUpdateConversation?: (conversationId: string, input: UpdateConversationRequest) => void,
+  onDeleteConversation?: (conversationId: string) => void,
 ): React.ReactNode {
   if (!selection) {
     if (model.inspector.chatInfo) {
@@ -96,6 +114,8 @@ function renderInspectorBody(
           chat={model.inspector.chatInfo}
           {...(onAddAgentToChat ? { onAddAgent: onAddAgentToChat } : {})}
           {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
+          {...(onUpdateConversation ? { onUpdateConversation } : {})}
+          {...(onDeleteConversation ? { onDeleteConversation } : {})}
         />
       );
     }
@@ -112,6 +132,8 @@ function renderInspectorBody(
         chat={model.inspector.chatInfo}
         {...(onAddAgentToChat ? { onAddAgent: onAddAgentToChat } : {})}
         {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
+        {...(onUpdateConversation ? { onUpdateConversation } : {})}
+        {...(onDeleteConversation ? { onDeleteConversation } : {})}
       />
     ) : (
       <UnavailableDetail label="Chat unavailable" />
@@ -160,13 +182,43 @@ function ChatInfoDetail(props: {
   readonly chat: ChatInfoViewModel;
   readonly onAddAgent?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgent?: (conversationId: string, agentId: string) => void;
+  readonly onUpdateConversation?: (conversationId: string, input: UpdateConversationRequest) => void;
+  readonly onDeleteConversation?: (conversationId: string) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [pinned, setPinned] = React.useState(props.chat.pinned);
+  const [muted, setMuted] = React.useState(props.chat.notificationsMuted);
+  const [chatTitle, setChatTitle] = React.useState(props.chat.title);
+  const chatTitleInputRef = React.useRef<HTMLInputElement>(null);
+  const canUpdateConversation = props.chat.mutable && Boolean(props.onUpdateConversation);
+  const canDeleteConversation = props.chat.mutable && Boolean(props.onDeleteConversation);
+
+  React.useEffect(() => {
+    setChatTitle(props.chat.title);
+  }, [props.chat.title]);
+  React.useEffect(() => {
+    setPinned(props.chat.pinned);
+  }, [props.chat.pinned]);
+  React.useEffect(() => {
+    setMuted(props.chat.notificationsMuted);
+  }, [props.chat.notificationsMuted]);
+  const commitTitle = () => {
+    const nextTitle = (chatTitleInputRef.current?.value ?? chatTitle).trim();
+    if (!nextTitle) {
+      setChatTitle(props.chat.title);
+      return;
+    }
+    if (nextTitle !== props.chat.title) {
+      props.onUpdateConversation?.(props.chat.id, { title: nextTitle });
+    }
+  };
+  const updateDraftTitle = (event: React.FormEvent<HTMLInputElement>) => {
+    setChatTitle(event.currentTarget.value);
+  };
 
   return (
     <div className="agenthub-inspector-body">
-      <h3>{props.chat.title}</h3>
       <DetailSection title={i18n.t("chat.participants")}>
         <div className="agenthub-chat-participant-grid">
           {props.chat.participants.map((participant) => (
@@ -200,22 +252,79 @@ function ChatInfoDetail(props: {
           open={addDialogOpen}
         />
       </DetailSection>
-      <DetailSection title={i18n.t("chat.basicInfo")}>
-        <dl>
-          <dt>{i18n.t("chat.chatName")}</dt>
-          <dd>{props.chat.title}</dd>
-          <dt>{i18n.t("chat.chatKind")}</dt>
-          <dd>{props.chat.kind}</dd>
-          <dt>{i18n.t("chat.workspace")}</dt>
-          <dd>{props.chat.workspaceName}</dd>
-          <dt>{i18n.t("chat.runtime")}</dt>
-          <dd>{props.chat.runtimeLabel}</dd>
-          <dt>{i18n.t("chat.created")}</dt>
-          <dd>{props.chat.createdAtLabel}</dd>
-          <dt>{i18n.t("chat.updated")}</dt>
-          <dd>{props.chat.updatedAtLabel}</dd>
-        </dl>
-      </DetailSection>
+      <ChatSettingsGroup title={i18n.t("chat.basicInfo")}>
+        <ChatSettingsRow
+          control={
+            <AgentHubTextInput
+              ariaLabel={i18n.t("chat.chatName")}
+              className="agenthub-chat-title-input"
+              onChange={updateDraftTitle}
+              onInput={updateDraftTitle}
+              onBlur={commitTitle}
+              inputRef={chatTitleInputRef}
+              disabled={!canUpdateConversation}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  setChatTitle(props.chat.title);
+                  event.currentTarget.blur();
+                }
+              }}
+              value={chatTitle}
+            />
+          }
+          title={i18n.t("chat.chatName")}
+        />
+        <ChatSettingsRow description={props.chat.kind} title={i18n.t("chat.chatKind")} />
+      </ChatSettingsGroup>
+      <ChatSettingsGroup title={i18n.t("chat.conversationSettings")}>
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel={i18n.t("chat.pinConversation")}
+              checked={pinned}
+              disabled={!canUpdateConversation}
+              onChange={(checked) => {
+                setPinned(checked);
+                props.onUpdateConversation?.(props.chat.id, { pinned: checked });
+              }}
+            />
+          }
+          description={i18n.t("chat.pinConversationDescription")}
+          title={i18n.t("chat.pinConversation")}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel={i18n.t("chat.notifications")}
+              checked={!muted}
+              disabled={!canUpdateConversation}
+              onChange={(checked) => {
+                setMuted(!checked);
+                props.onUpdateConversation?.(props.chat.id, { notificationsMuted: !checked });
+              }}
+            />
+          }
+          description={i18n.t("chat.notificationsDescription")}
+          title={i18n.t("chat.notifications")}
+        />
+        <div className="agenthub-chat-delete-row">
+          <AgentHubButton
+            className="agenthub-chat-delete-conversation-button"
+            disabled={!canDeleteConversation}
+            htmlType="button"
+            kind="danger"
+            onClick={() => props.onDeleteConversation?.(props.chat.id)}
+            size="small"
+            variant="ghost"
+          >
+            <Icon icon={Trash2} />
+            {i18n.t("chat.deleteConversation")}
+          </AgentHubButton>
+        </div>
+      </ChatSettingsGroup>
       {props.chat.announcement ? (
         <DetailSection title={i18n.t("chat.announcement")}>
           <p>{props.chat.announcement}</p>
@@ -226,6 +335,42 @@ function ChatInfoDetail(props: {
           <p>{props.chat.note}</p>
         </DetailSection>
       ) : null}
+    </div>
+  );
+}
+
+function ChatSettingsGroup(props: {
+  readonly children: React.ReactNode;
+  readonly title: string;
+}): React.ReactElement {
+  return (
+    <section className="agenthub-agent-settings-group agenthub-chat-settings-group">
+      <header>
+        <h3>{props.title}</h3>
+      </header>
+      <div className="agenthub-agent-settings-body">{props.children}</div>
+    </section>
+  );
+}
+
+function ChatSettingsRow(props: {
+  readonly title: string;
+  readonly description?: React.ReactNode;
+  readonly control?: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="agenthub-agent-readonly-row agenthub-settings-row agenthub-chat-settings-row">
+      <span>{props.title}</span>
+      {props.control ? (
+        <div className="agenthub-settings-control-value">
+          {props.description ? (
+            <span className="agenthub-settings-control-copy">{props.description}</span>
+          ) : null}
+          {props.control}
+        </div>
+      ) : (
+        <strong>{props.description}</strong>
+      )}
     </div>
   );
 }

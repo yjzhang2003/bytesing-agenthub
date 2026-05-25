@@ -267,6 +267,16 @@ export const createAgentConversationRequestSchema = z.object({
   agentId: idSchema,
 });
 
+export const updateConversationRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).optional(),
+    pinned: z.boolean().optional(),
+    notificationsMuted: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one conversation field must be provided",
+  });
+
 export const runtimeCommandSchema = z.discriminatedUnion("type", [
   z.object({
     id: idSchema,
@@ -339,6 +349,8 @@ const conversationSchema = z.object({
   workspaceId: idSchema,
   kind: z.enum(["single-agent", "group"]),
   title: z.string().min(1),
+  pinnedAt: z.string().datetime().nullable(),
+  notificationsMuted: z.boolean(),
   archivedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -446,6 +458,7 @@ export type AddConversationAgentRequestPayload = z.infer<typeof addConversationA
 export type CreateAgentConversationRequestPayload = z.infer<
   typeof createAgentConversationRequestSchema
 >;
+export type UpdateConversationRequestPayload = z.infer<typeof updateConversationRequestSchema>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type ClaudeCodeRunOptionsPayload = z.infer<typeof claudeCodeRunOptionsSchema>;
 export type ClaudeCodeDiscoverySummaryPayload = z.infer<typeof claudeCodeDiscoverySummarySchema>;

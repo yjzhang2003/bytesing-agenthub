@@ -27,6 +27,7 @@ export {
   workbenchSnapshotSchema,
   workspaceMetadataSchema,
   updateAgentRequestSchema,
+  updateConversationRequestSchema,
 } from "./schemas.js";
 export type {
   AddConversationAgentRequestPayload,
@@ -47,6 +48,7 @@ export type {
   RuntimeRegistrationPayloadData,
   ServiceHealthPayload,
   UpdateAgentRequestPayload,
+  UpdateConversationRequestPayload,
   WorkbenchSnapshotPayload,
 } from "./schemas.js";
 export {
@@ -69,5 +71,6 @@ export {
   validateWorkbenchSnapshot,
   validateWorkspaceMetadata,
   validateUpdateAgentRequest,
+  validateUpdateConversationRequest,
 } from "./validation.js";
 export type { ValidationResult } from "./validation.js";

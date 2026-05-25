@@ -555,6 +555,43 @@ describe("control plane registry", () => {
     ).toThrow("Agent not found");
   });
 
+  it("updates, pins, configures notifications, and archives conversations", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Researcher",
+      role: "worker",
+      systemPrompt: "Research carefully.",
+      capabilityTags: ["research"],
+      policy: {},
+    });
+    const { conversation } = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      agentId: agent.id,
+    });
+
+    const updated = registry.updateConversation("user_1", conversation.id, {
+      notificationsMuted: true,
+      pinned: true,
+      title: "Pinned research",
+    });
+    expect(updated).toMatchObject({
+      notificationsMuted: true,
+      title: "Pinned research",
+    });
+    expect(updated.pinnedAt).toBeTruthy();
+    expect(registry.events.snapshot().at(-1)).toMatchObject({
+      type: "conversation.updated",
+      payload: { id: conversation.id, notificationsMuted: true, title: "Pinned research" },
+    });
+    expect(registry.createWorkbenchSnapshot("user_1").conversations[0]?.id).toBe(conversation.id);
+
+    registry.archiveConversation("user_1", conversation.id);
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    expect(snapshot.conversations.some((candidate) => candidate.id === conversation.id)).toBe(false);
+    expect(snapshot.activeConversationId).toBe(agentHubLocalDefaults.conversationId);
+  });
+
   it("uses selected agent prompts and memory namespace in run commands", () => {
     const { registry, device } = createRegisteredRunLoopRegistry();
     const agent = registry.createAgent("user_1", {

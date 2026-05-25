@@ -1,4 +1,4 @@
-import type { WorkbenchSnapshot } from "@agenthub/contracts";
+import type { UpdateConversationRequest, WorkbenchSnapshot } from "@agenthub/contracts";
 import { PanelLeftClose, PanelRightClose } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import React from "react";
@@ -59,6 +59,11 @@ export function AgentHubWorkbench(props: {
   readonly onArchiveAgentRole?: (agentId: string) => void;
   readonly onCreateAgentConversation?: (agentId: string) => void | Promise<void>;
   readonly onOpenConversation?: (conversationId: string) => void;
+  readonly onUpdateConversation?: (
+    conversationId: string,
+    input: UpdateConversationRequest,
+  ) => void | Promise<void>;
+  readonly onDeleteConversation?: (conversationId: string) => void | Promise<void>;
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onRefreshConnections?: () => void;
@@ -608,14 +613,28 @@ export function AgentHubWorkbench(props: {
                     </HoverButton>
                   </div>
                   <RuntimeStatusBadge status={model.runtime.status} />
-                  {rightCollapsed ? (
+                  {!managementPage ? (
                     <HoverButton
-                      aria-label={i18n.t("nav.expandInspector", {
-                        fallback: "Expand Context Inspector",
-                      })}
-                      className="agenthub-icon-button"
+                      aria-label={
+                        rightCollapsed || (overlayInspectorLayout && !mobileRightOpen)
+                          ? i18n.t("nav.expandInspector", {
+                              fallback: "Expand Context Inspector",
+                            })
+                          : i18n.t("nav.collapseInspector", {
+                              fallback: "Collapse Context Inspector",
+                            })
+                      }
+                      className="agenthub-icon-button agenthub-desktop-inspector-toggle"
                       disabled={managementPage}
-                      onClick={() => setRightCollapsed(false)}
+                      onClick={() => {
+                        if (overlayInspectorLayout) {
+                          setMobileRightOpen((current) => !current);
+                          setMobileLeftOpen(false);
+                          setRightCollapsed(false);
+                          return;
+                        }
+                        setRightCollapsed((current) => !current);
+                      }}
                       type="button"
                     >
                       <Icon icon={PanelRightClose} />
@@ -714,6 +733,12 @@ export function AgentHubWorkbench(props: {
                   {...(props.onRemoveAgentFromChat
                     ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
                     : {})}
+                  {...(props.onUpdateConversation
+                    ? { onUpdateConversation: props.onUpdateConversation }
+                    : {})}
+                  {...(props.onDeleteConversation
+                    ? { onDeleteConversation: props.onDeleteConversation }
+                    : {})}
                   onOpenFullScreenDiff={() => {
                     if (model.inspector.diff) {
                       setFullScreenDiffId(model.inspector.diff.id);
@@ -746,6 +771,12 @@ export function AgentHubWorkbench(props: {
                     {...(props.onRemoveAgentFromChat
                       ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
                       : {})}
+                    {...(props.onUpdateConversation
+                      ? { onUpdateConversation: props.onUpdateConversation }
+                      : {})}
+                    {...(props.onDeleteConversation
+                      ? { onDeleteConversation: props.onDeleteConversation }
+                      : {})}
                     onOpenFullScreenDiff={() => {
                       if (model.inspector.diff) {
                         setFullScreenDiffId(model.inspector.diff.id);
@@ -757,6 +788,7 @@ export function AgentHubWorkbench(props: {
                       setRightCollapsed((current) => !current);
                     }}
                     selection={selection}
+                    showPanelToggle={mobileLayout}
                   />
                 </motion.div>
               ) : null}

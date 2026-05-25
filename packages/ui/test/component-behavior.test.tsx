@@ -242,6 +242,60 @@ describe("AgentHub component behavior", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it("updates conversation settings from the Chat Info panel", async () => {
+    const onUpdateConversation = vi.fn();
+    const onDeleteConversation = vi.fn();
+    await render(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "chat-info" }}
+        layoutMode="wide"
+        onDeleteConversation={onDeleteConversation}
+        onUpdateConversation={onUpdateConversation}
+        snapshot={snapshot()}
+      />,
+    );
+    await settle();
+
+    const titleInput = document.querySelector(".agenthub-chat-title-input") as HTMLInputElement;
+    expect(titleInput).toBeTruthy();
+    await act(async () => {
+      titleInput.focus();
+      titleInput.value = "Renamed chat";
+      titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+      titleInput.dispatchEvent(new Event("change", { bubbles: true }));
+      titleInput.blur();
+      await settle();
+    });
+    expect(onUpdateConversation).toHaveBeenCalledWith("conversation_1", {
+      title: "Renamed chat",
+    });
+
+    const pinSwitch = document.querySelector(
+      'button[aria-label="Pin conversation"]',
+    ) as HTMLButtonElement;
+    const notificationsSwitch = document.querySelector(
+      'button[aria-label="Notifications"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      pinSwitch.click();
+      notificationsSwitch.click();
+      await settle();
+    });
+    expect(onUpdateConversation).toHaveBeenCalledWith("conversation_1", { pinned: true });
+    expect(onUpdateConversation).toHaveBeenCalledWith("conversation_1", {
+      notificationsMuted: true,
+    });
+
+    const deleteButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent === "Delete conversation",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      deleteButton.click();
+      await settle();
+    });
+    expect(onDeleteConversation).toHaveBeenCalledWith("conversation_1");
+  });
+
   it("switches Settings categories and filters the Settings directory", async () => {
     await render(<AgentHubWorkbench initialCenterView="settings" snapshot={snapshot()} />);
 

@@ -69,6 +69,8 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
     workspaceId: workspace.id,
     kind: "group",
     title: "AgentHub demo group chat",
+    pinnedAt: null,
+    notificationsMuted: false,
     archivedAt: null,
     createdAt: now,
     updatedAt: now,
@@ -272,6 +274,24 @@ export function applyAgentHubEventToSnapshot(
   if (event.ownerUserId !== snapshot.userId) {
     return snapshot;
   }
+  if (event.type === "conversation.updated") {
+    const nextConversations = (event.payload.archivedAt
+      ? snapshot.conversations.filter((conversation) => conversation.id !== event.payload.id)
+      : snapshot.conversations.some((conversation) => conversation.id === event.payload.id)
+        ? snapshot.conversations.map((conversation) =>
+            conversation.id === event.payload.id ? event.payload : conversation,
+          )
+        : [...snapshot.conversations, event.payload]
+    ).sort(compareConversations);
+    return {
+      ...snapshot,
+      activeConversationId:
+        snapshot.activeConversationId === event.payload.id && event.payload.archivedAt
+          ? (nextConversations[0]?.id ?? snapshot.activeConversationId)
+          : snapshot.activeConversationId,
+      conversations: nextConversations,
+    };
+  }
   if (event.type === "runtime.device.status_changed") {
     return {
       ...snapshot,
@@ -345,6 +365,22 @@ export function applyAgentHubEventToSnapshot(
     };
   }
   return snapshot;
+}
+
+function compareConversations(
+  a: WorkbenchSnapshot["conversations"][number],
+  b: WorkbenchSnapshot["conversations"][number],
+): number {
+  if (a.pinnedAt && b.pinnedAt && a.pinnedAt !== b.pinnedAt) {
+    return b.pinnedAt.localeCompare(a.pinnedAt);
+  }
+  if (a.pinnedAt && !b.pinnedAt) {
+    return -1;
+  }
+  if (!a.pinnedAt && b.pinnedAt) {
+    return 1;
+  }
+  return b.updatedAt.localeCompare(a.updatedAt);
 }
 
 function updateRunFromStatusEvent(

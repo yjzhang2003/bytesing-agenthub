@@ -8,6 +8,7 @@ import {
   createAgentRequestSchema,
   createLocalRunRequestSchema,
   updateAgentRequestSchema,
+  updateConversationRequestSchema,
   providerRuntimeEventSchema,
   runtimeConnectionCheckResultSchema,
   runtimeHeartbeatPayloadSchema,
@@ -199,6 +200,19 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
       const activeConversationMatch = url.pathname.match(/^\/conversations\/([^/]+)\/active$/);
       if (request.method === "POST" && activeConversationMatch?.[1]) {
         const conversation = registry.setActiveConversation(auth.userId, activeConversationMatch[1]);
+        sendJson(response, 200, { conversation });
+        return;
+      }
+
+      const conversationMatch = url.pathname.match(/^\/conversations\/([^/]+)$/);
+      if (request.method === "PATCH" && conversationMatch?.[1]) {
+        const body = updateConversationRequestSchema.parse(await readJson(request));
+        const conversation = registry.updateConversation(auth.userId, conversationMatch[1], body);
+        sendJson(response, 200, { conversation });
+        return;
+      }
+      if (request.method === "DELETE" && conversationMatch?.[1]) {
+        const conversation = registry.archiveConversation(auth.userId, conversationMatch[1]);
         sendJson(response, 200, { conversation });
         return;
       }

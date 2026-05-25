@@ -350,19 +350,23 @@ function navigationFromSnapshot(
       target: `@${agent.displayName}`,
     })),
     branchLabel: metadata?.gitBranch ?? workspace?.defaultBranch ?? "No branch",
-    conversations: (snapshot?.conversations ?? []).map((conversation) => {
-      const activeRunStatus = activeRunByConversation.get(conversation.id);
-      return {
-        active: conversation.id === snapshot?.activeConversationId,
-        ...(activeRunStatus ? { activeRunStatus } : {}),
-        id: conversation.id,
-        participants: participantAgents(snapshot, conversation.id).map(
-          (agent) => agent.displayName,
-        ),
-        pendingPermissions: 0,
-        title: conversation.title,
-      };
-    }),
+    conversations: [...(snapshot?.conversations ?? [])]
+      .sort(compareConversations)
+      .map((conversation) => {
+        const activeRunStatus = activeRunByConversation.get(conversation.id);
+        return {
+          active: conversation.id === snapshot?.activeConversationId,
+          ...(activeRunStatus ? { activeRunStatus } : {}),
+          id: conversation.id,
+          notificationsMuted: conversation.notificationsMuted,
+          participants: participantAgents(snapshot, conversation.id).map(
+            (agent) => agent.displayName,
+          ),
+          pendingPermissions: 0,
+          pinned: Boolean(conversation.pinnedAt),
+          title: conversation.title,
+        };
+      }),
     pendingPermissionCount: 0,
     runCount: snapshot?.runs.length ?? 0,
     runtimeLabel: runtime?.displayName ?? "No Desktop Runtime",
@@ -370,6 +374,22 @@ function navigationFromSnapshot(
     workspaceName: metadata?.displayName ?? workspace?.name ?? "AgentHub",
     workspacePathLabel: metadata?.localPathLabel ?? workspace?.localPath ?? "No workspace path",
   };
+}
+
+function compareConversations(
+  a: NonNullable<WorkbenchSnapshot["conversations"][number]>,
+  b: NonNullable<WorkbenchSnapshot["conversations"][number]>,
+): number {
+  if (a.pinnedAt && b.pinnedAt && a.pinnedAt !== b.pinnedAt) {
+    return b.pinnedAt.localeCompare(a.pinnedAt);
+  }
+  if (a.pinnedAt && !b.pinnedAt) {
+    return -1;
+  }
+  if (!a.pinnedAt && b.pinnedAt) {
+    return 1;
+  }
+  return b.updatedAt.localeCompare(a.updatedAt);
 }
 
 function runtimeFromSnapshot(
@@ -478,9 +498,12 @@ function chatInfoFromSnapshot(
     createdAtLabel: shortDate(conversation.createdAt),
     id: conversation.id,
     kind: conversation.kind,
+    mutable: conversation.id !== agentHubLocalDefaults.conversationId,
     note: null,
+    notificationsMuted: conversation.notificationsMuted,
     participantCount: participants.length,
     participants: participants.map(toChatParticipant),
+    pinned: Boolean(conversation.pinnedAt),
     runtimeLabel: runtimeSummary.label,
     title: conversation.title,
     updatedAtLabel: shortDate(conversation.updatedAt),

@@ -87,6 +87,8 @@ export interface Conversation extends UserOwned {
   readonly workspaceId: Id;
   readonly kind: ConversationKind;
   readonly title: string;
+  readonly pinnedAt: ISODateTime | null;
+  readonly notificationsMuted: boolean;
   readonly archivedAt: ISODateTime | null;
 }
 

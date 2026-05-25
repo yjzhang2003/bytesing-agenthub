@@ -371,6 +371,8 @@ describe("contract validation", () => {
           workspaceId: "workspace_local_demo",
           kind: "group",
           title: "AgentHub local demo",
+          pinnedAt: null,
+          notificationsMuted: false,
           archivedAt: null,
           createdAt: now,
           updatedAt: now,

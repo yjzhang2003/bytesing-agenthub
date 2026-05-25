@@ -53,6 +53,8 @@ export class CollaborationService {
       workspaceId: input.workspaceId,
       kind: input.kind,
       title: input.title,
+      pinnedAt: null,
+      notificationsMuted: false,
       archivedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -139,4 +141,3 @@ export class CollaborationService {
     return plan;
   }
 }
-

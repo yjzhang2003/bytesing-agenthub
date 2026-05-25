@@ -8,6 +8,10 @@ import {
   hasFreshConnectionCheckResults,
 } from "./app-state.js";
 import { createDefaultWebControlPlaneClient } from "./control-plane-client.js";
+import {
+  notifyForAgentHubEvent,
+  requestAgentHubNotificationPermission,
+} from "./notifications.js";
 import React from "react";
 
 const CONNECTION_CHECK_POLL_INTERVAL_MS = 500;
@@ -21,6 +25,7 @@ function AgentHubWebApp(): React.ReactElement {
   const [snapshot, setSnapshot] = React.useState<WorkbenchSnapshot | undefined>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const snapshotRef = React.useRef<WorkbenchSnapshot | undefined>(undefined);
   const client = React.useMemo(() => createDefaultWebControlPlaneClient(), []);
 
   const loadSnapshot = React.useCallback(
@@ -31,6 +36,7 @@ function AgentHubWebApp(): React.ReactElement {
       setError(null);
       try {
         const nextSnapshot = await client.getSnapshot();
+        snapshotRef.current = nextSnapshot;
         setSnapshot(nextSnapshot);
         return nextSnapshot;
       } catch (caught) {
@@ -46,7 +52,17 @@ function AgentHubWebApp(): React.ReactElement {
   React.useEffect(() => {
     void loadSnapshot({ showLoading: true });
     const stream = client.openEvents((event) => {
-      setSnapshot((current) => (current ? applyAgentHubEventToSnapshot(current, event) : current));
+      if (snapshotRef.current) {
+        notifyForAgentHubEvent(snapshotRef.current, event);
+      }
+      setSnapshot((current) => {
+        if (!current) {
+          return current;
+        }
+        const nextSnapshot = applyAgentHubEventToSnapshot(current, event);
+        snapshotRef.current = nextSnapshot;
+        return nextSnapshot;
+      });
     });
     stream.onerror = () => {
       setError("Control Plane event stream disconnected");
@@ -118,6 +134,15 @@ function AgentHubWebApp(): React.ReactElement {
           current ? { ...current, activeConversationId: conversationId } : current,
         );
         void client.setActiveConversation(conversationId).then(() => loadSnapshot());
+      }}
+      onUpdateConversation={(conversationId, input) => {
+        if (input.notificationsMuted === false) {
+          void requestAgentHubNotificationPermission();
+        }
+        void client.updateConversation(conversationId, input).then(() => loadSnapshot());
+      }}
+      onDeleteConversation={(conversationId) => {
+        void client.deleteConversation(conversationId).then(() => loadSnapshot());
       }}
       onAddAgentToChat={(conversationId, agentId) => {
         void client.addAgentToConversation(conversationId, agentId).then(() => loadSnapshot());

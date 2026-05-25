@@ -18,6 +18,7 @@ import {
   workbenchSnapshotSchema,
   workspaceMetadataSchema,
   updateAgentRequestSchema,
+  updateConversationRequestSchema,
 } from "./schemas.js";
 
 export interface ValidationResult<T> {
@@ -141,6 +142,12 @@ export function validateUpdateAgentRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof updateAgentRequestSchema>> {
   return parseWithSchema(updateAgentRequestSchema, value);
+}
+
+export function validateUpdateConversationRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof updateConversationRequestSchema>> {
+  return parseWithSchema(updateConversationRequestSchema, value);
 }
 
 export function validateRuntimeCommand(

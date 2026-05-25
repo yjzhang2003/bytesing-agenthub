@@ -8,6 +8,7 @@ import {
   hasFreshConnectionCheckResults,
 } from "../src/app-state.js";
 import { createDefaultWebControlPlaneClient } from "../src/control-plane-client.js";
+import { notificationForAgentHubEvent } from "../src/notifications.js";
 import { readWebSupabaseConfig } from "../src/supabase.js";
 
 describe("web app state", () => {
@@ -90,6 +91,7 @@ describe("web app state", () => {
 
     expect(received).toEqual(["agent.run.message_delta"]);
     expect(listeners.has("agent.run.completed")).toBe(true);
+    expect(listeners.has("conversation.updated")).toBe(true);
   });
 
   it("calls Control Plane agent role APIs", async () => {
@@ -123,6 +125,12 @@ describe("web app state", () => {
       agentId: "agent_new",
     });
     await client.setActiveConversation("conversation_new");
+    await client.updateConversation("conversation_new", {
+      notificationsMuted: true,
+      pinned: true,
+      title: "Pinned conversation",
+    });
+    await client.deleteConversation("conversation_new");
     await client.listAgents("workspace_1");
 
     expect(
@@ -133,6 +141,8 @@ describe("web app state", () => {
       "POST /agents/agent_new/archive",
       "POST /agents/agent_new/conversations",
       "POST /conversations/conversation_new/active",
+      "PATCH /conversations/conversation_new",
+      "DELETE /conversations/conversation_new",
       "GET /agents",
     ]);
   });
@@ -396,5 +406,94 @@ describe("web app state", () => {
       authorId: "agent_2",
       parts: [{ type: "markdown", text: "hello world", runId: "run_live" }],
     });
+  });
+
+  it("applies live conversation update events to a snapshot", () => {
+    const flow = createDemoWorkspaceFlow();
+    const snapshot = {
+      ...flow.state,
+      activeConversationId: flow.activeConversation.id,
+      activeWorkspaceId: flow.activeWorkspace.id,
+      availableActions: ["run.create"],
+      userId: "user_1",
+    };
+    const updated = applyAgentHubEventToSnapshot(snapshot, {
+      id: "event_conversation_1",
+      type: "conversation.updated",
+      ownerUserId: "user_1",
+      workspaceId: flow.activeWorkspace.id,
+      conversationId: flow.activeConversation.id,
+      runId: null,
+      occurredAt: "2026-05-21T00:00:01.000Z",
+      payload: {
+        ...flow.activeConversation,
+        notificationsMuted: true,
+        pinnedAt: "2026-05-21T00:00:01.000Z",
+        title: "Pinned demo",
+        updatedAt: "2026-05-21T00:00:01.000Z",
+      },
+    });
+
+    expect(
+      updated.conversations.find((conversation) => conversation.id === flow.activeConversation.id),
+    ).toMatchObject({
+      id: flow.activeConversation.id,
+      notificationsMuted: true,
+      pinnedAt: "2026-05-21T00:00:01.000Z",
+      title: "Pinned demo",
+    });
+
+    const deleted = applyAgentHubEventToSnapshot(updated, {
+      id: "event_conversation_2",
+      type: "conversation.updated",
+      ownerUserId: "user_1",
+      workspaceId: flow.activeWorkspace.id,
+      conversationId: flow.activeConversation.id,
+      runId: null,
+      occurredAt: "2026-05-21T00:00:02.000Z",
+      payload: {
+        ...updated.conversations[0]!,
+        archivedAt: "2026-05-21T00:00:02.000Z",
+        updatedAt: "2026-05-21T00:00:02.000Z",
+      },
+    });
+
+    expect(deleted.conversations).toHaveLength(0);
+  });
+
+  it("builds notifications only for conversations with notifications enabled", () => {
+    const flow = createDemoWorkspaceFlow();
+    const snapshot = {
+      agents: flow.state.agents,
+      conversations: flow.state.conversations,
+    };
+    const event = {
+      id: "event_done",
+      type: "agent.run.completed" as const,
+      ownerUserId: "user_1",
+      workspaceId: flow.activeWorkspace.id,
+      conversationId: flow.activeConversation.id,
+      runId: "run_done",
+      occurredAt: "2026-05-21T00:00:01.000Z",
+      payload: {
+        agentId: "agent_2",
+        status: "completed" as const,
+        message: "Finished.",
+      },
+    };
+
+    expect(notificationForAgentHubEvent(snapshot, event)).toMatchObject({
+      body: "Finished.",
+      title: "Implementer finished in AgentHub demo group chat",
+    });
+    expect(
+      notificationForAgentHubEvent(
+        {
+          ...snapshot,
+          conversations: [{ ...flow.activeConversation, notificationsMuted: true }],
+        },
+        event,
+      ),
+    ).toBeNull();
   });
 });

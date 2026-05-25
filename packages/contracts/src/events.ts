@@ -1,5 +1,6 @@
 import type {
   Artifact,
+  Conversation,
   DiffMetadata,
   Id,
   ISODateTime,
@@ -23,6 +24,7 @@ export type AgentHubEventType =
   | "artifact.created"
   | "artifact.updated"
   | "diff.metadata.updated"
+  | "conversation.updated"
   | "conversation.membership_changed";
 
 export interface AgentHubEventBase {
@@ -107,6 +109,11 @@ export interface ConversationMembershipChangedEvent extends AgentHubEventBase {
   };
 }
 
+export interface ConversationUpdatedEvent extends AgentHubEventBase {
+  readonly type: "conversation.updated";
+  readonly payload: Conversation;
+}
+
 export type AgentHubEvent =
   | RuntimeDeviceStatusChangedEvent
   | AgentRunStatusEvent
@@ -116,4 +123,5 @@ export type AgentHubEvent =
   | PermissionEvent
   | ArtifactEvent
   | DiffMetadataUpdatedEvent
+  | ConversationUpdatedEvent
   | ConversationMembershipChangedEvent;
