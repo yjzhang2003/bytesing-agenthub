@@ -5,7 +5,6 @@ import type {
   ClaudeCodeDiscoverySummary,
   ClaudeCodeRunOptions,
   Conversation,
-  ConversationAgentSettings,
   ConversationAgentClaudeSession,
   ConversationParticipant,
   CreateConnectionCheckRequest,

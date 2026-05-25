@@ -297,33 +297,6 @@ function claudeCodePermissionLabel(run: Run): string | null {
   }[preset];
 }
 
-function claudeCodeRunBody(run: Run): readonly string[] {
-  const claudeCode = run.claudeCode;
-  if (!claudeCode) {
-    return [];
-  }
-  const permission = claudeCodePermissionLabel(run) ?? "Ask first";
-  const effort = effortLabel(claudeCode.effort ?? "medium");
-  return [`${permission} · ${effort}`];
-}
-
-function effortLabel(value: string | null | undefined): string {
-  if (!value) {
-    return "Medium";
-  }
-  if (value === "xhigh") {
-    return "XHigh";
-  }
-  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
-}
-
-function runStatusSummary(run: Run): string {
-  if (run.claudeCode) {
-    return `Claude Code run ${run.status}`;
-  }
-  return `Run ${run.status}`;
-}
-
 function runFailureCategory(
   failureReason: string | null,
 ): RunViewModel["failureCategory"] {
