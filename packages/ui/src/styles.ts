@@ -630,6 +630,13 @@ body { overflow: hidden; }
   align-items: center;
   gap: 8px;
 }
+.agenthub-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  border: 0;
+  background: transparent;
+}
 .agenthub-mobile-panel-actions { display: none; align-items: center; gap: 8px; }
 .agenthub-title-cluster { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .agenthub-title-cluster > div,
@@ -1105,25 +1112,36 @@ body { overflow: hidden; }
   background: var(--agenthub-accent);
   color: var(--agenthub-accent-text);
 }
-.agenthub-message-row[data-author="agent"] .agenthub-message-bubble:has(.agenthub-message-loading) {
-  min-width: 148px;
-}
-.agenthub-message-loading {
+.agenthub-message-status-ticker {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 18px;
-  margin-bottom: 6px;
+  gap: 2px;
+  min-height: 22px;
+  color: var(--agenthub-text-secondary);
+  font-weight: 650;
 }
-.agenthub-message-loading-dot {
-  width: 5px;
-  height: 5px;
+.agenthub-message-status-word {
+  display: inline-block;
+}
+.agenthub-message-status-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 1em;
+}
+.agenthub-message-status-dot {
+  width: 3px;
+  height: 3px;
   border-radius: 999px;
-  background: var(--agenthub-text-muted);
-  animation: agenthub-message-loading 1s infinite ease-in-out;
+  background: currentColor;
+  animation: agenthub-message-status-dot 1s infinite ease-in-out;
 }
-.agenthub-message-loading-dot:nth-child(2) { animation-delay: .16s; }
-.agenthub-message-loading-dot:nth-child(3) { animation-delay: .32s; }
+.agenthub-message-status-dot:nth-child(2) {
+  animation-delay: .16s;
+}
+.agenthub-message-status-dot:nth-child(3) {
+  animation-delay: .32s;
+}
 .agenthub-message-bubble p { margin: 0; }
 .agenthub-markdown {
   display: grid;
@@ -1209,7 +1227,7 @@ body { overflow: hidden; }
   padding: 5px 7px;
   text-align: left;
 }
-@keyframes agenthub-message-loading {
+@keyframes agenthub-message-status-dot {
   0%, 80%, 100% { opacity: .36; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-2px); }
 }
@@ -2185,11 +2203,35 @@ body { overflow: hidden; }
   text-align: left;
 }
 .agenthub-chat-settings-row .agenthub-settings-control-value {
+  justify-self: end;
+  width: min(100%, 260px);
   justify-content: flex-end;
   gap: 10px;
 }
 .agenthub-chat-settings-row .agenthub-settings-control-copy {
   display: none;
+}
+.agenthub-agent-in-chat-detail .agenthub-chat-settings-row .agenthub-settings-control-value {
+  width: min(100%, 262px);
+}
+.agenthub-agent-in-chat-detail .agenthub-input {
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  text-align: right;
+}
+.agenthub-agent-in-chat-detail .agenthub-input:hover {
+  border-color: transparent;
+  background: var(--agenthub-surface-hover);
+}
+.agenthub-agent-in-chat-detail .agenthub-input:focus {
+  border-color: var(--agenthub-border-strong);
+  background: var(--agenthub-surface);
+}
+.agenthub-agent-in-chat-detail .agenthub-select {
+  width: 100%;
+  text-align: right;
+  text-align-last: right;
 }
 .agenthub-chat-delete-row {
   border-top: 1px solid var(--agenthub-border);
@@ -2563,6 +2605,10 @@ body { overflow: hidden; }
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 1ms !important;
+  }
+  .agenthub-message-status-dot {
+    opacity: .72;
+    transform: translateY(0);
   }
 }
 `;

@@ -8,6 +8,7 @@ import {
   type CreateConnectionCheckRequest,
   type CreateAgentRequest,
   type CreateLocalRunRequest,
+  type UpdateConversationAgentSettingsRequest,
   type UpdateConversationRequest,
   type UpdateAgentRequest,
   type WorkbenchSnapshot,
@@ -77,6 +78,14 @@ export class WebControlPlaneClient {
 
   async updateConversation(conversationId: string, input: UpdateConversationRequest) {
     return this.#post(agentHubApiPaths.conversation(conversationId), input, "PATCH");
+  }
+
+  async updateConversationAgentSettings(
+    conversationId: string,
+    agentId: string,
+    input: UpdateConversationAgentSettingsRequest,
+  ) {
+    return this.#post(agentHubApiPaths.conversationAgent(conversationId, agentId), input, "PATCH");
   }
 
   async deleteConversation(conversationId: string) {

@@ -37,6 +37,30 @@ async function settle(): Promise<void> {
   await nextFrame();
 }
 
+function snapshotWithParticipants(): ReturnType<typeof snapshot> {
+  return {
+    ...snapshot(),
+    conversationParticipants: snapshot().agents.slice(0, 2).map((agent, index) => ({
+      addedByUserId: "user_1",
+      agentId: agent.id,
+      archivedAt: null,
+      conversationId: "conversation_1",
+      conversationAgentSettings:
+        agent.id === "agent_2"
+          ? {
+              displayNameOverride: "Implementer in chat",
+              responsibilityOverride: "Own implementation inside this group chat.",
+              scopedInstructions: "Keep answers scoped to this chat.",
+            }
+          : undefined,
+      createdAt: "2026-05-21T00:00:00.000Z",
+      id: `participant_${index + 1}`,
+      ownerUserId: "user_1",
+      updatedAt: "2026-05-21T00:00:00.000Z",
+    })),
+  };
+}
+
 async function render(ui: React.ReactElement): Promise<HTMLElement> {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -175,11 +199,11 @@ describe("AgentHub component behavior", () => {
       />,
     );
 
-    const openChatInfoButton = Array.from(document.querySelectorAll("button")).find((button) =>
-      button.getAttribute("aria-label")?.includes("Open chat information"),
-    ) as HTMLButtonElement | undefined;
+    const titleButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
     await act(async () => {
-      openChatInfoButton?.click();
+      titleButton.click();
       await settle();
     });
     const addButton = document.querySelector('button[aria-label="Add agent"]') as HTMLButtonElement;
@@ -410,11 +434,11 @@ describe("AgentHub component behavior", () => {
       />,
     );
 
-    const openChatInfoButton = Array.from(document.querySelectorAll("button")).find((button) =>
-      button.getAttribute("aria-label")?.includes("Open chat information"),
-    ) as HTMLButtonElement | undefined;
+    const titleButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
     await act(async () => {
-      openChatInfoButton?.click();
+      titleButton.click();
       await settle();
     });
     const addButton = document.querySelector('button[aria-label="Add agent"]') as HTMLButtonElement;
@@ -469,11 +493,11 @@ describe("AgentHub component behavior", () => {
       />,
     );
 
-    const secondOpenChatInfoButton = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.getAttribute("aria-label")?.includes("Open chat information"),
-    ) as HTMLButtonElement | undefined;
+    const secondTitleButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
     await act(async () => {
-      secondOpenChatInfoButton?.click();
+      secondTitleButton.click();
       await settle();
     });
     const searchableAddButton = document.querySelector(
@@ -696,5 +720,179 @@ describe("AgentHub component behavior", () => {
     expect(styleText).toContain(".agenthub-button");
     expect(styleText).toContain(".agenthub-dialog");
     expect(styleText).toContain(".agenthub-toast");
+  });
+
+  it("opens run detail from the header detail action", async () => {
+    const container = await render(<AgentHubWorkbench snapshot={snapshot()} />);
+    const runButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open run details",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      runButton.click();
+      await settle();
+    });
+
+    expect(container.textContent).toContain("Run running");
+    expect(container.textContent).toContain("Implementer");
+  });
+
+  it("opens conversation detail from the active chat title without a header info action", async () => {
+    const container = await render(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "run_1", mode: "run" }}
+        snapshot={snapshotWithParticipants()}
+      />,
+    );
+
+    expect(
+      Array.from(container.querySelectorAll("button")).some(
+        (button) => button.getAttribute("aria-label") === "Open conversation info",
+      ),
+    ).toBe(false);
+    expect(container.textContent).toContain("Run running");
+    const titleButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
+    expect(titleButton.tagName).toBe("BUTTON");
+
+    await act(async () => {
+      titleButton.click();
+      await settle();
+    });
+
+    expect(container.textContent).toContain("Conversation settings");
+    expect(container.textContent).toContain("Participants");
+  });
+
+  it("opens agent-in-chat settings from timeline author identity and participant tiles", async () => {
+    const container = await render(<AgentHubWorkbench snapshot={snapshotWithParticipants()} />);
+
+    const authorButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open Implementer in chat agent",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      authorButton.click();
+      await settle();
+    });
+
+    expect(container.textContent).toContain("Agent in this chat");
+    expect(container.textContent).toContain("Own implementation inside this group chat.");
+    expect(container.textContent).toContain("Open global agent settings");
+
+    const titleButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      titleButton.click();
+      await settle();
+    });
+    const participantButton = Array.from(container.querySelectorAll("button")).find(
+      (button) =>
+        button.getAttribute("aria-label") ===
+        "Open Implementer in chat settings in this conversation",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      participantButton.click();
+      await settle();
+    });
+
+    expect(container.textContent).toContain("Agent in this chat");
+    expect(container.textContent).toContain("Scoped instructions");
+    expect(container.textContent).toContain("Keep answers scoped to this chat.");
+  });
+
+  it("submits scoped agent-in-chat setting edits without leaving the conversation", async () => {
+    const onUpdateConversationAgentSettings = vi.fn();
+    const container = await render(
+      <AgentHubWorkbench
+        onUpdateConversationAgentSettings={onUpdateConversationAgentSettings}
+        snapshot={snapshotWithParticipants()}
+      />,
+    );
+    const authorButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open Implementer in chat agent",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      authorButton.click();
+      await settle();
+    });
+
+    const displayNameInput = container.querySelector(
+      'input[aria-label="Display name"]',
+    ) as HTMLInputElement;
+    await act(async () => {
+      displayNameInput.value = "Builder in chat";
+      displayNameInput.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await settle();
+    });
+    const quietModeSwitch = container.querySelector(
+      'button[aria-label="Quiet mode"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      quietModeSwitch.click();
+      await settle();
+    });
+
+    expect(onUpdateConversationAgentSettings).toHaveBeenCalledWith(
+      "conversation_1",
+      "agent_2",
+      { displayNameOverride: "Builder in chat" },
+    );
+    expect(onUpdateConversationAgentSettings).toHaveBeenCalledWith(
+      "conversation_1",
+      "agent_2",
+      { quietMode: true },
+    );
+    expect(container.querySelector(".agenthub-center")?.getAttribute("data-view")).toBe(
+      "conversation",
+    );
+  });
+
+  it("opens agent-in-chat settings as an overlay in narrow layouts", async () => {
+    const container = await render(
+      <AgentHubWorkbench layoutMode="narrow" snapshot={snapshotWithParticipants()} />,
+    );
+    const authorButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open Implementer in chat agent",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      authorButton.click();
+      await settle();
+    });
+
+    expect(
+      container.querySelector(".agenthub-workbench")?.getAttribute("data-mobile-right-open"),
+    ).toBe("true");
+    expect(container.textContent).toContain("Agent in this chat");
+    expect(container.textContent).toContain("Global defaults");
+  });
+
+  it("dismisses overlay detail surfaces by clicking outside the panel", async () => {
+    const container = await render(
+      <AgentHubWorkbench layoutMode="narrow" snapshot={snapshot()} />,
+    );
+    const titleButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open chat information for MVP workbench",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      titleButton.click();
+      await settle();
+    });
+    expect(container.textContent).toContain("Conversation settings");
+
+    const backdrop = container.querySelector(".agenthub-detail-backdrop") as HTMLButtonElement;
+    await act(async () => {
+      backdrop.click();
+      await settle();
+    });
+
+    expect(
+      container.querySelector(".agenthub-workbench")?.getAttribute("data-mobile-right-open"),
+    ).toBe("false");
+    expect(container.textContent).toContain("Implemented the shell");
   });
 });

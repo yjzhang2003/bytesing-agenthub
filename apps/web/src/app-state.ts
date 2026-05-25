@@ -147,8 +147,6 @@ export function createRunRequestFromSnapshot(
     readonly mcpProfileId: string;
     readonly pluginProfileId?: string | null;
     readonly effort: NonNullable<ClaudeCodeRunOptions["effort"]>;
-    readonly sessionBehavior: NonNullable<ClaudeCodeRunOptions["session"]>["behavior"];
-    readonly sessionId?: string | null;
     readonly settingsSource: NonNullable<ClaudeCodeRunOptions["settingsSource"]>;
     readonly hooksPolicy: NonNullable<ClaudeCodeRunOptions["hooksPolicy"]>;
     readonly allowedTools?: readonly string[];
@@ -189,10 +187,6 @@ export function createRunRequestFromSnapshot(
             ? null
             : claudeCode.pluginProfileId,
         effort: claudeCode.effort,
-        session: {
-          behavior: claudeCode.sessionBehavior,
-          ...(claudeCode.sessionId ? { sessionId: claudeCode.sessionId } : {}),
-        },
         settingsSource: claudeCode.settingsSource,
         hooksPolicy: claudeCode.hooksPolicy,
         ...(claudeCode.allowedTools?.length ? { allowedTools: claudeCode.allowedTools } : {}),

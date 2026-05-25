@@ -150,6 +150,11 @@ function AgentHubWebApp(): React.ReactElement {
       onRemoveAgentFromChat={(conversationId, agentId) => {
         void client.removeAgentFromConversation(conversationId, agentId).then(() => loadSnapshot());
       }}
+      onUpdateConversationAgentSettings={(conversationId, agentId, input) => {
+        void client
+          .updateConversationAgentSettings(conversationId, agentId, input)
+          .then(() => loadSnapshot());
+      }}
       onCheckConnections={(targets) => {
         const active = snapshot;
         if (!active) {

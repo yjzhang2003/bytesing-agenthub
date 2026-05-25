@@ -255,13 +255,10 @@ function AgentEditor(props: {
   );
   const [claudeSettingsSource, setClaudeSettingsSource] = React.useState<
     ComposerClaudeCodeControls["settingsSource"]
-  >(props.agent?.claudeCodeDefaults?.settingsSource ?? "managed");
+  >(props.agent?.claudeCodeDefaults?.settingsSource ?? "inherit");
   const [claudeHooksPolicy, setClaudeHooksPolicy] = React.useState<
     ComposerClaudeCodeControls["hooksPolicy"]
   >(props.agent?.claudeCodeDefaults?.hooksPolicy ?? "disabled");
-  const [claudeSessionBehavior, setClaudeSessionBehavior] = React.useState<
-    ComposerClaudeCodeControls["sessionBehavior"]
-  >(props.agent?.claudeCodeDefaults?.sessionBehavior ?? "new");
   const [policyError, setPolicyError] = React.useState<string | null>(null);
   const [conversationPending, setConversationPending] = React.useState(false);
   const [conversationError, setConversationError] = React.useState<string | null>(null);
@@ -282,9 +279,8 @@ function AgentEditor(props: {
       setClaudeRuntimeProfileId("default");
       setClaudeMcpProfileId("none");
       setClaudeEffort("medium");
-      setClaudeSettingsSource("managed");
+      setClaudeSettingsSource("inherit");
       setClaudeHooksPolicy("disabled");
-      setClaudeSessionBehavior("new");
       setPolicyError(null);
       return;
     }
@@ -301,9 +297,8 @@ function AgentEditor(props: {
     setClaudeRuntimeProfileId(props.agent?.claudeCodeDefaults?.runtimeProfileId ?? "default");
     setClaudeMcpProfileId(props.agent?.claudeCodeDefaults?.mcpProfileId ?? "none");
     setClaudeEffort(props.agent?.claudeCodeDefaults?.effort ?? "medium");
-    setClaudeSettingsSource(props.agent?.claudeCodeDefaults?.settingsSource ?? "managed");
+    setClaudeSettingsSource(props.agent?.claudeCodeDefaults?.settingsSource ?? "inherit");
     setClaudeHooksPolicy(props.agent?.claudeCodeDefaults?.hooksPolicy ?? "disabled");
-    setClaudeSessionBehavior(props.agent?.claudeCodeDefaults?.sessionBehavior ?? "new");
     setPolicyError(null);
   }, [defaultTemplate, mode, props.agent, selectedTemplateId]);
 
@@ -326,9 +321,8 @@ function AgentEditor(props: {
     setClaudeRuntimeProfileId("default");
     setClaudeMcpProfileId("none");
     setClaudeEffort("medium");
-    setClaudeSettingsSource("managed");
+    setClaudeSettingsSource("inherit");
     setClaudeHooksPolicy("disabled");
-    setClaudeSessionBehavior("new");
     setPolicyError(null);
   };
 
@@ -355,7 +349,6 @@ function AgentEditor(props: {
       effort: claudeEffort,
       settingsSource: claudeSettingsSource,
       hooksPolicy: claudeHooksPolicy,
-      session: { behavior: claudeSessionBehavior },
     };
     const policyValue = {
       ...basePolicy,
@@ -389,7 +382,6 @@ function AgentEditor(props: {
     claudeMcpProfileId,
     claudePermissionPreset,
     claudeRuntimeProfileId,
-    claudeSessionBehavior,
     claudeSettingsSource,
     displayName,
     editingExisting,
@@ -618,19 +610,6 @@ function AgentEditor(props: {
                     { label: "Inherited", value: "inherit" },
                     { label: "Disabled", value: "disabled" },
                     { label: "Enabled", value: "enabled" },
-                  ]}
-                />
-              </label>
-              <label>
-                <span>Session</span>
-                <AgentHubSelect
-                  aria-label="Claude Code session default"
-                  value={claudeSessionBehavior}
-                  onValueChange={setClaudeSessionBehavior}
-                  options={[
-                    { label: "New", value: "new" },
-                    { label: "Continue", value: "continue" },
-                    { label: "Fork", value: "fork" },
                   ]}
                 />
               </label>

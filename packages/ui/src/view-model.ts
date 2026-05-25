@@ -15,6 +15,7 @@ import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { OrchestratorDispatchPlan } from "@agenthub/contracts";
 import type {
   ArtifactViewModel,
+  AgentInChatViewModel,
   ChatInfoParticipantViewModel,
   ChatInfoViewModel,
   ComposerClaudeCodeControls,
@@ -127,6 +128,18 @@ function conversationParticipants(
   );
 }
 
+function participantForAgent(
+  snapshot: WorkbenchSnapshot | undefined,
+  conversationId: string | undefined,
+  agentId: string,
+): ConversationParticipant | undefined {
+  return (
+    conversationParticipants(snapshot, conversationId)?.find(
+      (participant) => participant.agentId === agentId,
+    ) ?? undefined
+  );
+}
+
 function participantAgents(
   snapshot: WorkbenchSnapshot | undefined,
   conversationId: string | undefined,
@@ -142,20 +155,98 @@ function participantAgents(
   return snapshot.agents.filter((agent) => participantIds.has(agent.id));
 }
 
-function toChatParticipant(agent: Agent): ChatInfoParticipantViewModel {
+function agentScopedLabel(
+  agent: Agent,
+  participant: ConversationParticipant | undefined,
+): string {
+  return participant?.conversationAgentSettings?.displayNameOverride ?? agent.displayName;
+}
+
+function participantEnabled(participant: ConversationParticipant | undefined): boolean {
+  return participant?.conversationAgentSettings?.enabled !== false;
+}
+
+function toChatParticipant(
+  agent: Agent,
+  participant?: ConversationParticipant,
+): ChatInfoParticipantViewModel {
   const runtimeProvider = agentRuntimeProvider(agent.policy);
+  const label = agentScopedLabel(agent, participant);
   return {
     capabilityTags: agent.capabilityTags,
     claudeCodeControls:
       runtimeProvider === "claude-code" ? claudeCodeDefaultsFromPolicy(agent.policy) : null,
     id: agent.id,
-    initials: agentInitials(agent.displayName),
-    label: agent.displayName,
+    initials: agentInitials(label),
+    label,
     providerLabel: runtimeProviderLabel(runtimeProvider),
     runtimeProvider,
     role: agent.role,
-    target: `@${agent.displayName}`,
+    target: `@${label}`,
   };
+}
+
+function conversationAgentSelectionId(conversationId: string, agentId: string): string {
+  return `${conversationId}:${agentId}`;
+}
+
+function agentInChatFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+  selection: InspectorSelection | null | undefined,
+): AgentInChatViewModel | null {
+  if (!snapshot || selection?.mode !== "conversation-agent") {
+    return null;
+  }
+  const [conversationId, agentId] = selection.id.split(":");
+  if (!conversationId || !agentId) {
+    return null;
+  }
+  const participant = participantForAgent(snapshot, conversationId, agentId);
+  const agent = snapshot.agents.find((candidate) => candidate.id === agentId);
+  if (!participant || !agent) {
+    return null;
+  }
+  const settings = participant.conversationAgentSettings;
+  const chatParticipant = toChatParticipant(agent, participant);
+  const runtimeProvider = agentRuntimeProvider(agent.policy);
+  return {
+    ...chatParticipant,
+    agentId: agent.id,
+    allowAutoDispatch: settings?.allowAutoDispatch ?? true,
+    contextScope: settings?.contextScope ?? "conversation",
+    conversationId,
+    enabled: settings?.enabled ?? true,
+    globalCapabilityTags: agent.capabilityTags,
+    globalLabel: agent.displayName,
+    globalRuntimeProvider: runtimeProvider,
+    globalSystemPrompt: agent.systemPrompt,
+    id: conversationAgentSelectionId(conversationId, agent.id),
+    includeHistorySummary: settings?.includeHistorySummary ?? true,
+    notes: settings?.notes ?? null,
+    participationMode: settings?.participationMode ?? "orchestrated",
+    priority: settings?.priority ?? "normal",
+    quietMode: settings?.quietMode ?? false,
+    requireRunConfirmation: settings?.requireRunConfirmation ?? false,
+    responsibility: settings?.responsibilityOverride ?? null,
+    scopedInstructions: settings?.scopedInstructions ?? null,
+  };
+}
+
+function agentInChatDetailsFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+): readonly AgentInChatViewModel[] {
+  const conversation = activeConversation(snapshot);
+  if (!snapshot || !conversation) {
+    return [];
+  }
+  return participantAgents(snapshot, conversation.id).flatMap((agent) => {
+    const selection: InspectorSelection = {
+      id: conversationAgentSelectionId(conversation.id, agent.id),
+      mode: "conversation-agent",
+    };
+    const detail = agentInChatFromSnapshot(snapshot, selection);
+    return detail ? [detail] : [];
+  });
 }
 
 function messageBody(parts: readonly MessagePart[]): readonly string[] {
@@ -173,9 +264,15 @@ function messageBody(parts: readonly MessagePart[]): readonly string[] {
   });
 }
 
-function messageTitle(message: Message, agents: readonly Agent[]): string {
+function messageTitle(message: Message, snapshot: WorkbenchSnapshot): string {
   if (message.authorKind === "agent") {
-    return agentName(message.authorId, agents);
+    const agent = snapshot.agents.find((candidate) => candidate.id === message.authorId);
+    return agent
+      ? agentScopedLabel(
+          agent,
+          participantForAgent(snapshot, message.conversationId, message.authorId ?? ""),
+        )
+      : "Agent";
   }
   if (message.authorKind === "user") {
     return "You";
@@ -206,19 +303,59 @@ function claudeCodeRunBody(run: Run): readonly string[] {
     return [];
   }
   const permission = claudeCodePermissionLabel(run) ?? "Ask first";
-  const profile = labelFromId(claudeCode.runtimeProfileId, "default");
-  const mcp = labelFromId(claudeCode.mcpProfileId, "none");
-  const effort = claudeCode.effort ?? "medium";
-  const settings = claudeCode.effectiveSettingsSource ?? claudeCode.settingsSource ?? "managed";
-  return [
-    `Claude Code: ${permission} · profile ${profile} · MCP ${mcp} · effort ${effort}`,
-    `Settings ${settings} · ${claudeCode.overrideSource}`,
-  ];
+  const effort = effortLabel(claudeCode.effort ?? "medium");
+  return [`${permission} · ${effort}`];
 }
 
-function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewModel | null {
-  const title = agentName(run.agentId, agents);
-  const auditBody = claudeCodeRunBody(run);
+function effortLabel(value: string | null | undefined): string {
+  if (!value) {
+    return "Medium";
+  }
+  if (value === "xhigh") {
+    return "XHigh";
+  }
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
+}
+
+function runStatusSummary(run: Run): string {
+  if (run.claudeCode) {
+    return `Claude Code run ${run.status}`;
+  }
+  return `Run ${run.status}`;
+}
+
+function runFailureCategory(
+  failureReason: string | null,
+): RunViewModel["failureCategory"] {
+  if (!failureReason) {
+    return null;
+  }
+  if (/not logged in|please run \/login|run \/login/iu.test(failureReason)) {
+    return "claude-code-auth-required";
+  }
+  return "provider-failure";
+}
+
+function runFailureSummary(failureReason: string | null): string | null {
+  const category = runFailureCategory(failureReason);
+  if (category === "claude-code-auth-required") {
+    return "Claude Code CLI needs login. Authenticate the local CLI before running again.";
+  }
+  if (category === "provider-failure") {
+    return "Provider run failed. Open diagnostics for the original failure text.";
+  }
+  return null;
+}
+
+function displayFailureReason(failureReason: string | null | undefined): string | null {
+  return runFailureSummary(failureReason ?? null) ?? failureReason ?? null;
+}
+
+function activeRunMessage(run: Run, snapshot: WorkbenchSnapshot): TimelineItemViewModel | null {
+  const agent = snapshot.agents.find((candidate) => candidate.id === run.agentId);
+  const title = agent
+    ? agentScopedLabel(agent, participantForAgent(snapshot, run.conversationId, run.agentId))
+    : agentName(run.agentId, snapshot.agents);
   if (run.status === "completed" || run.status === "cancelled" || run.status === "failed") {
     return null;
   }
@@ -226,7 +363,7 @@ function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewM
     return {
       authorId: run.agentId,
       authorKind: "agent",
-      body: ["Waiting for approval before continuing.", ...auditBody],
+      body: ["Waiting for approval before continuing."],
       id: `run-message-${run.id}`,
       inspectorSelection: { id: run.id, mode: "run" },
       kind: "message",
@@ -238,7 +375,7 @@ function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewM
   return {
     authorId: run.agentId,
     authorKind: "agent",
-    body: ["Writing a reply...", ...auditBody],
+    body: [],
     id: `run-message-${run.id}`,
     inspectorSelection: { id: run.id, mode: "run" },
     kind: "message",
@@ -246,6 +383,28 @@ function activeRunMessage(run: Run, agents: readonly Agent[]): TimelineItemViewM
     subtitle: "agent message",
     title,
   };
+}
+
+function isProviderSetupFailureMessage(
+  message: Message,
+  runsById: ReadonlyMap<string, Run>,
+): boolean {
+  if (message.authorKind !== "agent") {
+    return false;
+  }
+  return message.parts.some((part) => {
+    if (!part.text) {
+      return false;
+    }
+    if (!part.runId) {
+      return runFailureCategory(part.text) === "claude-code-auth-required";
+    }
+    const run = runsById.get(part.runId);
+    return (
+      runFailureCategory(run?.failureReason ?? null) === "claude-code-auth-required" &&
+      runFailureCategory(part.text) === "claude-code-auth-required"
+    );
+  });
 }
 
 function timelineItemsFromSnapshot(
@@ -269,17 +428,20 @@ function timelineItemsFromSnapshot(
     (message) => message.conversationId === activeConversationId,
   );
   const activeRuns = snapshot.runs.filter((run) => run.conversationId === activeConversationId);
+  const activeRunsById = new Map(activeRuns.map((run) => [run.id, run]));
 
-  const messageItems = activeMessages.map((message) => ({
-    authorId: message.authorId,
-    authorKind: message.authorKind,
-    body: messageBody(message.parts),
-    id: message.id,
-    kind: "message" as const,
-    state: "success" as const,
-    subtitle: `${message.authorKind} message`,
-    title: messageTitle(message, snapshot.agents),
-  }));
+  const messageItems = activeMessages
+    .filter((message) => !isProviderSetupFailureMessage(message, activeRunsById))
+    .map((message) => ({
+      authorId: message.authorId,
+      authorKind: message.authorKind,
+      body: messageBody(message.parts),
+      id: message.id,
+      kind: "message" as const,
+      state: "success" as const,
+      subtitle: `${message.authorKind} message`,
+      title: messageTitle(message, snapshot),
+    }));
 
   const runIdsWithMessages = new Set(
     activeMessages.flatMap((message) =>
@@ -287,29 +449,14 @@ function timelineItemsFromSnapshot(
     ),
   );
   const runItems = activeRuns
-    .map((run) => ({ item: activeRunMessage(run, snapshot.agents), run }))
+    .map((run) => ({ item: activeRunMessage(run, snapshot), run }))
     .filter(
       ({ item, run }) =>
         item !== null && !(item.state === "loading" && runIdsWithMessages.has(run.id)),
     )
     .map(({ item }) => item)
     .filter((item): item is TimelineItemViewModel => item !== null);
-  const auditItems = activeRuns
-    .filter((run) => run.claudeCode)
-    .map((run) => ({
-      body: claudeCodeRunBody(run),
-      id: `run-audit-${run.id}`,
-      inspectorSelection: { id: run.id, mode: "run" as const },
-      kind: "run-event" as const,
-      state:
-        run.claudeCode?.effectivePermissionPreset === "full-access"
-          ? ("warning" as const)
-          : ("metadata-only" as const),
-      subtitle: run.status,
-      title: `Run ${run.id}`,
-    }));
-
-  const items = [...messageItems, ...runItems, ...auditItems];
+  const items = [...messageItems, ...runItems];
   if (items.length > 0) {
     return items;
   }
@@ -397,17 +544,25 @@ function runtimeFromSnapshot(
   snapshot: WorkbenchSnapshot | undefined,
 ): RuntimeSummaryViewModel {
   const status = runtime?.status ?? "offline";
-  const canExecute = status === "online" || status === "active-running";
   const providerHealth = snapshot?.providerHealth ?? null;
+  const providerExecutable =
+    !providerHealth || providerHealth.status === "connected";
+  const canExecute = (status === "online" || status === "active-running") && providerExecutable;
   const memoryHealth = snapshot?.memoryHealth ?? null;
   const claudeCodeDiscovery = snapshot?.claudeCodeDiscovery ?? null;
+  const providerBlockedReason =
+    providerHealth && !providerExecutable
+      ? (displayFailureReason(providerHealth.failureReason) ??
+        `${providerHealth.providerMode === "claude-code" ? "Claude Code" : "Smoke provider"} is ${providerHealth.status}.`)
+      : null;
   return {
     appVersion: runtime?.appVersion ?? "Unavailable",
     capabilities: runtime?.capabilities ?? [],
     canExecute,
     explanation: canExecute
       ? "Runtime can receive local execution requests."
-      : "Desktop Runtime must be online before local execution can start.",
+      : (providerBlockedReason ??
+        "Desktop Runtime must be online before local execution can start."),
     id: runtime?.id ?? null,
     label: runtime?.displayName ?? "No Desktop Runtime",
     lastHeartbeatLabel: shortDate(runtime?.lastHeartbeatAt ?? null),
@@ -428,18 +583,23 @@ function composerFromSnapshot(
   runtimeSummary: RuntimeSummaryViewModel,
 ): WorkbenchViewModel["composer"] {
   const activeAgents = participantAgents(snapshot, snapshot?.activeConversationId);
-  const targets = activeAgents.map((agent) => {
+  const targets = activeAgents.flatMap((agent) => {
+    const participant = participantForAgent(snapshot, snapshot?.activeConversationId, agent.id);
+    if (!participantEnabled(participant)) {
+      return [];
+    }
     const runtimeProvider = agentRuntimeProvider(agent.policy);
+    const label = agentScopedLabel(agent, participant);
     return {
       capabilityTags: agent.capabilityTags,
       claudeCodeControls:
         runtimeProvider === "claude-code" ? claudeCodeDefaultsFromPolicy(agent.policy) : null,
       id: agent.id,
-      label: agent.displayName,
+      label,
       providerLabel: runtimeProviderLabel(runtimeProvider),
       runtimeProvider,
       role: agent.role,
-      target: `@${agent.displayName}`,
+      target: `@${label}`,
     };
   });
   const selected = targets.find((target) => target.role === "orchestrator") ??
@@ -466,8 +626,7 @@ function composerFromSnapshot(
             mcpProfileId: "none",
             pluginProfileId: "default",
             effort: "medium",
-            sessionBehavior: "new",
-            settingsSource: "managed",
+            settingsSource: "inherit",
             hooksPolicy: "disabled",
           })
         : null,
@@ -494,7 +653,7 @@ function chatInfoFromSnapshot(
   const availableAgents = snapshot.agents.filter((agent) => !participantIds.has(agent.id));
   return {
     announcement: null,
-    availableAgents: availableAgents.map(toChatParticipant),
+    availableAgents: availableAgents.map((agent) => toChatParticipant(agent)),
     createdAtLabel: shortDate(conversation.createdAt),
     id: conversation.id,
     kind: conversation.kind,
@@ -502,7 +661,9 @@ function chatInfoFromSnapshot(
     note: null,
     notificationsMuted: conversation.notificationsMuted,
     participantCount: participants.length,
-    participants: participants.map(toChatParticipant),
+    participants: participants.map((agent) =>
+      toChatParticipant(agent, participantForAgent(snapshot, conversation.id, agent.id)),
+    ),
     pinned: Boolean(conversation.pinnedAt),
     runtimeLabel: runtimeSummary.label,
     title: conversation.title,
@@ -573,13 +734,16 @@ function connectionsFromSnapshot(
       checking: checkingConnectionIds.includes("provider"),
       description: "Local provider connection",
       disabledReason: providerDisabledReason,
-      failureReason: providerHealth?.failureReason ?? null,
+      failureReason: displayFailureReason(providerHealth?.failureReason),
       id: "provider",
       kind: "provider" as const,
       label: "Claude Code",
       metadata: [
         { label: "Mode", value: providerHealth?.providerMode ?? "claude-code" },
         { label: "Binary", value: providerHealth?.binaryPathLabel ?? "Unavailable" },
+        ...(providerHealth?.failureReason
+          ? [{ label: "Diagnostics", value: providerHealth.failureReason }]
+          : []),
       ],
       status: providerHealth?.status ?? "unknown",
       statusTone: connectionTone(providerHealth?.status ?? "unknown"),
@@ -674,7 +838,7 @@ function connectionsFromSnapshot(
         binaryPathLabel: providerHealth?.binaryPathLabel ?? "Unavailable",
         checkedAt: providerHealth?.checkedAt ?? "Unavailable",
         comingSoon: false,
-        failureReason: providerHealth?.failureReason ?? null,
+        failureReason: displayFailureReason(providerHealth?.failureReason),
         id: "claude-code",
         label: "Claude Code",
         providerMode: providerHealth?.providerMode ?? "claude-code",
@@ -723,25 +887,10 @@ function claudeCodeDefaultsFromPolicy(
       value["effort"] === "max"
         ? value["effort"]
         : "medium",
-    sessionBehavior:
-      typeof value["session"] === "object" &&
-      value["session"] &&
-      !Array.isArray(value["session"]) &&
-      ((value["session"] as Record<string, unknown>)["behavior"] === "continue" ||
-        (value["session"] as Record<string, unknown>)["behavior"] === "fork")
-        ? ((value["session"] as Record<string, unknown>)["behavior"] as "continue" | "fork")
-        : "new",
-    sessionId:
-      typeof value["session"] === "object" &&
-      value["session"] &&
-      !Array.isArray(value["session"]) &&
-      typeof (value["session"] as Record<string, unknown>)["sessionId"] === "string"
-        ? ((value["session"] as Record<string, unknown>)["sessionId"] as string)
-        : null,
     settingsSource:
-      value["settingsSource"] === "inherit" || value["settingsSource"] === "isolated"
+      value["settingsSource"] === "managed" || value["settingsSource"] === "isolated"
         ? value["settingsSource"]
-        : "managed",
+        : "inherit",
     hooksPolicy:
       value["hooksPolicy"] === "inherit" || value["hooksPolicy"] === "enabled"
         ? value["hooksPolicy"]
@@ -768,7 +917,9 @@ function runsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly Run
     claudeCodeSettingsLabel:
       run.claudeCode?.effectiveSettingsSource ?? run.claudeCode?.settingsSource ?? null,
     completedAt: shortDate(run.completedAt),
+    failureCategory: runFailureCategory(run.failureReason),
     failureReason: run.failureReason,
+    failureSummary: runFailureSummary(run.failureReason),
     highRiskClaudeCode:
       (run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset) ===
       "full-access",
@@ -787,6 +938,8 @@ export function normalizeSelection(
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
     readonly chatInfo?: ChatInfoViewModel | null;
+    readonly agentInChat?: AgentInChatViewModel | null;
+    readonly agentInChatDetails?: readonly AgentInChatViewModel[];
   },
 ): InspectorSelection | null {
   if (!selection) {
@@ -796,6 +949,13 @@ export function normalizeSelection(
     return selection;
   }
   if (selection.mode === "chat-info" && data.chatInfo?.id === selection.id) {
+    return selection;
+  }
+  if (
+    selection.mode === "conversation-agent" &&
+    (data.agentInChat?.id === selection.id ||
+      data.agentInChatDetails?.some((detail) => detail.id === selection.id))
+  ) {
     return selection;
   }
   if (selection.mode === "plan" && data.plan?.id === selection.id) {
@@ -839,6 +999,8 @@ export function createWorkbenchViewModel(
   const navigation = navigationFromSnapshot(snapshot, workspace, runtime);
   const composer = composerFromSnapshot(snapshot, runtimeSummary);
   const chatInfo = chatInfoFromSnapshot(snapshot, workspace, runtimeSummary);
+  const agentInChatDetails = agentInChatDetailsFromSnapshot(snapshot);
+  const agentInChat = agentInChatFromSnapshot(snapshot, options.selection ?? null);
   const agentsPage = agentsPageFromSnapshot(snapshot);
   const connections = connectionsFromSnapshot(runtimeSummary, options.checkingConnectionIds ?? []);
   const plan = options.activePlan
@@ -940,6 +1102,8 @@ export function createWorkbenchViewModel(
     plan,
     runs: runsFromSnapshot(snapshot),
     chatInfo,
+    agentInChat,
+    agentInChatDetails,
   });
 
   return {
@@ -954,6 +1118,8 @@ export function createWorkbenchViewModel(
       permissions,
       plan,
       runs: runsFromSnapshot(snapshot),
+      agentInChat,
+      agentInChatDetails,
       selection: selected,
     },
     runtime: runtimeSummary,

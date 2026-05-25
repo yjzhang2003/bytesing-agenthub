@@ -164,6 +164,14 @@ function MarkdownContent(props: { readonly body: readonly string[] }): React.Rea
   return <div className="agenthub-markdown">{renderBlocks(tokens)}</div>;
 }
 
+function isProviderAuthText(value: string): boolean {
+  return /not logged in|please run \/login|run \/login/iu.test(value);
+}
+
+function isHiddenProviderMessage(item: TimelineItemViewModel): boolean {
+  return item.kind === "message" && item.authorKind === "agent" && item.body.some(isProviderAuthText);
+}
+
 function MessageBubble(props: {
   readonly item: TimelineItemViewModel;
   readonly onOpenAgent?: (agentId: string) => void;
@@ -193,19 +201,44 @@ function MessageBubble(props: {
         )}
         <div className="agenthub-message-bubble" data-author={author}>
           {props.item.state === "loading" ? (
-            <span
-              className="agenthub-message-loading"
-              aria-label={`${props.item.title} is replying`}
-            >
-              <span aria-hidden="true" className="agenthub-message-loading-dot" />
-              <span aria-hidden="true" className="agenthub-message-loading-dot" />
-              <span aria-hidden="true" className="agenthub-message-loading-dot" />
-            </span>
+            <StatusWordTicker label={`${props.item.title} is working`} />
           ) : null}
-          <MarkdownContent body={props.item.body} />
+          {props.item.body.length > 0 ? <MarkdownContent body={props.item.body} /> : null}
         </div>
       </div>
     </article>
+  );
+}
+
+const statusWords = [
+  "Absorbing",
+  "Analyzing",
+  "Building",
+  "Compiling",
+  "Composing",
+  "Computing",
+  "Diagnosing",
+  "Generating",
+  "Inferring",
+  "Optimizing",
+  "Processing",
+  "Synthesizing",
+] as const;
+
+function StatusWordTicker(props: { readonly label: string }): React.ReactElement {
+  const statusWord = React.useMemo(
+    () => statusWords[Math.floor(Math.random() * statusWords.length)] ?? statusWords[0],
+    [],
+  );
+  return (
+    <span aria-label={props.label} className="agenthub-message-status-ticker" role="status">
+      <span className="agenthub-message-status-word">{statusWord}</span>
+      <span aria-hidden="true" className="agenthub-message-status-dots">
+        <span className="agenthub-message-status-dot" />
+        <span className="agenthub-message-status-dot" />
+        <span className="agenthub-message-status-dot" />
+      </span>
+    </span>
   );
 }
 
@@ -301,7 +334,7 @@ export function ChatTimeline(props: {
       className="agenthub-chat-thread"
       ref={timelineRef}
     >
-      {viewModelItems.map((item) => (
+      {viewModelItems.filter((item) => !isHiddenProviderMessage(item)).map((item) => (
         <li key={item.id} data-kind={item.kind}>
           {item.kind === "message" ? (
             <MessageBubble

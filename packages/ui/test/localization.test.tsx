@@ -104,7 +104,8 @@ describe("@agenthub/ui localization", () => {
     expect(connections).toContain("检查连接");
     expect(connections).toContain("全部检查");
     expect(narrow).toContain("打开工作区导航");
-    expect(narrow).toContain("打开会话详情");
+    expect(narrow).toContain("打开会话信息");
+    expect(narrow).toContain("打开运行详情");
     expect(narrow).toContain("给智能体发送消息");
     expect(chatInfo).toContain("参与者");
     expect(chatInfo).toContain("添加智能体");

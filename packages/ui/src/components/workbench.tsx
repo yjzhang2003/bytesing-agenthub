@@ -1,5 +1,9 @@
-import type { UpdateConversationRequest, WorkbenchSnapshot } from "@agenthub/contracts";
-import { PanelLeftClose, PanelRightClose } from "lucide-react";
+import type {
+  UpdateConversationAgentSettingsRequest,
+  UpdateConversationRequest,
+  WorkbenchSnapshot,
+} from "@agenthub/contracts";
+import { PanelLeftClose, PlayCircle } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
@@ -66,6 +70,11 @@ export function AgentHubWorkbench(props: {
   readonly onDeleteConversation?: (conversationId: string) => void | Promise<void>;
   readonly onAddAgentToChat?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
+  readonly onUpdateConversationAgentSettings?: (
+    conversationId: string,
+    agentId: string,
+    input: UpdateConversationAgentSettingsRequest,
+  ) => void | Promise<void>;
   readonly onRefreshConnections?: () => void;
   readonly onCheckConnections?: (
     targets: readonly ConnectionCheckTargetId[],
@@ -217,6 +226,15 @@ export function AgentHubWorkbench(props: {
     !renderInspector && !managementPage && overlayInspectorLayout && mobileRightOpen;
   const fullScreenDiff =
     fullScreenDiffId && model.inspector.diff?.id === fullScreenDiffId ? model.inspector.diff : null;
+  const mostRelevantRunId =
+    selection?.mode === "run"
+      ? selection.id
+      : (model.inspector.runs.find(
+          (run) =>
+            run.status !== "completed" && run.status !== "cancelled" && run.status !== "failed",
+        )?.id ??
+        model.inspector.runs[0]?.id ??
+        null);
   const openChatInfo = React.useCallback(() => {
     if (!model.inspector.chatInfo) {
       return;
@@ -229,6 +247,29 @@ export function AgentHubWorkbench(props: {
       setMobileLeftOpen(false);
     }
   }, [model.inspector.chatInfo, overlayInspectorLayout]);
+  const openAgentInChat = React.useCallback(
+    (agentId: string) => {
+      const conversationId = model.inspector.chatInfo?.id;
+      if (!conversationId || !agentId) {
+        return;
+      }
+      setCenterView("conversation");
+      setSelection({ id: `${conversationId}:${agentId}`, mode: "conversation-agent" });
+      setRightCollapsed(false);
+      if (overlayInspectorLayout) {
+        setMobileRightOpen(true);
+        setMobileLeftOpen(false);
+      }
+    },
+    [model.inspector.chatInfo?.id, overlayInspectorLayout],
+  );
+  const openGlobalAgentSettings = React.useCallback((agentId: string) => {
+    setSelectedAgentId(agentId);
+    setCenterView("agents");
+    setSelection(null);
+    setMobileLeftOpen(false);
+    setMobileRightOpen(false);
+  }, []);
   const beginHorizontalResize = React.useCallback(
     (
       event: React.PointerEvent,
@@ -554,7 +595,8 @@ export function AgentHubWorkbench(props: {
                   ) : null}
                   {centerView === "conversation" ? (
                     <button
-                      aria-label={i18n.t("chat.openChatInfo", {
+                      aria-label={i18n.t("nav.openChatInformationFor", {
+                        fallback: `Open chat information for ${model.activeConversationTitle}`,
                         title: model.activeConversationTitle,
                       })}
                       className="agenthub-chat-title-button"
@@ -596,49 +638,34 @@ export function AgentHubWorkbench(props: {
                     >
                       <Icon icon={PanelLeftClose} />
                     </HoverButton>
-                    <HoverButton
-                      aria-label={i18n.t("nav.openConversationDetails", {
-                        fallback: "Open conversation details",
-                      })}
-                      className="agenthub-icon-button"
-                      disabled={managementPage}
-                      onClick={() => {
-                        setRightCollapsed(false);
-                        setMobileRightOpen(true);
-                        setMobileLeftOpen(false);
-                      }}
-                      type="button"
-                    >
-                      <Icon icon={PanelRightClose} />
-                    </HoverButton>
                   </div>
-                  <RuntimeStatusBadge status={model.runtime.status} />
+                  <RuntimeStatusBadge
+                    status={model.runtime.status}
+                  />
                   {!managementPage ? (
-                    <HoverButton
-                      aria-label={
-                        rightCollapsed || (overlayInspectorLayout && !mobileRightOpen)
-                          ? i18n.t("nav.expandInspector", {
-                              fallback: "Expand Context Inspector",
-                            })
-                          : i18n.t("nav.collapseInspector", {
-                              fallback: "Collapse Context Inspector",
-                            })
-                      }
-                      className="agenthub-icon-button agenthub-desktop-inspector-toggle"
-                      disabled={managementPage}
-                      onClick={() => {
-                        if (overlayInspectorLayout) {
-                          setMobileRightOpen((current) => !current);
-                          setMobileLeftOpen(false);
+                    <div className="agenthub-detail-action-group">
+                      <HoverButton
+                        aria-label={i18n.t("nav.openRunDetails", {
+                          fallback: "Open run details",
+                        })}
+                        className="agenthub-icon-button agenthub-detail-action"
+                        disabled={!mostRelevantRunId}
+                        onClick={() => {
+                          if (!mostRelevantRunId) {
+                            return;
+                          }
+                          setSelection({ id: mostRelevantRunId, mode: "run" });
                           setRightCollapsed(false);
-                          return;
-                        }
-                        setRightCollapsed((current) => !current);
-                      }}
-                      type="button"
-                    >
-                      <Icon icon={PanelRightClose} />
-                    </HoverButton>
+                          if (overlayInspectorLayout) {
+                            setMobileRightOpen(true);
+                            setMobileLeftOpen(false);
+                          }
+                        }}
+                        type="button"
+                      >
+                        <Icon icon={PlayCircle} />
+                      </HoverButton>
+                    </div>
                   ) : null}
                 </div>
               </header>
@@ -702,10 +729,7 @@ export function AgentHubWorkbench(props: {
                     items={model.timeline}
                     selected={selection}
                     onSelect={setSelection}
-                    onOpenAgent={(agentId) => {
-                      setSelectedAgentId(agentId);
-                      setCenterView("agents");
-                    }}
+                    onOpenAgent={openAgentInChat}
                   />
                   <AgentMentionComposer
                     disabled={model.composer.disabled}
@@ -739,11 +763,15 @@ export function AgentHubWorkbench(props: {
                   {...(props.onDeleteConversation
                     ? { onDeleteConversation: props.onDeleteConversation }
                     : {})}
+                  {...(props.onUpdateConversationAgentSettings
+                    ? { onUpdateConversationAgentSettings: props.onUpdateConversationAgentSettings }
+                    : {})}
                   onOpenFullScreenDiff={() => {
                     if (model.inspector.diff) {
                       setFullScreenDiffId(model.inspector.diff.id);
                     }
                   }}
+                  onOpenGlobalAgentSettings={openGlobalAgentSettings}
                   onSelect={setSelection}
                   onToggleCollapsed={() => {
                     setMobileRightOpen(false);
@@ -755,42 +783,63 @@ export function AgentHubWorkbench(props: {
             ) : null}
             <AnimatePresence initial={false}>
               {renderOverlayInspector ? (
-                <motion.div
-                  className="agenthub-motion-right-panel"
-                  key="mobile-context-inspector"
-                  initial={{ opacity: 0, x: 28 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 28 }}
-                >
-                  <ContextInspector
-                    collapsed={rightCollapsed}
-                    model={model}
-                    {...(props.onAddAgentToChat
-                      ? { onAddAgentToChat: props.onAddAgentToChat }
-                      : {})}
-                    {...(props.onRemoveAgentFromChat
-                      ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
-                      : {})}
-                    {...(props.onUpdateConversation
-                      ? { onUpdateConversation: props.onUpdateConversation }
-                      : {})}
-                    {...(props.onDeleteConversation
-                      ? { onDeleteConversation: props.onDeleteConversation }
-                      : {})}
-                    onOpenFullScreenDiff={() => {
-                      if (model.inspector.diff) {
-                        setFullScreenDiffId(model.inspector.diff.id);
-                      }
-                    }}
-                    onSelect={setSelection}
-                    onToggleCollapsed={() => {
-                      setMobileRightOpen(false);
-                      setRightCollapsed((current) => !current);
-                    }}
-                    selection={selection}
-                    showPanelToggle={mobileLayout}
+                <>
+                  <motion.button
+                    aria-label={i18n.t("nav.closeDetailPanel", {
+                      fallback: "Close detail panel",
+                    })}
+                    className="agenthub-detail-backdrop"
+                    key="mobile-context-inspector-backdrop"
+                    type="button"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setMobileRightOpen(false)}
                   />
-                </motion.div>
+                  <motion.div
+                    className="agenthub-motion-right-panel"
+                    key="mobile-context-inspector"
+                    initial={{ opacity: 0, x: 28 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 28 }}
+                  >
+                    <ContextInspector
+                      collapsed={rightCollapsed}
+                      model={model}
+                      {...(props.onAddAgentToChat
+                        ? { onAddAgentToChat: props.onAddAgentToChat }
+                        : {})}
+                      {...(props.onRemoveAgentFromChat
+                        ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
+                        : {})}
+                      {...(props.onUpdateConversation
+                        ? { onUpdateConversation: props.onUpdateConversation }
+                        : {})}
+                      {...(props.onDeleteConversation
+                        ? { onDeleteConversation: props.onDeleteConversation }
+                        : {})}
+                      {...(props.onUpdateConversationAgentSettings
+                        ? {
+                            onUpdateConversationAgentSettings:
+                              props.onUpdateConversationAgentSettings,
+                          }
+                        : {})}
+                      onOpenFullScreenDiff={() => {
+                        if (model.inspector.diff) {
+                          setFullScreenDiffId(model.inspector.diff.id);
+                        }
+                      }}
+                      onOpenGlobalAgentSettings={openGlobalAgentSettings}
+                      onSelect={setSelection}
+                      onToggleCollapsed={() => {
+                        setMobileRightOpen(false);
+                        setRightCollapsed((current) => !current);
+                      }}
+                      selection={selection}
+                      showPanelToggle={mobileLayout}
+                    />
+                  </motion.div>
+                </>
               ) : null}
             </AnimatePresence>
             {fullScreenDiff ? (

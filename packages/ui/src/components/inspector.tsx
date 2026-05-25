@@ -1,7 +1,11 @@
-import { PanelRightClose, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, PanelRightClose, Plus, Trash2 } from "lucide-react";
 import React from "react";
-import type { UpdateConversationRequest } from "@agenthub/contracts";
 import type {
+  UpdateConversationAgentSettingsRequest,
+  UpdateConversationRequest,
+} from "@agenthub/contracts";
+import type {
+  AgentInChatViewModel,
   ArtifactViewModel,
   ChatInfoViewModel,
   DiffViewModel,
@@ -18,6 +22,7 @@ import {
   AgentHubAvatar,
   AgentHubButton,
   AgentHubModal,
+  AgentHubSelect,
   AgentHubSwitch,
   AgentHubTextInput,
 } from "./system.js";
@@ -40,6 +45,12 @@ export function ContextInspector(props: {
     input: UpdateConversationRequest,
   ) => void;
   readonly onDeleteConversation?: (conversationId: string) => void;
+  readonly onUpdateConversationAgentSettings?: (
+    conversationId: string,
+    agentId: string,
+    input: UpdateConversationAgentSettingsRequest,
+  ) => void | Promise<void>;
+  readonly onOpenGlobalAgentSettings?: (agentId: string) => void;
   readonly onOpenFullScreenDiff: () => void;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
@@ -53,6 +64,8 @@ export function ContextInspector(props: {
     plan: props.model.inspector.plan,
     runs: props.model.inspector.runs,
     chatInfo: props.model.inspector.chatInfo,
+    agentInChat: props.model.inspector.agentInChat,
+    agentInChatDetails: props.model.inspector.agentInChatDetails,
   });
 
   return (
@@ -63,8 +76,15 @@ export function ContextInspector(props: {
       {props.showPanelToggle || (selection && selection.mode !== "chat-info") ? (
         <div className="agenthub-inspector-floating-actions">
           {selection && selection.mode !== "chat-info" ? (
-            <HoverButton onClick={() => props.onSelect(null)} type="button">
-              {i18n.t("actions.clear", { fallback: "Clear" })}
+            <HoverButton
+              aria-label={i18n.t("nav.backToConversationDetails", {
+                fallback: "Back to conversation details",
+              })}
+              className="agenthub-icon-button"
+              onClick={() => props.onSelect(null)}
+              type="button"
+            >
+              <Icon icon={ArrowLeft} />
             </HoverButton>
           ) : null}
           {props.showPanelToggle ? (
@@ -92,6 +112,8 @@ export function ContextInspector(props: {
         props.onRemoveAgentFromChat,
         props.onUpdateConversation,
         props.onDeleteConversation,
+        props.onUpdateConversationAgentSettings,
+        props.onOpenGlobalAgentSettings,
       )}
     </aside>
   );
@@ -106,6 +128,12 @@ function renderInspectorBody(
   onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void,
   onUpdateConversation?: (conversationId: string, input: UpdateConversationRequest) => void,
   onDeleteConversation?: (conversationId: string) => void,
+  onUpdateConversationAgentSettings?: (
+    conversationId: string,
+    agentId: string,
+    input: UpdateConversationAgentSettingsRequest,
+  ) => void | Promise<void>,
+  onOpenGlobalAgentSettings?: (agentId: string) => void,
 ): React.ReactNode {
   if (!selection) {
     if (model.inspector.chatInfo) {
@@ -116,6 +144,7 @@ function renderInspectorBody(
           {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
           {...(onUpdateConversation ? { onUpdateConversation } : {})}
           {...(onDeleteConversation ? { onDeleteConversation } : {})}
+          onSelect={onSelect}
         />
       );
     }
@@ -134,9 +163,28 @@ function renderInspectorBody(
         {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
         {...(onUpdateConversation ? { onUpdateConversation } : {})}
         {...(onDeleteConversation ? { onDeleteConversation } : {})}
+        onSelect={onSelect}
       />
     ) : (
       <UnavailableDetail label="Chat unavailable" />
+    );
+  }
+
+  if (selection.mode === "conversation-agent") {
+    const agentInChat =
+      model.inspector.agentInChat?.id === selection.id
+        ? model.inspector.agentInChat
+        : model.inspector.agentInChatDetails.find((detail) => detail.id === selection.id);
+    return agentInChat ? (
+      <AgentInChatDetail
+        agent={agentInChat}
+        {...(onUpdateConversationAgentSettings
+          ? { onUpdateConversationAgentSettings }
+          : {})}
+        {...(onOpenGlobalAgentSettings ? { onOpenGlobalAgentSettings } : {})}
+      />
+    ) : (
+      <UnavailableDetail label="Agent unavailable in this chat" />
     );
   }
 
@@ -178,12 +226,233 @@ function renderInspectorBody(
   return run ? <RunDetail run={run} /> : <UnavailableDetail label="Run unavailable" />;
 }
 
+function AgentInChatDetail(props: {
+  readonly agent: AgentInChatViewModel;
+  readonly onUpdateConversationAgentSettings?: (
+    conversationId: string,
+    agentId: string,
+    input: UpdateConversationAgentSettingsRequest,
+  ) => void | Promise<void>;
+  readonly onOpenGlobalAgentSettings?: (agentId: string) => void;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  const update = (input: UpdateConversationAgentSettingsRequest) => {
+    props.onUpdateConversationAgentSettings?.(
+      props.agent.conversationId,
+      props.agent.agentId,
+      input,
+    );
+  };
+  return (
+    <div className="agenthub-inspector-body agenthub-agent-in-chat-detail">
+      <DetailSection title={i18n.t("agentInChat.title", { fallback: "Agent in this chat" })}>
+        <div className="agenthub-chat-participant-grid">
+          <div className="agenthub-chat-participant-tile">
+            <AgentHubAvatar shape="square">{props.agent.initials}</AgentHubAvatar>
+            <span title={props.agent.label}>{props.agent.label}</span>
+          </div>
+        </div>
+      </DetailSection>
+      <ChatSettingsGroup title={i18n.t("agentInChat.identity", { fallback: "Identity" })}>
+        <ChatSettingsRow
+          control={
+            <AgentHubTextInput
+              ariaLabel="Display name"
+              defaultValue={props.agent.label}
+              onBlur={(event) => update({ displayNameOverride: event.currentTarget.value })}
+            />
+          }
+          description={props.agent.globalLabel}
+          title={i18n.t("agentInChat.displayName", { fallback: "Display name" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubTextInput
+              ariaLabel="Responsibility"
+              defaultValue={props.agent.responsibility ?? ""}
+              onBlur={(event) => update({ responsibilityOverride: event.currentTarget.value })}
+            />
+          }
+          description={props.agent.responsibility ?? props.agent.globalSystemPrompt}
+          title={i18n.t("agentInChat.responsibility", { fallback: "Responsibility" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubTextInput
+              ariaLabel="Notes"
+              defaultValue={props.agent.notes ?? ""}
+              onBlur={(event) => update({ notes: event.currentTarget.value })}
+            />
+          }
+          description={props.agent.notes ?? ""}
+          title={i18n.t("agentInChat.notes", { fallback: "Notes" })}
+        />
+      </ChatSettingsGroup>
+      <ChatSettingsGroup
+        title={i18n.t("agentInChat.participation", { fallback: "Participation" })}
+      >
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel="Enabled"
+              checked={props.agent.enabled}
+              onChange={(enabled) => update({ enabled })}
+            />
+          }
+          description={props.agent.enabled ? "Enabled" : "Disabled"}
+          title={i18n.t("agentInChat.enabled", { fallback: "Enabled" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSelect
+              ariaLabel="Participation mode"
+              onValueChange={(participationMode) => update({ participationMode })}
+              value={props.agent.participationMode}
+              options={[
+                { label: "Manual", value: "manual" },
+                { label: "Orchestrated", value: "orchestrated" },
+                { label: "Proactive", value: "proactive" },
+              ]}
+            />
+          }
+          description={props.agent.participationMode}
+          title={i18n.t("agentInChat.participationMode", { fallback: "Participation mode" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSelect
+              ariaLabel="Priority"
+              onValueChange={(priority) => update({ priority })}
+              value={props.agent.priority}
+              options={[
+                { label: "Low", value: "low" },
+                { label: "Normal", value: "normal" },
+                { label: "High", value: "high" },
+              ]}
+            />
+          }
+          description={props.agent.priority}
+          title={i18n.t("agentInChat.priority", { fallback: "Priority" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel="Quiet mode"
+              checked={props.agent.quietMode}
+              onChange={(quietMode) => update({ quietMode })}
+            />
+          }
+          description={props.agent.quietMode ? "Quiet" : "Normal"}
+          title={i18n.t("agentInChat.quietMode", { fallback: "Quiet mode" })}
+        />
+      </ChatSettingsGroup>
+      <ChatSettingsGroup title={i18n.t("agentInChat.context", { fallback: "Context" })}>
+        <ChatSettingsRow
+          control={
+            <AgentHubSelect
+              ariaLabel="Context scope"
+              onValueChange={(contextScope) => update({ contextScope })}
+              value={props.agent.contextScope}
+              options={[
+                { label: "Conversation", value: "conversation" },
+                { label: "Workspace summary", value: "workspace-summary" },
+                { label: "Conversation artifacts", value: "conversation-artifacts" },
+              ]}
+            />
+          }
+          description={props.agent.contextScope}
+          title={i18n.t("agentInChat.contextScope", { fallback: "Context scope" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel="History summary"
+              checked={props.agent.includeHistorySummary}
+              onChange={(includeHistorySummary) => update({ includeHistorySummary })}
+            />
+          }
+          description={props.agent.includeHistorySummary ? "Included" : "Excluded"}
+          title={i18n.t("agentInChat.historySummary", { fallback: "History summary" })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubTextInput
+              ariaLabel="Scoped instructions"
+              defaultValue={props.agent.scopedInstructions ?? ""}
+              onBlur={(event) => update({ scopedInstructions: event.currentTarget.value })}
+            />
+          }
+          description={props.agent.scopedInstructions ?? ""}
+          title={i18n.t("agentInChat.scopedInstructions", {
+            fallback: "Scoped instructions",
+          })}
+        />
+      </ChatSettingsGroup>
+      <ChatSettingsGroup title={i18n.t("agentInChat.runPolicy", { fallback: "Run policy" })}>
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel="Require run confirmation"
+              checked={props.agent.requireRunConfirmation}
+              onChange={(requireRunConfirmation) => update({ requireRunConfirmation })}
+            />
+          }
+          description={props.agent.requireRunConfirmation ? "Required" : "Not required"}
+          title={i18n.t("agentInChat.requireRunConfirmation", {
+            fallback: "Run confirmation",
+          })}
+        />
+        <ChatSettingsRow
+          control={
+            <AgentHubSwitch
+              ariaLabel="Allow auto dispatch"
+              checked={props.agent.allowAutoDispatch}
+              onChange={(allowAutoDispatch) => update({ allowAutoDispatch })}
+            />
+          }
+          description={props.agent.allowAutoDispatch ? "Allowed" : "Not allowed"}
+          title={i18n.t("agentInChat.allowAutoDispatch", { fallback: "Auto dispatch" })}
+        />
+      </ChatSettingsGroup>
+      <ChatSettingsGroup
+        title={i18n.t("agentInChat.globalDefaults", { fallback: "Global defaults" })}
+      >
+        <ChatSettingsRow
+          description={props.agent.globalLabel}
+          title={i18n.t("agentInChat.globalName", { fallback: "Global name" })}
+        />
+        <ChatSettingsRow
+          description={props.agent.providerLabel}
+          title={i18n.t("agentInChat.provider", { fallback: "Provider" })}
+        />
+        <ChatSettingsRow
+          description={props.agent.globalCapabilityTags.join(", ") || "none"}
+          title={i18n.t("agentInChat.capabilities", { fallback: "Capabilities" })}
+        />
+        <div className="agenthub-chat-delete-row">
+          <AgentHubButton
+            htmlType="button"
+            onClick={() => props.onOpenGlobalAgentSettings?.(props.agent.agentId)}
+            size="small"
+            variant="ghost"
+          >
+            {i18n.t("agentInChat.openGlobalSettings", {
+              fallback: "Open global agent settings",
+            })}
+          </AgentHubButton>
+        </div>
+      </ChatSettingsGroup>
+    </div>
+  );
+}
+
 function ChatInfoDetail(props: {
   readonly chat: ChatInfoViewModel;
   readonly onAddAgent?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgent?: (conversationId: string, agentId: string) => void;
   readonly onUpdateConversation?: (conversationId: string, input: UpdateConversationRequest) => void;
   readonly onDeleteConversation?: (conversationId: string) => void;
+  readonly onSelect?: (selection: InspectorSelection) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
@@ -222,10 +491,21 @@ function ChatInfoDetail(props: {
       <DetailSection title={i18n.t("chat.participants")}>
         <div className="agenthub-chat-participant-grid">
           {props.chat.participants.map((participant) => (
-            <div className="agenthub-chat-participant-tile" key={participant.id}>
+            <button
+              aria-label={`Open ${participant.label} settings in this conversation`}
+              className="agenthub-chat-participant-tile"
+              key={participant.id}
+              onClick={() =>
+                props.onSelect?.({
+                  id: `${props.chat.id}:${participant.id}`,
+                  mode: "conversation-agent",
+                })
+              }
+              type="button"
+            >
               <AgentHubAvatar shape="square">{participant.initials}</AgentHubAvatar>
               <span title={participant.label}>{participant.label}</span>
-            </div>
+            </button>
           ))}
           <div className="agenthub-chat-participant-tile agenthub-chat-participant-tile-add">
             <button
@@ -706,8 +986,13 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
           ) : null}
         </DetailSection>
       ) : null}
+      {props.run.failureSummary ? (
+        <p className="agenthub-warning">{props.run.failureSummary}</p>
+      ) : null}
       {props.run.failureReason ? (
-        <p className="agenthub-warning">{props.run.failureReason}</p>
+        <DetailSection title="Diagnostics">
+          <p className="agenthub-warning">{props.run.failureReason}</p>
+        </DetailSection>
       ) : null}
     </div>
   );

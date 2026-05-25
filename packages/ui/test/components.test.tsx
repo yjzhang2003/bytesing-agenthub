@@ -5,6 +5,7 @@ import {
   AgentMentionComposer,
   AgentsPage,
   Button,
+  ChatTimeline,
   Dialog,
   AgentHubWorkbench,
   AgentHubTextInput,
@@ -313,7 +314,6 @@ describe("@agenthub/ui components", () => {
           runtimeProfileId: "default",
           mcpProfileId: "none",
           effort: "medium",
-          sessionBehavior: "new",
           settingsSource: "managed",
           hooksPolicy: "disabled",
         }}
@@ -323,10 +323,42 @@ describe("@agenthub/ui components", () => {
 
     expect(html).toContain("Permission");
     expect(html).toContain("Ask first");
-    expect(html).toContain("Effort");
+    expect(html).not.toContain("Effort");
     expect(html).toContain("Voice input");
     expect(html).not.toContain("Runtime profile");
     expect(html).not.toContain("Advanced Claude Code controls");
+    expect(html).not.toContain("Session");
+    expect(html).not.toContain("session_");
+  });
+
+  it("does not include manual Claude Code session controls in composer submissions", () => {
+    const html = renderToStaticMarkup(
+      <AgentMentionComposer
+        selectedTarget="@Implementer"
+        targets={[
+          {
+            capabilityTags: ["code"],
+            id: "agent_2",
+            label: "Implementer",
+            providerLabel: "Claude Code",
+            runtimeProvider: "claude-code",
+            role: "worker",
+            target: "@Implementer",
+          },
+        ]}
+        claudeCodeControls={{
+          permissionPreset: "ask-first",
+          runtimeProfileId: "default",
+          mcpProfileId: "none",
+          effort: "medium",
+          settingsSource: "inherit",
+          hooksPolicy: "disabled",
+        }}
+      />,
+    );
+
+    expect(html).not.toContain("sessionId");
+    expect(html).not.toContain("sessionBehavior");
   });
 
   it("scopes Claude Code composer controls to the selected runtime target", () => {
@@ -347,7 +379,6 @@ describe("@agenthub/ui components", () => {
               runtimeProfileId: "default",
               mcpProfileId: "none",
               effort: "high",
-              sessionBehavior: "new",
               settingsSource: "managed",
               hooksPolicy: "disabled",
             },
@@ -367,7 +398,6 @@ describe("@agenthub/ui components", () => {
           runtimeProfileId: "default",
           mcpProfileId: "none",
           effort: "high",
-          sessionBehavior: "new",
           settingsSource: "managed",
           hooksPolicy: "disabled",
         }}
@@ -425,18 +455,194 @@ describe("@agenthub/ui components", () => {
     );
     const workbench = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
     expect(diff).toContain("1 files changed");
-    expect(workbench).toContain("Context Inspector");
-    expect(workbench).toContain("Claude Code: Full access");
+    expect(workbench).toContain("Conversation details");
+    expect(workbench).toContain("agenthub-message-status-ticker");
+    expect(workbench).not.toContain("Open conversation info");
+    expect(workbench).toContain("Open chat information for MVP workbench");
+    expect(workbench).toContain("Open run details");
     expect(workbench).toContain("Workspace navigation");
     expect(workbench).toContain('data-theme="dark"');
     expect(workbench).toContain('data-left-collapsed="false"');
     expect(workbench).toContain('data-right-collapsed="false"');
     expect(workbench).toContain("Collapse workspace navigation");
-    expect(workbench).toContain("Collapse Context Inspector");
     expect(workbench).toContain("Switch to light mode");
     expect(workbench).toContain(
       '.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel',
     );
+  });
+
+  it("keeps run audit metadata out of the conversation timeline", () => {
+    const runId = "dada973d-443b-4bec-9f5f-123456789abc";
+    const sessionId = "session_very_internal_123";
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      runs: snapshot().runs.map((run) => ({
+        ...run,
+        id: runId,
+        failureReason: "Claude Code exited with 1: Not logged in. Please run /login",
+        status: "failed" as const,
+        claudeCode: {
+          permissionPreset: "ask-first" as const,
+          effectivePermissionPreset: "ask-first" as const,
+          runtimeProfileId: "default",
+          mcpProfileId: null,
+          effort: "medium" as const,
+          settingsSource: "managed" as const,
+          effectiveSettingsSource: "managed" as const,
+          hooksPolicy: "disabled" as const,
+          session: { behavior: "continue" as const, sessionId },
+          overrideSource: "run-override" as const,
+        },
+      })),
+    });
+    const timelineText = model.timeline
+      .flatMap((item) => [item.title, item.subtitle, ...item.body])
+      .join("\n");
+
+    expect(model.timeline.map((item) => item.kind)).not.toContain("run-event");
+    expect(timelineText).not.toContain("Claude Code run failed");
+    expect(timelineText).not.toContain("Ask first");
+    expect(timelineText).not.toContain("Medium");
+    expect(timelineText).not.toContain(runId);
+    expect(timelineText).not.toContain(sessionId);
+    expect(timelineText).not.toContain("run-override");
+    expect(timelineText).not.toContain("Not logged in");
+  });
+
+  it("classifies Claude Code login failures while preserving diagnostics in run detail", () => {
+    const rawFailure = "Claude Code exited with 1: Not logged in. Please run /login";
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      runs: snapshot().runs.map((run) => ({
+        ...run,
+        failureReason: rawFailure,
+        status: "failed" as const,
+      })),
+    });
+    const run = model.inspector.runs[0];
+
+    expect(run.failureCategory).toBe("claude-code-auth-required");
+    expect(run.failureSummary).toContain("Claude Code CLI needs login");
+    expect(run.failureReason).toBe(rawFailure);
+
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: run.id, mode: "run" }}
+        snapshot={{
+          ...snapshot(),
+          runs: snapshot().runs.map((current) => ({
+            ...current,
+            failureReason: rawFailure,
+            status: "failed" as const,
+          })),
+        }}
+      />,
+    );
+    expect(html).toContain("Claude Code CLI needs login");
+    expect(html).toContain(rawFailure);
+  });
+
+  it("hides Claude Code login output message deltas from the conversation timeline", () => {
+    const rawFailure = "Claude Code exited with 1: Not logged in. Please run /login";
+    const runId = "run_auth";
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      messages: [
+        ...snapshot().messages,
+        {
+          authorId: "agent_2",
+          authorKind: "agent" as const,
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "message_auth",
+          ownerUserId: "user_1",
+          parts: [{ text: "Not logged in · Please run /login", type: "markdown" as const, runId }],
+          replyToMessageId: null,
+          updatedAt: now,
+        },
+      ],
+      runs: snapshot().runs.map((run) => ({
+        ...run,
+        id: runId,
+        failureReason: rawFailure,
+        status: "failed" as const,
+      })),
+    });
+    const timelineText = model.timeline
+      .flatMap((item) => [item.title, item.subtitle, ...item.body])
+      .join("\n");
+
+    expect(timelineText).not.toContain("Claude Code run failed");
+    expect(timelineText).not.toContain("Not logged in");
+    expect(timelineText).not.toContain("/login");
+  });
+
+  it("does not render raw Claude Code login text passed directly to the timeline", () => {
+    const html = renderToStaticMarkup(
+      <ChatTimeline
+        items={[
+          {
+            authorId: "agent_1",
+            authorKind: "agent",
+            body: ["Not logged in · Please run /login"],
+            id: "legacy-auth-message",
+            kind: "message",
+            state: "success",
+            subtitle: "agent message",
+            title: "Orchestrator",
+          },
+          {
+            body: ["Ask first · Medium"],
+            id: "run-auth",
+            kind: "run-event",
+            state: "metadata-only",
+            subtitle: "Orchestrator",
+            title: "Claude Code run failed",
+          },
+        ]}
+      />,
+    );
+
+    expect(html).toContain("Claude Code run failed");
+    expect(html).not.toContain("Not logged in");
+    expect(html).not.toContain("/login");
+  });
+
+  it("shows Claude Code login guidance in connection diagnostics", () => {
+    const rawFailure = "Claude Code exited with 1: Not logged in. Please run /login";
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      providerHealth: {
+        providerMode: "claude-code",
+        status: "unavailable",
+        binaryPathLabel: "/usr/local/bin/claude",
+        checkedAt: now,
+        failureReason: rawFailure,
+      },
+    });
+
+    const provider = model.connections.items.find((item) => item.id === "provider");
+    expect(provider?.failureReason).toContain("Claude Code CLI needs login");
+    expect(JSON.stringify(provider?.metadata)).toContain(rawFailure);
+  });
+
+  it("renders the chat title as the conversation detail action and keeps run detail in the header", () => {
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+
+    expect(html).not.toContain("Open conversation info");
+    expect(html).toContain("Open chat information for MVP workbench");
+    expect(html).toContain("Open run details");
+    expect(html.match(/aria-label="Open chat information for MVP workbench"/g)).toHaveLength(1);
+    expect(html).not.toContain("agenthub-mobile-detail-action");
+    expect(html).not.toContain("Collapse Context Inspector");
+  });
+
+  it("disables the run detail header action when the conversation has no runs", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench snapshot={{ ...snapshot(), runs: [] }} />,
+    );
+
+    expect(html).toMatch(/aria-label="Open run details"[^>]*disabled=""/);
   });
 
   it("renders Claude Code agent warnings and discovery summaries", () => {
@@ -455,8 +661,22 @@ describe("@agenthub/ui components", () => {
     expect(JSON.stringify(model.connections.items)).toContain("test-driven-development");
   });
 
-  it("renders conversation messages as IM bubbles and active agent replies as loading bubbles", () => {
+  it("renders conversation messages as IM bubbles and active agent replies as one random status word with bouncing dots", () => {
     const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+    const statusWords = [
+      "Absorbing",
+      "Analyzing",
+      "Building",
+      "Compiling",
+      "Composing",
+      "Computing",
+      "Diagnosing",
+      "Generating",
+      "Inferring",
+      "Optimizing",
+      "Processing",
+      "Synthesizing",
+    ];
 
     expect(html).toContain("agenthub-message-bubble");
     expect(html).toContain('data-author="agent"');
@@ -467,8 +687,16 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("<strong>the shell</strong>");
     expect(html).toContain("<h2>Details</h2>");
     expect(html).toContain("<code>pnpm check</code>");
-    expect(html).toContain("agenthub-message-loading");
-    expect(html).toContain("Writing a reply");
+    expect(html).toContain("agenthub-message-status-ticker");
+    expect(html).toContain("agenthub-message-status-dot");
+    expect(html.match(/class="agenthub-message-status-dot"/g)).toHaveLength(3);
+    expect(statusWords.filter((word) => html.includes(`${word}<`))).toHaveLength(1);
+    expect(html).not.toContain(
+      ".agenthub-message-bubble:has(.agenthub-message-status-ticker) {\n  min-width: 148px",
+    );
+    expect(html).not.toContain("agenthub-message-loading-dot");
+    expect(html).not.toContain("Writing a reply");
+    expect(html).not.toContain("Full access · High");
     expect(html).not.toContain("Run completed");
     expect(html).not.toContain("Claude Code process completed");
   });
@@ -524,6 +752,142 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("agenthub-motion-left-panel");
     expect(html).toContain("agenthub-motion-right-panel");
     expect(html).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it("defaults Claude Code composer settings to inherited user configuration", () => {
+    const model = createWorkbenchViewModel(snapshot());
+
+    expect(model.composer.claudeCodeControls?.settingsSource).toBe("inherit");
+  });
+
+  it("models conversation-scoped agent settings for participants and composer targets", () => {
+    const model = createWorkbenchViewModel(
+      {
+        ...snapshot(),
+        conversationParticipants: [
+          {
+            id: "participant_1",
+            ownerUserId: "user_1",
+            conversationId: "conversation_1",
+            agentId: "agent_1",
+            addedByUserId: "user_1",
+            archivedAt: null,
+            createdAt: "2026-05-21T00:00:00.000Z",
+            updatedAt: "2026-05-21T00:00:00.000Z",
+          },
+          {
+            id: "participant_2",
+            ownerUserId: "user_1",
+            conversationId: "conversation_1",
+            agentId: "agent_2",
+            addedByUserId: "user_1",
+            archivedAt: null,
+            conversationAgentSettings: {
+              displayNameOverride: "Chat implementer",
+              responsibilityOverride: "Only implement frontend changes.",
+              enabled: false,
+              participationMode: "manual",
+              priority: "high",
+              quietMode: true,
+              contextScope: "conversation-artifacts",
+              includeHistorySummary: false,
+              scopedInstructions: "Keep replies short.",
+              requireRunConfirmation: true,
+              allowAutoDispatch: false,
+            },
+            createdAt: "2026-05-21T00:00:00.000Z",
+            updatedAt: "2026-05-21T00:00:00.000Z",
+          },
+        ],
+      },
+      { selection: { id: "conversation_1:agent_2", mode: "conversation-agent" } },
+    );
+
+    expect(model.inspector.selection).toEqual({
+      id: "conversation_1:agent_2",
+      mode: "conversation-agent",
+    });
+    expect(model.inspector.agentInChat).toMatchObject({
+      id: "conversation_1:agent_2",
+      agentId: "agent_2",
+      conversationId: "conversation_1",
+      label: "Chat implementer",
+      globalLabel: "Implementer",
+      responsibility: "Only implement frontend changes.",
+      enabled: false,
+      participationMode: "manual",
+      priority: "high",
+      contextScope: "conversation-artifacts",
+      allowAutoDispatch: false,
+    });
+    expect(model.inspector.chatInfo?.participants.find((participant) => participant.id === "agent_2"))
+      .toMatchObject({ label: "Chat implementer", target: "@Chat implementer" });
+    expect(model.composer.targets.map((target) => target.id)).not.toContain("agent_2");
+  });
+
+  it("renders agent-in-chat settings in the conversation detail layout language", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1:agent_2", mode: "conversation-agent" }}
+        snapshot={{
+          ...snapshot(),
+          conversationParticipants: [
+            {
+              id: "participant_1",
+              ownerUserId: "user_1",
+              conversationId: "conversation_1",
+              agentId: "agent_1",
+              addedByUserId: "user_1",
+              archivedAt: null,
+              createdAt: "2026-05-21T00:00:00.000Z",
+              updatedAt: "2026-05-21T00:00:00.000Z",
+            },
+            {
+              id: "participant_2",
+              ownerUserId: "user_1",
+              conversationId: "conversation_1",
+              agentId: "agent_2",
+              addedByUserId: "user_1",
+              archivedAt: null,
+              conversationAgentSettings: {
+                displayNameOverride: "Chat implementer",
+                responsibilityOverride: "Only implement frontend changes.",
+                notes: "Local to this chat.",
+                enabled: true,
+                participationMode: "orchestrated",
+                priority: "high",
+                quietMode: true,
+                contextScope: "conversation-artifacts",
+                includeHistorySummary: false,
+                scopedInstructions: "Keep replies short.",
+                requireRunConfirmation: true,
+                allowAutoDispatch: false,
+              },
+              createdAt: "2026-05-21T00:00:00.000Z",
+              updatedAt: "2026-05-21T00:00:00.000Z",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain("Agent in this chat");
+    expect(html).toContain("Chat implementer");
+    expect(html).toContain("Only implement frontend changes.");
+    expect(html).toContain("Global defaults");
+    expect(html).toContain("Implementer");
+    expect(html).toContain("Open global agent settings");
+    expect(html).toContain("agenthub-inspector-body");
+    expect(html).toContain("agenthub-agent-in-chat-detail");
+    expect(html).toContain("agenthub-chat-settings-group");
+    expect(html).toContain("agenthub-chat-settings-row");
+    expect(html).toContain("Back to conversation details");
+    expect(html).not.toContain(">Clear<");
+    expect(workbenchCss).toContain(
+      ".agenthub-agent-in-chat-detail .agenthub-input",
+    );
+    expect(workbenchCss).toContain("border-color: transparent");
+    expect(workbenchCss).toContain("text-align: right");
   });
 
   it("renders the composer as a compact rounded input with trigger-based suggestions", () => {
@@ -603,7 +967,6 @@ describe("@agenthub/ui components", () => {
     );
 
     expect(workbench).toContain("工作区导航");
-    expect(workbench).toContain("上下文检查器");
     expect(workbench).toContain("切换到浅色模式");
     expect(settingsGeneral).toContain("通用");
     expect(settingsGeneral).toContain("外观");
@@ -623,7 +986,8 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('data-mobile-right-open="false"');
     expect(html).toContain("agenthub-mobile-panel-actions");
     expect(html).toContain("Open workspace navigation");
-    expect(html).toContain("Open conversation details");
+    expect(html).not.toContain("Open conversation info");
+    expect(html).toContain("Open chat information for MVP workbench");
     expect(html).toContain("agenthub-chat-thread");
     expect(html).toContain(".agenthub-mobile-panel-actions { display: none;");
     expect(html).toContain('.agenthub-workbench[data-layout="narrow"] .agenthub-motion-left-panel');
@@ -1007,13 +1371,60 @@ describe("@agenthub/ui components", () => {
     expect(model.timeline.map((item) => item.kind)).toEqual([
       "message",
       "message",
-      "run-event",
       "permission",
       "diff",
       "artifact",
     ]);
     expect(model.workspace.pendingPermissionCount).toBe(1);
     expect(model.inspector.selection?.mode).toBe("permission");
+  });
+
+  it("keeps runtime executable when old Claude Code login failures are only conversation history", () => {
+    const authFailureSnapshot = {
+      ...snapshot(),
+      messages: [
+        ...snapshot().messages,
+        {
+          authorId: "agent_1",
+          authorKind: "agent" as const,
+          conversationId: "conversation_1",
+          createdAt: now,
+          id: "message_auth_failure",
+          ownerUserId: "user_1",
+          parts: [
+            {
+              runId: "run_auth_failure",
+              text: "Not logged in · Please run /login",
+              type: "markdown" as const,
+            },
+          ],
+          replyToMessageId: null,
+          updatedAt: now,
+        },
+      ],
+      runs: [
+        ...snapshot().runs,
+        {
+          ...snapshot().runs[0],
+          completedAt: now,
+          failureReason:
+            "Claude Code exited with 1: Warning: no stdin data received in 3s, proceeding without it.",
+          id: "run_auth_failure",
+          status: "failed" as const,
+        },
+      ],
+    };
+    const model = createWorkbenchViewModel(authFailureSnapshot);
+
+    expect(model.runtime.canExecute).toBe(true);
+    expect(model.runtime.providerStatusLabel).toBe("Claude Code connected");
+    expect(model.runtime.explanation).toBe("Runtime can receive local execution requests.");
+    expect(model.composer.disabled).toBe(false);
+    expect(model.composer.disabledReason).toBeNull();
+
+    const html = renderToStaticMarkup(<AgentHubWorkbench viewModel={model} />);
+    expect(html).toContain("online");
+    expect(html).not.toContain("auth required");
   });
 
   it("tracks connection checking state and runtime-gated disabled reasons", () => {
@@ -1360,6 +1771,7 @@ describe("@agenthub/ui components", () => {
       />,
     );
 
+    expect(withoutCallbacks).not.toContain("Open conversation info");
     expect(withoutCallbacks).toContain("Open chat information for MVP workbench");
     expect(withoutCallbacks).toContain("Participants");
     expect(withoutCallbacks).toContain("Add agent");

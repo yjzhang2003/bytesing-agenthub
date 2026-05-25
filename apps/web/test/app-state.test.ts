@@ -130,6 +130,10 @@ describe("web app state", () => {
       pinned: true,
       title: "Pinned conversation",
     });
+    await client.updateConversationAgentSettings("conversation_new", "agent_new", {
+      displayNameOverride: "Chat reviewer",
+      enabled: false,
+    });
     await client.deleteConversation("conversation_new");
     await client.listAgents("workspace_1");
 
@@ -142,6 +146,7 @@ describe("web app state", () => {
       "POST /agents/agent_new/conversations",
       "POST /conversations/conversation_new/active",
       "PATCH /conversations/conversation_new",
+      "PATCH /conversations/conversation_new/agents/agent_new",
       "DELETE /conversations/conversation_new",
       "GET /agents",
     ]);
@@ -296,7 +301,7 @@ describe("web app state", () => {
     });
   });
 
-  it("maps composer Claude Code controls into run requests", () => {
+  it("maps composer Claude Code controls into run requests without exposing session controls", () => {
     const flow = createDemoWorkspaceFlow();
     const request = createRunRequestFromSnapshot(flow.state, "@Reviewer", "review this", {
       permissionPreset: "full-access",
@@ -304,8 +309,6 @@ describe("web app state", () => {
       mcpProfileId: "project",
       pluginProfileId: "project",
       effort: "high",
-      sessionBehavior: "continue",
-      sessionId: "session_1",
       settingsSource: "isolated",
       hooksPolicy: "enabled",
       allowedTools: ["Read"],
@@ -318,10 +321,6 @@ describe("web app state", () => {
       mcpProfileId: "project",
       pluginProfileId: "project",
       effort: "high",
-      session: {
-        behavior: "continue",
-        sessionId: "session_1",
-      },
       settingsSource: "isolated",
       hooksPolicy: "enabled",
       allowedTools: ["Read"],

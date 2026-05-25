@@ -42,6 +42,7 @@ export type TimelineItemKind =
 export type InspectorMode =
   | "empty"
   | "chat-info"
+  | "conversation-agent"
   | "plan"
   | "permission"
   | "diff"
@@ -118,8 +119,6 @@ export interface ComposerClaudeCodeControls {
   readonly mcpProfileId: string;
   readonly pluginProfileId?: string | null;
   readonly effort: NonNullable<ClaudeCodeRunOptions["effort"]>;
-  readonly sessionBehavior: NonNullable<ClaudeCodeRunOptions["session"]>["behavior"];
-  readonly sessionId?: string | null;
   readonly settingsSource: NonNullable<ClaudeCodeRunOptions["settingsSource"]>;
   readonly hooksPolicy: NonNullable<ClaudeCodeRunOptions["hooksPolicy"]>;
   readonly allowedTools?: readonly string[];
@@ -265,6 +264,8 @@ export interface RunViewModel {
   readonly startedAt: string;
   readonly completedAt: string;
   readonly failureReason: string | null;
+  readonly failureCategory: "claude-code-auth-required" | "provider-failure" | null;
+  readonly failureSummary: string | null;
   readonly claudeCodeProfileLabel: string | null;
   readonly claudeCodePermissionLabel: string | null;
   readonly claudeCodeMcpLabel: string | null;
@@ -276,6 +277,26 @@ export interface RunViewModel {
 
 export interface ChatInfoParticipantViewModel extends AgentTargetViewModel {
   readonly initials: string;
+}
+
+export interface AgentInChatViewModel extends ChatInfoParticipantViewModel {
+  readonly conversationId: string;
+  readonly agentId: string;
+  readonly globalLabel: string;
+  readonly responsibility: string | null;
+  readonly notes: string | null;
+  readonly enabled: boolean;
+  readonly participationMode: "manual" | "orchestrated" | "proactive";
+  readonly priority: "low" | "normal" | "high";
+  readonly quietMode: boolean;
+  readonly contextScope: "conversation" | "workspace-summary" | "conversation-artifacts";
+  readonly includeHistorySummary: boolean;
+  readonly scopedInstructions: string | null;
+  readonly requireRunConfirmation: boolean;
+  readonly allowAutoDispatch: boolean;
+  readonly globalSystemPrompt: string;
+  readonly globalCapabilityTags: readonly string[];
+  readonly globalRuntimeProvider: AgentRuntimeProvider;
 }
 
 export interface ChatInfoViewModel {
@@ -328,6 +349,8 @@ export interface WorkbenchViewModel {
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
     readonly chatInfo: ChatInfoViewModel | null;
+    readonly agentInChat: AgentInChatViewModel | null;
+    readonly agentInChatDetails: readonly AgentInChatViewModel[];
   };
   readonly states: readonly WorkbenchVisualState[];
   readonly activeConversationTitle: string;

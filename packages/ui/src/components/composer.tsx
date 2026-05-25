@@ -1,5 +1,5 @@
 import type { Agent } from "@agenthub/contracts";
-import { Mic, Plus, Send, ShieldAlert, Zap } from "lucide-react";
+import { Mic, Plus, Send, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
@@ -19,9 +19,7 @@ const defaultClaudeCodeControls: ComposerClaudeCodeControls = {
   mcpProfileId: "none",
   pluginProfileId: "default",
   effort: "medium",
-  sessionBehavior: "new",
-  sessionId: null,
-  settingsSource: "managed",
+  settingsSource: "inherit",
   hooksPolicy: "disabled",
   allowedTools: [],
   disallowedTools: [],
@@ -78,13 +76,6 @@ export function AgentMentionComposer(props: {
   const [pluginProfileId, setPluginProfileId] = React.useState(
     initialClaudeCodeControls.pluginProfileId ?? "default",
   );
-  const [effort, setEffort] = React.useState<ComposerClaudeCodeControls["effort"]>(
-    initialClaudeCodeControls.effort,
-  );
-  const [sessionBehavior, setSessionBehavior] = React.useState<
-    ComposerClaudeCodeControls["sessionBehavior"]
-  >(initialClaudeCodeControls.sessionBehavior);
-  const [sessionId, setSessionId] = React.useState(initialClaudeCodeControls.sessionId ?? "");
   const [settingsSource, setSettingsSource] = React.useState<
     ComposerClaudeCodeControls["settingsSource"]
   >(initialClaudeCodeControls.settingsSource);
@@ -131,9 +122,6 @@ export function AgentMentionComposer(props: {
     setRuntimeProfileId(activeClaudeCodeControls.runtimeProfileId);
     setMcpProfileId(activeClaudeCodeControls.mcpProfileId);
     setPluginProfileId(activeClaudeCodeControls.pluginProfileId ?? "default");
-    setEffort(activeClaudeCodeControls.effort);
-    setSessionBehavior(activeClaudeCodeControls.sessionBehavior);
-    setSessionId(activeClaudeCodeControls.sessionId ?? "");
     setSettingsSource(activeClaudeCodeControls.settingsSource);
     setHooksPolicy(activeClaudeCodeControls.hooksPolicy);
     setAllowedToolsText(activeClaudeCodeControls.allowedTools?.join(", ") ?? "");
@@ -199,9 +187,7 @@ export function AgentMentionComposer(props: {
             runtimeProfileId,
             mcpProfileId,
             pluginProfileId,
-            effort,
-            sessionBehavior,
-            sessionId: sessionId.trim() || null,
+            effort: activeClaudeCodeControls.effort,
             settingsSource,
             hooksPolicy,
             allowedTools,
@@ -215,7 +201,6 @@ export function AgentMentionComposer(props: {
     allowedToolsText,
     activeClaudeCodeControls,
     disallowedToolsText,
-    effort,
     fullAccessConfirmed,
     hooksPolicy,
     mcpProfileId,
@@ -225,8 +210,6 @@ export function AgentMentionComposer(props: {
     props,
     runtimeProfileId,
     selected,
-    sessionBehavior,
-    sessionId,
     settingsSource,
   ]);
 
@@ -370,20 +353,6 @@ export function AgentMentionComposer(props: {
                   <span>Confirm</span>
                 </label>
               ) : null}
-              <span className="agenthub-composer-inline-select">
-                <Icon icon={Zap} />
-                <AgentHubSelect
-                  ariaLabel="Effort"
-                  value={effort}
-                  onValueChange={setEffort}
-                  options={[
-                    { label: "Low", value: "low" },
-                    { label: "Medium", value: "medium" },
-                    { label: "High", value: "high" },
-                    { label: "XHigh", value: "xhigh" },
-                  ]}
-                />
-              </span>
             </>
           ) : selected?.runtimeProvider === "codex" ? (
             <span className="agenthub-composer-runtime-pill">Codex soon</span>
