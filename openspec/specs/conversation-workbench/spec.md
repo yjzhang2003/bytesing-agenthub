@@ -30,15 +30,19 @@ The composer SHALL support targeted messages to runnable agent roles.
 - **THEN** the composer can target that role and run creation uses that role id
 
 ### Requirement: Context Inspector
-The workbench SHALL use the right Context Inspector as the default detail surface for selected chats, plans, permissions, diffs, artifacts, and runtime details.
+The workbench SHALL use the right Context Inspector as the default detail surface for selected chats, participating agents, plans, permissions, diffs, artifacts, and runtime details.
 
 #### Scenario: User selects a plan card
 - **WHEN** the user selects a plan card in the timeline
 - **THEN** the Context Inspector displays the full plan, plan state, assigned agents, risk notes, and available actions
 
 #### Scenario: User opens chat information from the title
-- **WHEN** the user activates the active chat title or equivalent chat header affordance
+- **WHEN** the user activates the active chat title
 - **THEN** the Context Inspector displays the active chat information surface without replacing the conversation timeline
+
+#### Scenario: User opens agent settings from an agent identity
+- **WHEN** the user activates an agent avatar or name in the active conversation timeline or chat information participant area
+- **THEN** the Context Inspector displays that agent's settings for the current conversation without navigating to the global Agents page
 
 #### Scenario: User returns from chat information to timeline context
 - **WHEN** the chat information surface is open and the user selects a timeline item with detail
@@ -122,7 +126,7 @@ The timeline SHALL preserve mixed operational content even if Ant Design X chat 
 
 #### Scenario: User clicks an agent message author
 - **WHEN** the user activates an agent author or avatar in the timeline
-- **THEN** the workbench opens the Agents page with the corresponding agent selected
+- **THEN** the workbench opens that agent's conversation-scoped settings in the right Context Inspector while keeping the active conversation visible
 
 ### Requirement: Agent and connection pages use shared controls
 The Agents and Connections center views SHALL use Ant Design-backed controls while retaining the IM-style side-list/detail layout.
@@ -222,7 +226,7 @@ The Desktop and Web workbench SHALL provide an IM-style chat information detail 
 - **THEN** the inspector omits or marks only those rows as unavailable without hiding required chat title, kind, workspace, runtime, or participants
 
 ### Requirement: Chat title activation
-The active chat title SHALL be an accessible activation target for opening chat information.
+The active chat title SHALL be an accessible activation target for opening chat information and SHALL be the primary conversation-detail entry point in the center header.
 
 #### Scenario: Mouse user clicks chat title
 - **WHEN** the user clicks the active chat title in the center workbench header
@@ -231,6 +235,10 @@ The active chat title SHALL be an accessible activation target for opening chat 
 #### Scenario: Keyboard user activates chat title
 - **WHEN** keyboard focus is on the active chat title affordance and the user presses Enter or Space
 - **THEN** the right Context Inspector opens the chat information surface for that conversation
+
+#### Scenario: User scans conversation header actions
+- **WHEN** the center workbench header renders
+- **THEN** it does not show a redundant `i` conversation-detail button as the primary detail entry point
 
 ### Requirement: Agent detail new conversation entry
 The Desktop and Web Agents center view SHALL provide a primary "新对话" entry point for existing runnable agents that creates a new single-agent conversation in the Chat view.
@@ -309,3 +317,4 @@ The conversation timeline SHALL avoid exposing hidden Claude session binding imp
 #### Scenario: First run creates provider session
 - **WHEN** the first run for a conversation-agent binding captures a provider session id
 - **THEN** the timeline remains focused on user and agent messages rather than showing session binding bookkeeping
+
