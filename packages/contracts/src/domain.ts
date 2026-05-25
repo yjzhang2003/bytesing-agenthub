@@ -97,6 +97,26 @@ export interface ConversationParticipant extends UserOwned {
   readonly agentId: Id;
   readonly addedByUserId: Id | null;
   readonly archivedAt: ISODateTime | null;
+  readonly conversationAgentSettings?: ConversationAgentSettings | undefined;
+}
+
+export interface ConversationAgentSettings {
+  readonly displayNameOverride?: string | undefined;
+  readonly responsibilityOverride?: string | undefined;
+  readonly notes?: string | undefined;
+  readonly enabled?: boolean | undefined;
+  readonly participationMode?: "manual" | "orchestrated" | "proactive" | undefined;
+  readonly priority?: "low" | "normal" | "high" | undefined;
+  readonly quietMode?: boolean | undefined;
+  readonly contextScope?:
+    | "conversation"
+    | "workspace-summary"
+    | "conversation-artifacts"
+    | undefined;
+  readonly includeHistorySummary?: boolean | undefined;
+  readonly scopedInstructions?: string | undefined;
+  readonly requireRunConfirmation?: boolean | undefined;
+  readonly allowAutoDispatch?: boolean | undefined;
 }
 
 export interface MessagePart {

@@ -105,7 +105,7 @@ export interface ConversationMembershipChangedEvent extends AgentHubEventBase {
   readonly type: "conversation.membership_changed";
   readonly payload: {
     readonly agentId: Id;
-    readonly action: "added" | "removed";
+    readonly action: "added" | "removed" | "settings-updated";
   };
 }
 

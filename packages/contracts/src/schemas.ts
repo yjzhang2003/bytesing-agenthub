@@ -32,6 +32,13 @@ export const orchestratorDispatchPlanSchema = z.object({
 
 export const providerRuntimeEventSchema = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("provider.session"),
+    runId: idSchema,
+    agentId: idSchema,
+    providerMode: z.literal("claude-code"),
+    sessionId: idSchema,
+  }),
+  z.object({
     type: z.literal("message.delta"),
     runId: idSchema,
     agentId: idSchema,
@@ -193,6 +200,20 @@ export const claudeCodeRunOptionsSchema = z.object({
     .optional(),
 });
 
+export const conversationAgentClaudeSessionSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  conversationId: idSchema,
+  agentId: idSchema,
+  providerMode: z.literal("claude-code"),
+  sessionId: idSchema.nullable(),
+  lastRunId: idSchema.nullable(),
+  claudeCode: claudeCodeRunOptionsSchema.omit({ effort: true, session: true }),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
 export const runtimeRegistrationPayloadSchema = z.object({
   deviceId: idSchema.optional(),
   displayName: z.string().min(1),
@@ -261,6 +282,28 @@ export const updateAgentRequestSchema = z
 export const addConversationAgentRequestSchema = z.object({
   agentId: idSchema,
 });
+
+export const conversationAgentSettingsSchema = z.object({
+  displayNameOverride: z.string().trim().min(1).optional(),
+  responsibilityOverride: z.string().trim().min(1).optional(),
+  notes: z.string().optional(),
+  enabled: z.boolean().optional(),
+  participationMode: z.enum(["manual", "orchestrated", "proactive"]).optional(),
+  priority: z.enum(["low", "normal", "high"]).optional(),
+  quietMode: z.boolean().optional(),
+  contextScope: z
+    .enum(["conversation", "workspace-summary", "conversation-artifacts"])
+    .optional(),
+  includeHistorySummary: z.boolean().optional(),
+  scopedInstructions: z.string().optional(),
+  requireRunConfirmation: z.boolean().optional(),
+  allowAutoDispatch: z.boolean().optional(),
+});
+
+export const updateConversationAgentSettingsRequestSchema = conversationAgentSettingsSchema.refine(
+  (value) => Object.keys(value).length > 0,
+  { message: "At least one conversation agent setting must be provided" },
+);
 
 export const createAgentConversationRequestSchema = z.object({
   workspaceId: idSchema,
@@ -363,6 +406,7 @@ const conversationParticipantSchema = z.object({
   agentId: idSchema,
   addedByUserId: idSchema.nullable(),
   archivedAt: z.string().datetime().nullable(),
+  conversationAgentSettings: conversationAgentSettingsSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -455,12 +499,19 @@ export const workbenchSnapshotSchema = z.object({
 
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
 export type AddConversationAgentRequestPayload = z.infer<typeof addConversationAgentRequestSchema>;
+export type ConversationAgentSettingsPayload = z.infer<typeof conversationAgentSettingsSchema>;
 export type CreateAgentConversationRequestPayload = z.infer<
   typeof createAgentConversationRequestSchema
+>;
+export type UpdateConversationAgentSettingsRequestPayload = z.infer<
+  typeof updateConversationAgentSettingsRequestSchema
 >;
 export type UpdateConversationRequestPayload = z.infer<typeof updateConversationRequestSchema>;
 export type ProviderRuntimeEvent = z.infer<typeof providerRuntimeEventSchema>;
 export type ClaudeCodeRunOptionsPayload = z.infer<typeof claudeCodeRunOptionsSchema>;
+export type ConversationAgentClaudeSessionPayload = z.infer<
+  typeof conversationAgentClaudeSessionSchema
+>;
 export type ClaudeCodeDiscoverySummaryPayload = z.infer<typeof claudeCodeDiscoverySummarySchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type CreateConnectionCheckRequestPayload = z.infer<

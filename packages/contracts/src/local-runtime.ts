@@ -1,6 +1,7 @@
 import type {
   Agent,
   Conversation,
+  ConversationAgentSettings,
   ConversationParticipant,
   Id,
   ISODateTime,
@@ -38,6 +39,20 @@ export interface ClaudeCodeRunOptions {
   readonly disallowedTools?: readonly string[];
   readonly effort?: ClaudeCodeEffort;
   readonly session?: ClaudeCodeSessionOptions;
+}
+
+export interface ConversationAgentClaudeSession {
+  readonly id: Id;
+  readonly ownerUserId: Id;
+  readonly workspaceId: Id;
+  readonly conversationId: Id;
+  readonly agentId: Id;
+  readonly providerMode: "claude-code";
+  readonly sessionId: Id | null;
+  readonly lastRunId: Id | null;
+  readonly claudeCode: Omit<ClaudeCodeRunOptions, "effort" | "session">;
+  readonly createdAt: ISODateTime;
+  readonly updatedAt: ISODateTime;
 }
 
 export interface ProviderHealth {
@@ -197,6 +212,8 @@ export interface AddConversationAgentRequest {
   readonly agentId: Id;
 }
 
+export type UpdateConversationAgentSettingsRequest = ConversationAgentSettings;
+
 export interface CreateAgentConversationRequest {
   readonly workspaceId: Id;
   readonly agentId: Id;
@@ -276,6 +293,8 @@ export const agentHubApiPaths = {
   agents: "/agents",
   conversations: "/conversations",
   conversation: (conversationId: Id) => `/conversations/${encodeURIComponent(conversationId)}`,
+  conversationAgent: (conversationId: Id, agentId: Id) =>
+    `/conversations/${encodeURIComponent(conversationId)}/agents/${encodeURIComponent(agentId)}`,
   activeConversation: (conversationId: Id) =>
     `/conversations/${encodeURIComponent(conversationId)}/active`,
   agentConversations: (agentId: Id) => `/agents/${encodeURIComponent(agentId)}/conversations`,

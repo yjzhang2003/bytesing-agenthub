@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import {
   addConversationAgentRequestSchema,
+  conversationAgentSettingsSchema,
   createAgentConversationRequestSchema,
+  conversationAgentClaudeSessionSchema,
   createConnectionCheckRequestSchema,
   createLocalRunRequestSchema,
   createAgentRequestSchema,
@@ -18,6 +20,7 @@ import {
   workbenchSnapshotSchema,
   workspaceMetadataSchema,
   updateAgentRequestSchema,
+  updateConversationAgentSettingsRequestSchema,
   updateConversationRequestSchema,
 } from "./schemas.js";
 
@@ -120,6 +123,12 @@ export function validateCreateLocalRunRequest(
   return parseWithSchema(createLocalRunRequestSchema, value);
 }
 
+export function validateConversationAgentClaudeSession(
+  value: unknown,
+): ValidationResult<z.infer<typeof conversationAgentClaudeSessionSchema>> {
+  return parseWithSchema(conversationAgentClaudeSessionSchema, value);
+}
+
 export function validateCreateAgentRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createAgentRequestSchema>> {
@@ -132,6 +141,12 @@ export function validateAddConversationAgentRequest(
   return parseWithSchema(addConversationAgentRequestSchema, value);
 }
 
+export function validateConversationAgentSettings(
+  value: unknown,
+): ValidationResult<z.infer<typeof conversationAgentSettingsSchema>> {
+  return parseWithSchema(conversationAgentSettingsSchema, value);
+}
+
 export function validateCreateAgentConversationRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createAgentConversationRequestSchema>> {
@@ -142,6 +157,12 @@ export function validateUpdateAgentRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof updateAgentRequestSchema>> {
   return parseWithSchema(updateAgentRequestSchema, value);
+}
+
+export function validateUpdateConversationAgentSettingsRequest(
+  value: unknown,
+): ValidationResult<z.infer<typeof updateConversationAgentSettingsRequestSchema>> {
+  return parseWithSchema(updateConversationAgentSettingsRequestSchema, value);
 }
 
 export function validateUpdateConversationRequest(

@@ -4,6 +4,7 @@ import {
   isDiffMetadataStale,
   validateAddConversationAgentRequest,
   validateCreateConnectionCheckRequest,
+  validateConversationAgentClaudeSession,
   validateCreateAgentConversationRequest,
   validateCreateLocalRunRequest,
   validateCreateAgentRequest,
@@ -82,6 +83,16 @@ describe("contract validation", () => {
     for (const event of smokeProviderOutputFixtures) {
       expect(validateProviderRuntimeEvent(event).ok).toBe(true);
     }
+
+    expect(
+      validateProviderRuntimeEvent({
+        type: "provider.session",
+        runId: "run_1",
+        agentId: "agent_1",
+        providerMode: "claude-code",
+        sessionId: "session_1",
+      }).ok,
+    ).toBe(true);
   });
 
   it("accepts and preserves Claude Code run options on runtime commands", () => {
@@ -119,6 +130,34 @@ describe("contract validation", () => {
       settingsSource: "managed",
       effort: "high",
     });
+  });
+
+  it("accepts hidden conversation-agent Claude session binding contracts", () => {
+    const now = "2026-05-24T00:00:00.000Z";
+    const result = validateConversationAgentClaudeSession({
+      id: "binding_1",
+      ownerUserId: "user_1",
+      workspaceId: "workspace_1",
+      conversationId: "conversation_1",
+      agentId: "agent_1",
+      providerMode: "claude-code",
+      sessionId: null,
+      lastRunId: null,
+      claudeCode: {
+        permissionPreset: "ask-first",
+        settingsSource: "inherit",
+        runtimeProfileId: "default",
+        mcpProfileId: "none",
+        pluginProfileId: "default",
+        hooksPolicy: "disabled",
+        allowedTools: [],
+        disallowedTools: [],
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   it("detects stale diff metadata fingerprints", () => {
