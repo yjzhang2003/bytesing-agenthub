@@ -1,4 +1,4 @@
-import { ArrowLeft, PanelRightClose, Plus, Trash2 } from "lucide-react";
+import { PanelRightClose, Plus, Trash2 } from "lucide-react";
 import React from "react";
 import type {
   UpdateConversationAgentSettingsRequest,
@@ -73,34 +73,20 @@ export function ContextInspector(props: {
       aria-label={i18n.t("nav.conversationDetails", { fallback: "Conversation details" })}
       className="agenthub-inspector"
     >
-      {props.showPanelToggle || (selection && selection.mode !== "chat-info") ? (
+      {props.showPanelToggle ? (
         <div className="agenthub-inspector-floating-actions">
-          {selection && selection.mode !== "chat-info" ? (
-            <HoverButton
-              aria-label={i18n.t("nav.backToConversationDetails", {
-                fallback: "Back to conversation details",
-              })}
-              className="agenthub-icon-button"
-              onClick={() => props.onSelect(null)}
-              type="button"
-            >
-              <Icon icon={ArrowLeft} />
-            </HoverButton>
-          ) : null}
-          {props.showPanelToggle ? (
-            <HoverButton
-              aria-label={
-                props.collapsed
-                  ? i18n.t("nav.expandInspector", { fallback: "Expand Context Inspector" })
-                  : i18n.t("nav.collapseInspector", { fallback: "Collapse Context Inspector" })
-              }
-              className="agenthub-icon-button"
-              onClick={props.onToggleCollapsed}
-              type="button"
-            >
-              <Icon icon={PanelRightClose} />
-            </HoverButton>
-          ) : null}
+          <HoverButton
+            aria-label={
+              props.collapsed
+                ? i18n.t("nav.expandInspector", { fallback: "Expand Context Inspector" })
+                : i18n.t("nav.collapseInspector", { fallback: "Collapse Context Inspector" })
+            }
+            className="agenthub-icon-button"
+            onClick={props.onToggleCollapsed}
+            type="button"
+          >
+            <Icon icon={PanelRightClose} />
+          </HoverButton>
         </div>
       ) : null}
       {renderInspectorBody(
@@ -181,6 +167,7 @@ function renderInspectorBody(
         {...(onUpdateConversationAgentSettings
           ? { onUpdateConversationAgentSettings }
           : {})}
+        {...(onRemoveAgentFromChat ? { onRemoveAgentFromChat } : {})}
         {...(onOpenGlobalAgentSettings ? { onOpenGlobalAgentSettings } : {})}
       />
     ) : (
@@ -233,6 +220,7 @@ function AgentInChatDetail(props: {
     agentId: string,
     input: UpdateConversationAgentSettingsRequest,
   ) => void | Promise<void>;
+  readonly onRemoveAgentFromChat?: (conversationId: string, agentId: string) => void;
   readonly onOpenGlobalAgentSettings?: (agentId: string) => void;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
@@ -243,13 +231,30 @@ function AgentInChatDetail(props: {
       input,
     );
   };
+  const roleLabel =
+    props.agent.role === "orchestrator"
+      ? i18n.t("agents.orchestrator", { fallback: "Orchestrator" })
+      : i18n.t("agents.worker", { fallback: "Worker" });
   return (
     <div className="agenthub-inspector-body agenthub-agent-in-chat-detail">
       <DetailSection title={i18n.t("agentInChat.title", { fallback: "Agent in this chat" })}>
-        <div className="agenthub-chat-participant-grid">
-          <div className="agenthub-chat-participant-tile">
-            <AgentHubAvatar shape="square">{props.agent.initials}</AgentHubAvatar>
-            <span title={props.agent.label}>{props.agent.label}</span>
+        <div className="agenthub-agent-in-chat-profile">
+          <AgentHubAvatar shape="square">{props.agent.initials}</AgentHubAvatar>
+          <div className="agenthub-agent-in-chat-profile-copy">
+            <strong title={props.agent.label}>{props.agent.label}</strong>
+            <span>
+              {roleLabel} · {props.agent.providerLabel}
+            </span>
+            <small>
+              {props.agent.globalLabel === props.agent.label
+                ? i18n.t("agentInChat.usesGlobalName", {
+                    fallback: "Using global agent name",
+                  })
+                : i18n.t("agentInChat.globalNameValue", {
+                    fallback: "Global name: {name}",
+                    name: props.agent.globalLabel,
+                  })}
+            </small>
           </div>
         </div>
       </DetailSection>
@@ -431,6 +436,7 @@ function AgentInChatDetail(props: {
         />
         <div className="agenthub-chat-delete-row">
           <AgentHubButton
+            className="agenthub-chat-global-agent-settings-button"
             htmlType="button"
             onClick={() => props.onOpenGlobalAgentSettings?.(props.agent.agentId)}
             size="small"
@@ -438,6 +444,22 @@ function AgentInChatDetail(props: {
           >
             {i18n.t("agentInChat.openGlobalSettings", {
               fallback: "Open global agent settings",
+            })}
+          </AgentHubButton>
+          <AgentHubButton
+            className="agenthub-chat-delete-conversation-button"
+            disabled={!props.onRemoveAgentFromChat}
+            htmlType="button"
+            kind="danger"
+            onClick={() =>
+              props.onRemoveAgentFromChat?.(props.agent.conversationId, props.agent.agentId)
+            }
+            size="small"
+            variant="ghost"
+          >
+            <Icon icon={Trash2} />
+            {i18n.t("agentInChat.removeFromChat", {
+              fallback: "Remove agent from this chat",
             })}
           </AgentHubButton>
         </div>

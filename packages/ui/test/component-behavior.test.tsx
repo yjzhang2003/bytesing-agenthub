@@ -850,6 +850,52 @@ describe("AgentHub component behavior", () => {
     );
   });
 
+  it("removes an agent from the active chat from the agent-in-chat settings", async () => {
+    const onRemoveAgentFromChat = vi.fn();
+    const container = await render(
+      <AgentHubWorkbench
+        onRemoveAgentFromChat={onRemoveAgentFromChat}
+        snapshot={snapshotWithParticipants()}
+      />,
+    );
+    const authorButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open Implementer in chat agent",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      authorButton.click();
+      await settle();
+    });
+
+    const removeButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Remove agent from this chat",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      removeButton.click();
+      await settle();
+    });
+
+    expect(onRemoveAgentFromChat).toHaveBeenCalledWith("conversation_1", "agent_2");
+  });
+
+  it("disables agent-in-chat removal when membership removal is unavailable", async () => {
+    const container = await render(<AgentHubWorkbench snapshot={snapshotWithParticipants()} />);
+    const authorButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-label") === "Open Implementer in chat agent",
+    ) as HTMLButtonElement;
+
+    await act(async () => {
+      authorButton.click();
+      await settle();
+    });
+
+    const removeButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Remove agent from this chat",
+    ) as HTMLButtonElement;
+
+    expect(removeButton.disabled).toBe(true);
+  });
+
   it("opens agent-in-chat settings as an overlay in narrow layouts", async () => {
     const container = await render(
       <AgentHubWorkbench layoutMode="narrow" snapshot={snapshotWithParticipants()} />,

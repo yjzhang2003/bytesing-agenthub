@@ -877,15 +877,35 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("Global defaults");
     expect(html).toContain("Implementer");
     expect(html).toContain("Open global agent settings");
+    expect(html).toContain("Remove agent from this chat");
+    expect(html).toContain("agenthub-chat-global-agent-settings-button");
+    expect(html).toContain("agenthub-chat-delete-conversation-button");
     expect(html).toContain("agenthub-inspector-body");
     expect(html).toContain("agenthub-agent-in-chat-detail");
+    expect(html).toContain("agenthub-agent-in-chat-profile");
+    expect(html).toContain("Worker · Claude Code");
+    expect(html).toContain("Global name: Implementer");
     expect(html).toContain("agenthub-chat-settings-group");
     expect(html).toContain("agenthub-chat-settings-row");
-    expect(html).toContain("Back to conversation details");
+    expect(html).not.toContain("Back to conversation details");
+    expect(html).not.toContain('<div class="agenthub-inspector-floating-actions"');
     expect(html).not.toContain(">Clear<");
     expect(workbenchCss).toContain(
       ".agenthub-agent-in-chat-detail .agenthub-input",
     );
+    expect(workbenchCss).toContain("--agenthub-agent-in-chat-label-width: 128px");
+    expect(workbenchCss).toContain(
+      "grid-template-columns: var(--agenthub-agent-in-chat-label-width) minmax(0, 1fr)",
+    );
+    expect(workbenchCss).toContain(".agenthub-agent-in-chat-detail .agenthub-select");
+    expect(workbenchCss).toContain(".agenthub-agent-in-chat-profile");
+    expect(workbenchCss).toContain(".agenthub-button.agenthub-chat-global-agent-settings-button");
+    expect(workbenchCss).toMatch(
+      /\.agenthub-chat-delete-row \{[^}]*display: grid;[^}]*gap: 8px;/,
+    );
+    expect(workbenchCss).toContain("grid-template-columns: 56px minmax(0, 1fr)");
+    expect(workbenchCss).toContain("overflow-wrap: anywhere");
+    expect(workbenchCss).toContain("max-width: none");
     expect(workbenchCss).toContain("border-color: transparent");
     expect(workbenchCss).toContain("text-align: right");
   });

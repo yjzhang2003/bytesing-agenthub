@@ -2129,6 +2129,47 @@ body { overflow: hidden; }
   border-color: transparent;
   padding: 0;
 }
+.agenthub-agent-in-chat-profile {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 6px;
+}
+.agenthub-agent-in-chat-profile .agenthub-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--agenthub-radius);
+  font-size: 13px;
+}
+.agenthub-agent-in-chat-profile-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  align-content: center;
+}
+.agenthub-agent-in-chat-profile-copy strong {
+  min-width: 0;
+  color: var(--agenthub-text);
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.agenthub-agent-in-chat-profile-copy span,
+.agenthub-agent-in-chat-profile-copy small {
+  min-width: 0;
+  color: var(--agenthub-text-secondary);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.agenthub-agent-in-chat-profile-copy small {
+  color: var(--agenthub-text-muted);
+  font-weight: 600;
+}
 .agenthub-chat-add-agent-button {
   width: 48px;
   height: 48px;
@@ -2212,10 +2253,15 @@ body { overflow: hidden; }
   display: none;
 }
 .agenthub-agent-in-chat-detail .agenthub-chat-settings-row .agenthub-settings-control-value {
-  width: min(100%, 262px);
+  width: 100%;
+}
+.agenthub-agent-in-chat-detail .agenthub-chat-settings-row {
+  --agenthub-agent-in-chat-label-width: 128px;
+  grid-template-columns: var(--agenthub-agent-in-chat-label-width) minmax(0, 1fr);
 }
 .agenthub-agent-in-chat-detail .agenthub-input {
   width: 100%;
+  min-width: 0;
   border-color: transparent;
   background: transparent;
   text-align: right;
@@ -2230,13 +2276,33 @@ body { overflow: hidden; }
 }
 .agenthub-agent-in-chat-detail .agenthub-select {
   width: 100%;
+  min-width: 0;
+  max-width: none;
   text-align: right;
   text-align-last: right;
 }
 .agenthub-chat-delete-row {
+  display: grid;
+  gap: 8px;
   border-top: 1px solid var(--agenthub-border);
   margin-top: 7px;
   padding-top: 12px;
+}
+.agenthub-button.agenthub-chat-global-agent-settings-button {
+  width: 100%;
+  min-height: 32px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--agenthub-text);
+  justify-content: center;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+.agenthub-button.agenthub-chat-global-agent-settings-button:hover,
+.agenthub-button.agenthub-chat-global-agent-settings-button:focus-visible {
+  border-color: var(--agenthub-border-strong);
+  background: var(--agenthub-surface-hover);
+  color: var(--agenthub-text);
 }
 .agenthub-button.agenthub-chat-delete-conversation-button {
   width: 100%;
