@@ -95,50 +95,6 @@ Desktop and Web workbenches SHALL link selected timeline items to Context Inspec
 - **WHEN** the selected item is no longer available in the latest snapshot
 - **THEN** the workbench returns the Context Inspector to an empty or unavailable state without crashing
 
-### Requirement: Ant Design-backed workbench controls
-The conversation workbench SHALL use Ant Design-backed AgentHub wrappers for common controls while preserving existing conversation, agent, runtime, and inspector behavior.
-
-#### Scenario: User opens the migrated workbench
-- **WHEN** Desktop or Web renders the migrated workbench
-- **THEN** buttons, text inputs, selects, tooltips, dropdowns, badges, avatars, empty states, loading indicators, and feedback controls use shared AgentHub wrappers where suitable
-
-#### Scenario: User navigates primary workbench surfaces
-- **WHEN** the user switches between conversation, Agents, Connections, Settings, run history, or inspector detail surfaces
-- **THEN** the existing center-view state model, active workspace context, active conversation context, and runtime state remain intact
-
-### Requirement: Composer compatibility during migration
-The composer SHALL preserve agent targeting and runtime-disabled behavior when migrated to Ant Design-backed controls.
-
-#### Scenario: User targets an agent
-- **WHEN** the user selects or mentions an agent in the migrated composer
-- **THEN** the composer submits the same selected agent id, prompt text, and run creation callback behavior as before migration
-
-#### Scenario: Runtime is unavailable
-- **WHEN** the runtime is offline or provider status prevents execution
-- **THEN** the migrated composer displays the disabled reason and prevents run creation through the same runtime-aware state as before migration
-
-### Requirement: Timeline compatibility during chat component evaluation
-The timeline SHALL preserve mixed operational content even if Ant Design X chat primitives are evaluated or adopted.
-
-#### Scenario: Timeline contains mixed content
-- **WHEN** the conversation timeline contains agent messages, user messages, run events, plan cards, permission cards, artifacts, or summaries
-- **THEN** the migrated or retained timeline preserves chronological order, compact density, selection behavior, and Context Inspector linkage
-
-#### Scenario: User clicks an agent message author
-- **WHEN** the user activates an agent author or avatar in the timeline
-- **THEN** the workbench opens that agent's conversation-scoped settings in the right Context Inspector while keeping the active conversation visible
-
-### Requirement: Agent and connection pages use shared controls
-The Agents and Connections center views SHALL use Ant Design-backed controls while retaining the IM-style side-list/detail layout.
-
-#### Scenario: User edits an agent role
-- **WHEN** the migrated Agents page renders the agent list and editor
-- **THEN** list rows, avatars, badges, form fields, validation, and action buttons use shared controls while preserving create, update, and archive workflows
-
-#### Scenario: User views provider status
-- **WHEN** the migrated Connections page renders Claude Code, Codex placeholder, runtime status, or memory status
-- **THEN** status badges, detail rows, refresh controls, empty states, and diagnostics use shared controls while preserving current provider and memory snapshot data
-
 ### Requirement: Modern Agents directory surface
 The Desktop/Web Agents center view SHALL present agents through a compact side-list and a contact-style configuration detail that prioritizes readable identity, role, responsibilities, and capabilities over raw technical configuration.
 
@@ -317,4 +273,148 @@ The conversation timeline SHALL avoid exposing hidden Claude session binding imp
 #### Scenario: First run creates provider session
 - **WHEN** the first run for a conversation-agent binding captures a provider session id
 - **THEN** the timeline remains focused on user and agent messages rather than showing session binding bookkeeping
+
+### Requirement: Header-driven detail actions
+The Desktop and Web conversation workbench SHALL expose contextual detail actions in the conversation header for opening detail surfaces without relying on a generic right-sidebar collapse control as the primary interaction.
+
+#### Scenario: User opens conversation detail from header action
+- **WHEN** the user activates the Conversation Info header action
+- **THEN** the workbench displays the active conversation detail surface while preserving the conversation timeline and composer state
+
+#### Scenario: User opens run detail from header action
+- **WHEN** at least one run is available for the active conversation and the user activates the Run Detail header action
+- **THEN** the workbench displays the active, selected, or most recent run detail surface for that conversation
+
+#### Scenario: No run detail is available
+- **WHEN** no run exists for the active conversation
+- **THEN** the Run Detail header action is disabled or opens an empty run detail state that does not imply a run is active
+
+#### Scenario: Future detail actions are added
+- **WHEN** future Diff, Artifact, Permission, or Runtime detail actions are added to the header
+- **THEN** they use the same contextual detail surface model as Conversation Info and Run Detail
+
+### Requirement: Context detail dismissal
+The conversation detail surface SHALL support dismissal by clicking outside the detail content when it is presented as an overlay or drawer.
+
+#### Scenario: User clicks outside conversation detail
+- **WHEN** Conversation detail is open in an overlay or drawer presentation and the user clicks the blank area outside the detail content
+- **THEN** the workbench closes the detail surface and leaves the conversation timeline and composer unchanged
+
+#### Scenario: User interacts inside detail content
+- **WHEN** a detail surface is open and the user clicks or types inside the detail content
+- **THEN** the workbench keeps the detail surface open
+
+### Requirement: User-facing run timeline summaries
+The conversation timeline SHALL summarize run events using user-facing labels and SHALL NOT expose raw run ids, session ids, override source identifiers, or low-level audit fields by default.
+
+#### Scenario: Run fails
+- **WHEN** a run in the active conversation reaches failed status
+- **THEN** the timeline shows a concise failed run summary with the agent identity and high-level run settings but without raw UUIDs or internal override source labels
+
+#### Scenario: User needs technical run metadata
+- **WHEN** the user opens Run detail for a run
+- **THEN** the detail surface can show technical metadata such as effective permission preset, effort, profile labels, MCP profile, settings source, timing, failure reason, and diagnostic identifiers
+
+#### Scenario: Timeline run card is selected
+- **WHEN** the user selects a run event card in the timeline
+- **THEN** the workbench opens the same Run detail surface used by the Run Detail header action
+
+### Requirement: Run detail effective settings feedback
+The workbench SHALL show the effective Claude Code settings used by a submitted run in Run detail.
+
+#### Scenario: User sends a run with composer overrides
+- **WHEN** the user submits a prompt with composer-selected Claude Code permission and effort settings
+- **THEN** the resulting Run detail displays those effective settings for that run
+
+#### Scenario: Agent defaults are used
+- **WHEN** a run uses agent default Claude Code settings instead of composer overrides
+- **THEN** the resulting Run detail identifies the effective settings without requiring the user to inspect raw agent policy JSON
+
+### Requirement: Composer Claude Code run controls
+The conversation composer SHALL expose concise Claude Code run controls for eligible Claude Code-backed runs.
+
+#### Scenario: Composer targets Claude Code-backed agent
+- **WHEN** the active target agent is backed by Claude Code and the runtime is available
+- **THEN** the composer lets the user inspect and adjust permission preset, runtime profile, MCP profile, effort, and session behavior before sending
+
+#### Scenario: Composer targets unavailable runtime
+- **WHEN** Claude Code controls are visible but the Desktop Runtime or provider is unavailable
+- **THEN** the composer disables run start and displays the relevant provider or runtime explanation
+
+### Requirement: Permission preset selection
+The composer SHALL present human-readable permission presets instead of raw Claude Code flags.
+
+#### Scenario: User selects plan-only mode
+- **WHEN** the user selects Plan only
+- **THEN** the run is queued with a permission preset that prevents file-modifying execution according to the Claude Code profile mapping
+
+#### Scenario: User selects full access mode
+- **WHEN** the user selects Full access
+- **THEN** the composer marks the run as high risk and requires explicit confirmation before sending
+
+### Requirement: Runtime profile visibility in timeline
+The workbench SHALL show the Claude Code runtime profile and permission preset used by each run.
+
+#### Scenario: Run starts with managed profile
+- **WHEN** a Claude Code-backed run appears in the timeline
+- **THEN** the user can see the selected runtime profile, permission preset, MCP profile, and effort level in compact run details
+
+#### Scenario: Run used high-risk permissions
+- **WHEN** a run used Full access or equivalent high-risk permission mode
+- **THEN** the timeline and inspector preserve that fact for later audit and review
+
+### Requirement: Advanced Claude Code controls disclosure
+The workbench SHALL keep advanced Claude Code options discoverable without crowding the default composer.
+
+#### Scenario: User opens advanced run controls
+- **WHEN** the user expands advanced Claude Code controls from the composer
+- **THEN** the workbench exposes settings source mode, hooks policy, allowed/disallowed tools, plugin profile, and session options for that run
+
+#### Scenario: User closes advanced run controls
+- **WHEN** advanced controls are collapsed
+- **THEN** the composer still displays the active high-level profile and permission selections
+
+### Requirement: AgentHub-owned workbench controls
+The conversation workbench SHALL use AgentHub-owned controls for common interactions while preserving existing conversation, agent, runtime, and inspector behavior.
+
+#### Scenario: User opens the migrated workbench
+- **WHEN** Desktop or Web renders the migrated workbench
+- **THEN** buttons, text inputs, selects, tooltips, dropdowns, badges, avatars, empty states, loading indicators, dialogs, tabs, and feedback controls use first-party AgentHub components where suitable
+
+#### Scenario: User navigates primary workbench surfaces
+- **WHEN** the user switches between conversation, Agents, Connections, Settings, run history, or inspector detail surfaces
+- **THEN** the existing center-view state model, active workspace context, active conversation context, and runtime state remain intact
+
+### Requirement: Composer compatibility after component replacement
+The composer SHALL preserve agent targeting, mention suggestions, slash commands, prompt state, and runtime-disabled behavior when migrated to AgentHub-owned controls.
+
+#### Scenario: User targets an agent
+- **WHEN** the user selects or mentions an agent in the migrated composer
+- **THEN** the composer submits the same selected agent id, prompt text, and run creation callback behavior as before migration
+
+#### Scenario: Runtime is unavailable
+- **WHEN** the runtime is offline or provider status prevents execution
+- **THEN** the migrated composer displays the disabled reason and prevents run creation through the same runtime-aware state as before migration
+
+### Requirement: Timeline remains AgentHub-owned
+The timeline SHALL preserve mixed operational content using AgentHub-owned message, card, and action components.
+
+#### Scenario: Timeline contains mixed content
+- **WHEN** the conversation timeline contains agent messages, user messages, run events, plan cards, permission cards, artifacts, or summaries
+- **THEN** the timeline preserves chronological order, compact density, selection behavior, and Context Inspector linkage
+
+#### Scenario: User clicks an agent message author
+- **WHEN** the user activates an agent author or avatar in the timeline
+- **THEN** the workbench opens the Agents page with the corresponding agent selected
+
+### Requirement: Agent and connection pages use AgentHub controls
+The Agents and Connections center views SHALL use AgentHub-owned controls while retaining the IM-style side-list/detail layout.
+
+#### Scenario: User edits an agent role
+- **WHEN** the migrated Agents page renders the agent list and editor
+- **THEN** list rows, avatars, badges, form fields, validation, and action buttons use AgentHub-owned controls while preserving create, update, archive, and new-conversation workflows
+
+#### Scenario: User views provider status
+- **WHEN** the migrated Connections page renders Claude Code, Codex placeholder, runtime status, or memory status
+- **THEN** status badges, detail rows, refresh controls, empty states, and diagnostics use AgentHub-owned controls while preserving current provider and memory snapshot data
 

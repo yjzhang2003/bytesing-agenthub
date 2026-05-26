@@ -346,3 +346,44 @@ The Desktop/Web MVP workbench SHALL show local project creation actions only whe
 - **WHEN** a Desktop user completes New from folder or New default project during conversation creation
 - **THEN** the selected project appears in the picker, can be confirmed for the conversation, and displays name, path label, runtime status, and repository branch when available
 
+### Requirement: MVP component behavior verification
+The Desktop/Web MVP implementation SHALL verify behavior for workbench surfaces that depend on AgentHub-owned component contracts.
+
+#### Scenario: Chat information dialog behavior is ready for review
+- **WHEN** the Chat Info add-agent dialog implementation is considered ready
+- **THEN** verification covers opening the dialog from participant management, initial focus, focus containment, Escape close, cancel/confirm actions, focus return, localized labels, and no access to background workbench controls while the dialog is open
+
+#### Scenario: Settings control behavior is ready for review
+- **WHEN** Settings implementation is considered ready
+- **THEN** verification covers localized accessible names and keyboard operation for theme and Enter-to-send switches
+
+#### Scenario: Search control behavior is ready for review
+- **WHEN** sidebar search controls are considered ready
+- **THEN** verification covers localized accessible names, text entry, clear affordance behavior, disabled behavior where applicable, and compact visual consistency across Chat and Agents sidebars
+
+#### Scenario: Component feedback behavior is ready for review
+- **WHEN** workbench feedback or loading states are considered ready
+- **THEN** verification covers localized loading labels, Toast live-region behavior, feedback tone rendering, and dark/light theme rendering
+
+### Requirement: MVP first-party component verification
+The Desktop/Web MVP implementation SHALL verify that critical workbench surfaces use AgentHub-owned controls without AntD visual leakage.
+
+#### Scenario: Component replacement is ready for review
+- **WHEN** the AntD replacement implementation is considered complete
+- **THEN** verification covers online workbench, chat information dialog, composer, Agents editor, Connections status, Settings preferences, narrow layout, Simplified Chinese rendering, and dark/light theme states using AgentHub-owned controls
+
+#### Scenario: Vendor styling scan runs
+- **WHEN** MVP verification runs
+- **THEN** source and rendered output checks confirm there are no AntD runtime imports, `.ant-*` style dependencies, `agenthub-antd-*` classes, or Ant Design primary-color leakage
+
+### Requirement: MVP component standard coverage
+The Desktop/Web MVP implementation SHALL include a usable component standard for current workbench development.
+
+#### Scenario: Developer reviews component rules
+- **WHEN** a developer needs to add or modify a workbench control
+- **THEN** the repository documents AgentHub component variants, sizes, states, token usage, overlay rules, localization expectations, and examples for current MVP surfaces
+
+#### Scenario: Existing MVP surface uses a common control
+- **WHEN** Composer, Agents, Connections, Settings, Context Inspector, or Chat Info uses a common control
+- **THEN** it uses the documented AgentHub component API rather than local ad hoc markup or a styled vendor component
+

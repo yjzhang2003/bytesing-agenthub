@@ -101,39 +101,6 @@ The MVP Desktop/Web UI SHALL prevent text overflow and incoherent overlap in sup
 - **WHEN** the workbench uses its narrow or mobile-web layout
 - **THEN** controls, labels, timeline cards, and inspector/drawer content remain readable and do not overlap
 
-### Requirement: Ant Design token mapping
-The Desktop/Web visual system SHALL map AgentHub semantic tokens into Ant Design theme tokens while retaining the AgentHub workbench visual language.
-
-#### Scenario: Ant Design control renders in the workbench
-- **WHEN** a migrated Ant Design-backed control renders in a workbench panel
-- **THEN** it uses AgentHub semantic colors, compact spacing, focus styles, border treatment, typography, and status colors rather than unmodified Ant Design defaults
-
-#### Scenario: Theme changes at runtime
-- **WHEN** the user switches between light and dark themes
-- **THEN** both custom AgentHub surfaces and Ant Design-backed controls update consistently from the same theme state
-
-### Requirement: Ant Design density constraints
-The Desktop/Web visual system SHALL constrain Ant Design-backed components to compact developer-workbench density.
-
-#### Scenario: Form controls render in an editor panel
-- **WHEN** Agent, Connections, or Settings forms render with Ant Design-backed controls
-- **THEN** row height, labels, validation messages, spacing, and action placement remain compact enough for repeated desktop workflows
-
-#### Scenario: List rows render in side panels
-- **WHEN** conversation, agent, provider, or settings rows use Ant Design-backed list, avatar, badge, or empty-state primitives
-- **THEN** rows remain dense, aligned with the existing sidebar width rules, and free of oversized card-grid styling
-
-### Requirement: Vendor styling isolation
-The Desktop/Web visual system SHALL isolate vendor component styling behind AgentHub wrappers and theme configuration.
-
-#### Scenario: Feature component uses a common control
-- **WHEN** a feature component needs an Ant Design-backed control
-- **THEN** it applies AgentHub wrapper classes and props rather than patching Ant Design internals with feature-specific global selectors
-
-#### Scenario: Ant Design component markup changes
-- **WHEN** Ant Design updates internal DOM or class names
-- **THEN** AgentHub feature components remain protected by wrapper-level tests and avoid relying on internal Ant Design selectors
-
 ### Requirement: Localized text layout safety
 The Desktop/Web visual system SHALL keep English and Simplified Chinese product strings readable within compact workbench layouts.
 
@@ -155,17 +122,6 @@ The Desktop/Web visual system SHALL provide localized accessible names for produ
 #### Scenario: Keyboard user reviews localized permissions
 - **WHEN** the selected language is Simplified Chinese and the user navigates pending permissions with a keyboard
 - **THEN** focus order, visible focus state, and localized action labels allow the user to inspect, allow once, or deny requests
-
-### Requirement: Localized Ant Design wrappers
-AgentHub Ant Design-backed controls SHALL support localized labels, placeholders, validation messages, and option text through AgentHub-owned wrappers or feature props.
-
-#### Scenario: Settings language control renders
-- **WHEN** Settings renders the language preference with Ant Design-backed controls
-- **THEN** the control uses AgentHub semantic styling, compact density, localized option labels, and accessible names
-
-#### Scenario: Form validation renders in Chinese
-- **WHEN** a product-owned validation message appears while Simplified Chinese is selected
-- **THEN** the message uses Simplified Chinese and retains the same compact spacing and error styling as English
 
 ### Requirement: Settings panel visual structure
 The Desktop/Web Settings surface SHALL use a focused settings-panel layout with category navigation and grouped preference rows that follow AgentHub compact workbench typography, density, radius, and spacing tokens instead of page-specific oversized settings styling.
@@ -266,3 +222,48 @@ The Desktop/Web visual system SHALL provide an AgentHub-owned compact add-agent 
 
 - **WHEN** the workbench uses a narrow or mobile-web layout
 - **THEN** the picker fits within the viewport, keeps search and actions reachable, and scrolls the agent list without horizontal overflow
+
+### Requirement: First-party component token application
+The Desktop/Web visual system SHALL apply AgentHub semantic tokens directly to AgentHub-owned components.
+
+#### Scenario: AgentHub control renders in the workbench
+- **WHEN** a button, input, select, dialog, badge, avatar, tooltip, or feedback control renders in a workbench panel
+- **THEN** it uses AgentHub semantic colors, compact spacing, focus styles, border treatment, typography, and status colors without relying on vendor theme defaults
+
+#### Scenario: Theme changes at runtime
+- **WHEN** the user switches between light and dark themes
+- **THEN** all AgentHub-owned components update consistently from the same semantic token set
+
+### Requirement: Component density constraints
+The Desktop/Web visual system SHALL constrain AgentHub-owned components to compact developer-workbench density.
+
+#### Scenario: Form controls render in an editor panel
+- **WHEN** Agent, Connections, or Settings forms render with AgentHub-owned controls
+- **THEN** row height, labels, validation messages, spacing, and action placement remain compact enough for repeated desktop workflows
+
+#### Scenario: List rows render in side panels
+- **WHEN** conversation, agent, provider, or settings rows use AgentHub-owned list, avatar, badge, or empty-state components
+- **THEN** rows remain dense, aligned with existing sidebar width rules, and free of oversized card-grid styling
+
+### Requirement: Component styling isolation
+The Desktop/Web visual system SHALL isolate component styling through AgentHub-owned classes, CSS variables, and state attributes.
+
+#### Scenario: Feature component uses a common control
+- **WHEN** a feature component needs a common control
+- **THEN** it uses AgentHub component props and stable AgentHub classes rather than patching third-party internal selectors
+
+#### Scenario: Component markup changes
+- **WHEN** an AgentHub component changes its internal markup
+- **THEN** feature surfaces remain protected by component-level tests and documented state contracts
+
+### Requirement: Localized AgentHub components
+AgentHub-owned controls SHALL support localized labels, placeholders, validation messages, and option text through AgentHub component props or feature-owned i18n.
+
+#### Scenario: Settings language control renders
+- **WHEN** Settings renders the language preference with AgentHub-owned controls
+- **THEN** the control uses AgentHub semantic styling, compact density, localized option labels, and accessible names
+
+#### Scenario: Form validation renders in Chinese
+- **WHEN** a product-owned validation message appears while Simplified Chinese is selected
+- **THEN** the message uses Simplified Chinese and retains the same compact spacing and error styling as English
+

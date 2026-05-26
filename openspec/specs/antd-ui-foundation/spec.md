@@ -1,32 +1,30 @@
 ## Purpose
 Define the Ant Design-backed Desktop/Web UI foundation, including wrapper boundaries, theme bridging, migration constraints, Ant Design X evaluation, and verification expectations.
-
 ## Requirements
-
-### Requirement: Ant Design component foundation
-Desktop/Web UI SHALL use Ant Design-backed AgentHub wrappers for common interactive controls where Ant Design provides mature behavior.
+### Requirement: AgentHub component foundation
+Desktop/Web UI SHALL use AgentHub-owned first-party components for common interactive controls.
 
 #### Scenario: Developer implements a common form control
-- **WHEN** a Desktop/Web feature needs a button, input, text area, select, checkbox, switch, form item, tooltip, dropdown, modal, tab, badge, avatar, empty state, skeleton, spinner, or notification
-- **THEN** the feature uses an AgentHub-owned wrapper backed by Ant Design unless the implementation documents why the custom component is required
+- **WHEN** a Desktop/Web feature needs a button, input, text area, select, checkbox, switch, form field, tooltip, dropdown, modal, tab, badge, avatar, empty state, loading indicator, or notification
+- **THEN** the feature uses an AgentHub-owned component whose styling and public API are defined by AgentHub
 
 #### Scenario: Product surface imports UI controls
 - **WHEN** an AgentHub page or feature component renders a common control
-- **THEN** it imports the AgentHub wrapper rather than importing Ant Design components directly
+- **THEN** it imports the AgentHub component rather than importing a styled vendor framework component directly
 
-### Requirement: AgentHub theme bridge
-Desktop/Web UI SHALL provide an Ant Design theme bridge that maps AgentHub semantic tokens to Ant Design theme and component tokens.
+### Requirement: AgentHub theme root
+Desktop/Web UI SHALL apply AgentHub semantic tokens directly through an AgentHub theme root rather than through an Ant Design theme bridge.
 
 #### Scenario: User switches to dark mode
 - **WHEN** the workbench theme state changes to dark mode
-- **THEN** Ant Design-backed controls update to the corresponding dark semantic colors, compact spacing, focus states, status colors, border radii, and typography without losing workbench state
+- **THEN** AgentHub-owned controls update to the corresponding dark semantic colors, compact spacing, focus states, status colors, border radii, and typography without losing workbench state
 
 #### Scenario: User switches to light mode
 - **WHEN** the workbench theme state changes to light mode
-- **THEN** Ant Design-backed controls update to the corresponding light semantic colors, compact spacing, focus states, status colors, border radii, and typography without losing workbench state
+- **THEN** AgentHub-owned controls update to the corresponding light semantic colors, compact spacing, focus states, status colors, border radii, and typography without losing workbench state
 
-### Requirement: Product-owned layout boundaries
-The migration SHALL preserve AgentHub-owned layout shells and use Ant Design inside those shells rather than replacing the workbench with generic Ant Design layout patterns.
+### Requirement: Product-owned behavior boundaries
+The component migration SHALL preserve AgentHub-owned layout shells and workflow behavior while replacing AntD-backed controls.
 
 #### Scenario: User opens the conversation workbench
 - **WHEN** the workbench renders after the migration
@@ -34,25 +32,14 @@ The migration SHALL preserve AgentHub-owned layout shells and use Ant Design ins
 
 #### Scenario: User opens Agents or Connections
 - **WHEN** the user navigates to Agents or Connections
-- **THEN** the pages preserve the desktop IM side-panel/detail layout while using Ant Design-backed controls inside the panels where appropriate
+- **THEN** the pages preserve the desktop IM side-panel/detail layout while using AgentHub-owned controls inside the panels
 
-### Requirement: Ant Design X chat evaluation
-The implementation SHALL evaluate Ant Design X chat primitives before replacing custom timeline or composer components.
-
-#### Scenario: Developer evaluates message bubbles
-- **WHEN** Ant Design X Bubble, Sender, Conversations, or related chat components are considered for adoption
-- **THEN** the evaluation verifies agent-click navigation, message avatars, mixed run-event cards, inspector selection, composer targeting, dense desktop layout, dark/light themes, and narrow layout behavior
-
-#### Scenario: Ant Design X does not meet timeline requirements
-- **WHEN** Ant Design X cannot preserve AgentHub's mixed operational timeline behavior
-- **THEN** the custom timeline remains in place and only shared lower-level controls are migrated
-
-### Requirement: Behavioral compatibility
-The Ant Design migration SHALL preserve existing Control Plane API behavior and workbench user workflows.
+### Requirement: Behavioral compatibility after AntD removal
+The component migration SHALL preserve existing Control Plane API behavior and workbench user workflows.
 
 #### Scenario: User creates or edits an agent
-- **WHEN** the migrated Agents page submits create, update, or archive actions
-- **THEN** it calls the existing agent APIs and refreshes the existing workbench snapshot behavior
+- **WHEN** the migrated Agents page submits create, update, archive, or new-conversation actions
+- **THEN** it calls the existing Agent and Conversation APIs and refreshes the existing workbench snapshot behavior
 
 #### Scenario: User checks Claude Code connection
 - **WHEN** the migrated Connections page displays provider and memory status
@@ -62,13 +49,3 @@ The Ant Design migration SHALL preserve existing Control Plane API behavior and 
 - **WHEN** the migrated composer submits a prompt to a selected agent
 - **THEN** it preserves the current run creation payload shape, agent targeting behavior, and runtime-disabled states
 
-### Requirement: Migration verification
-The migration SHALL include tests and visual checks that protect Ant Design wrapper behavior and AgentHub product workflows.
-
-#### Scenario: UI wrappers are migrated
-- **WHEN** Ant Design-backed wrappers are introduced
-- **THEN** tests cover rendering, disabled states, focus labels, theme integration, and representative form validation behavior without depending on Ant Design internal DOM structure
-
-#### Scenario: Product surfaces are migrated
-- **WHEN** Agents, Connections, Settings, composer, or timeline-adjacent surfaces are migrated
-- **THEN** tests verify the existing user workflows still render and submit through the same AgentHub callbacks
