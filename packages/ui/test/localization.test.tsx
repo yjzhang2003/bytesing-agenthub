@@ -24,6 +24,8 @@ describe("@agenthub/ui localization", () => {
 
     expect(agentHubTranslationKeys).toContain("language.language");
     expect(agentHubTranslationKeys).toContain("chat.addAgent");
+    expect(agentHubTranslationKeys).toContain("collaboration.agentStatus");
+    expect(agentHubTranslationKeys).toContain("collaboration.answerQuestion");
     expect(agentHubTranslationKeys).toContain("chat.searchAgentsToAdd");
     expect(agentHubTranslationKeys).toContain("chat.noMatchingAgents");
     expect(agentHubTranslationKeys).toContain("settings.permissions");
@@ -114,6 +116,8 @@ describe("@agenthub/ui localization", () => {
     expect(createAgentHubI18n("zh-CN").t("chat.addSelectedAgents", { count: "2" })).toBe(
       "添加 2 个",
     );
+    expect(createAgentHubI18n("zh-CN").t("collaboration.agentStatus")).toBe("智能体状态");
+    expect(createAgentHubI18n("zh-CN").t("collaboration.answerQuestion")).toBe("回答问题");
     expect(createAgentHubI18n("zh-CN").t("chat.noMatchingAgents")).toBe("没有匹配的智能体");
     expect(chatInfo).toContain("基本信息");
     expect(narrow).toContain("Implemented ");

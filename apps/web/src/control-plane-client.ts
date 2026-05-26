@@ -31,6 +31,11 @@ const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
   "diff.metadata.updated",
   "conversation.updated",
   "conversation.membership_changed",
+  "collaboration.mention.recorded",
+  "collaboration.task.status_changed",
+  "collaboration.question.created",
+  "collaboration.question.answered",
+  "collaboration.openspec.updated",
 ];
 
 export interface WebControlPlaneClientOptions {

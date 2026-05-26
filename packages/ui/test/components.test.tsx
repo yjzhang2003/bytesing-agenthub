@@ -1634,8 +1634,113 @@ describe("@agenthub/ui components", () => {
     expect(model.inspector.selection).toBeNull();
   });
 
-  it("renders inspector modes for chat info, permission, diff, runtime, artifact, run, and empty states", () => {
-    const model = createWorkbenchViewModel(snapshot(), {
+  it("maps collaboration summaries into compact agent status rows", () => {
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      collaborationStatus: {
+        agents: [
+          {
+            agentId: "agent_1",
+            availability: "active",
+            blockedQuestionCount: 0,
+            currentTaskId: "task_1",
+            currentTaskTitle: "Shape OpenSpec runtime",
+            displayName: "Orchestrator",
+            stale: false,
+          },
+          {
+            agentId: "agent_2",
+            availability: "blocked",
+            blockedQuestionCount: 1,
+            currentTaskId: "task_2",
+            currentTaskTitle: "Build collaboration plugin",
+            displayName: "Implementer",
+            stale: true,
+          },
+        ],
+        conversationId: "conversation_1",
+        openSpecLinks: [
+          {
+            artifact: "tasks",
+            changeName: "add-openspec-agent-collaboration-plugin",
+            projectionStatus: "projected",
+          },
+        ],
+        pendingUserQuestions: [
+          {
+            createdAt: now,
+            prompt: "Which agent should own unaddressed group messages?",
+            questionId: "question_1",
+            requestingAgentId: "agent_2",
+            taskId: "task_2",
+          },
+        ],
+        projectId: "project_1",
+        state: "available",
+      },
+    });
+
+    expect(model.inspector.collaborationStatus?.agents).toMatchObject([
+      {
+        availability: "active",
+        blockedQuestionCount: 0,
+        currentTaskTitle: "Shape OpenSpec runtime",
+        displayName: "Orchestrator",
+      },
+      {
+        availability: "blocked",
+        blockedQuestionCount: 1,
+        currentTaskTitle: "Build collaboration plugin",
+        displayName: "Implementer",
+        stale: true,
+      },
+    ]);
+    expect(model.inspector.collaborationStatus?.openSpecLinks[0]).toMatchObject({
+      artifactLabel: "tasks",
+      changeName: "add-openspec-agent-collaboration-plugin",
+    });
+    expect(model.inspector.collaborationStatus?.pendingUserQuestions[0]).toMatchObject({
+      agentName: "Implementer",
+      questionId: "question_1",
+    });
+  });
+
+  it("renders inspector modes for chat info, collaboration status, permission, diff, runtime, artifact, run, and empty states", () => {
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      collaborationStatus: {
+        agents: [
+          {
+            agentId: "agent_2",
+            availability: "blocked",
+            blockedQuestionCount: 1,
+            currentTaskId: "task_2",
+            currentTaskTitle: "Build collaboration plugin",
+            displayName: "Implementer",
+            stale: false,
+          },
+        ],
+        conversationId: "conversation_1",
+        openSpecLinks: [
+          {
+            artifact: "design",
+            changeName: "add-openspec-agent-collaboration-plugin",
+            projectionStatus: "projected",
+          },
+        ],
+        pendingUserQuestions: [
+          {
+            createdAt: now,
+            prompt: "Confirm the sidebar scope.",
+            questionId: "question_1",
+            requestingAgentId: "agent_2",
+            taskId: "task_2",
+          },
+        ],
+        projectId: "project_1",
+        state: "available",
+      },
+    }, {
       activePlan: {
         assumptions: ["Runtime is online"],
         conversationId: "conversation_1",
@@ -1692,6 +1797,30 @@ describe("@agenthub/ui components", () => {
     expect(
       renderToStaticMarkup(
         <AgentHubWorkbench
+          initialInspectorSelection={{ id: "conversation_1", mode: "collaboration-status" }}
+          viewModel={model}
+        />,
+      ),
+    ).toContain("Agent status");
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "conversation_1", mode: "collaboration-status" }}
+          viewModel={model}
+        />,
+      ),
+    ).toContain("Confirm the sidebar scope.");
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench
+          initialInspectorSelection={{ id: "conversation_1", mode: "collaboration-status" }}
+          viewModel={model}
+        />,
+      ),
+    ).toContain("add-openspec-agent-collaboration-plugin");
+    expect(
+      renderToStaticMarkup(
+        <AgentHubWorkbench
           initialInspectorSelection={{ id: "permission_1", mode: "permission" }}
           viewModel={model}
         />,
@@ -1734,6 +1863,96 @@ describe("@agenthub/ui components", () => {
         <AgentHubWorkbench initialFullScreenDiffId="diff_1" viewModel={model} />,
       ),
     ).toContain("Return to conversation");
+  });
+
+  it("renders unavailable collaboration state in the inspector", () => {
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      collaborationStatus: {
+        agents: [],
+        conversationId: "conversation_1",
+        openSpecLinks: [],
+        pendingUserQuestions: [],
+        projectId: "project_1",
+        state: "unavailable",
+        unavailableReason: "Project directory is unavailable.",
+      },
+    });
+
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "collaboration-status" }}
+        viewModel={model}
+      />,
+    );
+
+    expect(html).toContain("Agent status unavailable");
+    expect(html).toContain("Project directory is unavailable.");
+  });
+
+  it("renders collaboration status rows for active, idle, blocked, stale, and completed agents", () => {
+    const model = createWorkbenchViewModel({
+      ...snapshot(),
+      collaborationStatus: {
+        agents: [
+          {
+            agentId: "agent_1",
+            availability: "active",
+            blockedQuestionCount: 0,
+            currentTaskId: "task_active",
+            currentTaskTitle: "Coordinate dispatch",
+            displayName: "Orchestrator",
+            stale: false,
+          },
+          {
+            agentId: "agent_2",
+            availability: "idle",
+            blockedQuestionCount: 0,
+            currentTaskId: null,
+            currentTaskTitle: null,
+            displayName: "Implementer",
+            stale: false,
+          },
+          {
+            agentId: "agent_researcher",
+            availability: "stale",
+            blockedQuestionCount: 0,
+            currentTaskId: null,
+            currentTaskTitle: null,
+            displayName: "Researcher",
+            stale: true,
+          },
+          {
+            agentId: "agent_completed",
+            availability: "completed",
+            blockedQuestionCount: 0,
+            currentTaskId: null,
+            currentTaskTitle: null,
+            displayName: "Reviewer",
+            stale: false,
+          },
+        ],
+        conversationId: "conversation_1",
+        openSpecLinks: [],
+        pendingUserQuestions: [],
+        projectId: "project_1",
+        state: "available",
+      },
+    });
+
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "conversation_1", mode: "collaboration-status" }}
+        viewModel={model}
+      />,
+    );
+
+    expect(html).toContain("Coordinate dispatch");
+    expect(html).toContain("No current task");
+    expect(html).toContain(">active<");
+    expect(html).toContain(">idle<");
+    expect(html).toContain(">stale<");
+    expect(html).toContain(">completed<");
   });
 
   it("derives chat info membership from explicit participants with legacy fallback", () => {

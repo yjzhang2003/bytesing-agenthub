@@ -1,6 +1,10 @@
 export type {
   AgentTargetViewModel,
   ArtifactViewModel,
+  CollaborationAgentStatusRowViewModel,
+  CollaborationOpenSpecLinkViewModel,
+  CollaborationPendingQuestionViewModel,
+  CollaborationStatusInspectorViewModel,
   ComposerTargetState,
   ConversationListItem,
   DiffViewModel,

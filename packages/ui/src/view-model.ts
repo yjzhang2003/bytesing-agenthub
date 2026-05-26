@@ -19,6 +19,7 @@ import type {
   AgentInChatViewModel,
   ChatInfoParticipantViewModel,
   ChatInfoViewModel,
+  CollaborationStatusInspectorViewModel,
   ComposerClaudeCodeControls,
   DiffViewModel,
   InspectorSelection,
@@ -63,6 +64,14 @@ function shortDate(value: string | null): string {
     return "Unavailable";
   }
   return value.replace("T", " ").replace(".000Z", " UTC");
+}
+
+function artifactLabel(artifact: string): string {
+  return artifact.replace(/-/g, " ");
+}
+
+function projectionStatusLabel(status: string): string {
+  return status.replace(/-/g, " ");
 }
 
 function agentName(agentId: string, agents: readonly Agent[]): string {
@@ -146,6 +155,45 @@ function activeConversation(snapshot: WorkbenchSnapshot | undefined): Conversati
       (conversation) => conversation.id === snapshot.activeConversationId,
     ) ?? snapshot?.conversations[0]
   );
+}
+
+function collaborationStatusFromSnapshot(
+  snapshot: WorkbenchSnapshot | undefined,
+): CollaborationStatusInspectorViewModel | null {
+  const status = snapshot?.collaborationStatus;
+  if (!status) {
+    return null;
+  }
+  return {
+    agents: status.agents.map((agent) => ({
+      agentId: agent.agentId,
+      availability: agent.availability,
+      blockedQuestionCount: agent.blockedQuestionCount,
+      currentTaskId: agent.currentTaskId,
+      currentTaskTitle: agent.currentTaskTitle,
+      displayName: agent.displayName,
+      stale: agent.stale,
+    })),
+    conversationId: status.conversationId,
+    id: status.conversationId,
+    openSpecLinks: status.openSpecLinks.map((link) => ({
+      artifactLabel: artifactLabel(link.artifact),
+      changeName: link.changeName,
+      projectionStatus: link.projectionStatus,
+      projectionStatusLabel: projectionStatusLabel(link.projectionStatus),
+    })),
+    pendingUserQuestions: status.pendingUserQuestions.map((question) => ({
+      agentName: agentName(question.requestingAgentId, snapshot?.agents ?? []),
+      createdAtLabel: shortDate(question.createdAt),
+      prompt: question.prompt,
+      questionId: question.questionId,
+      requestingAgentId: question.requestingAgentId,
+      taskId: question.taskId,
+    })),
+    projectId: status.projectId,
+    state: status.state,
+    unavailableReason: status.unavailableReason ?? null,
+  };
 }
 
 function conversationParticipants(
@@ -959,6 +1007,7 @@ export function normalizeSelection(
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
     readonly chatInfo?: ChatInfoViewModel | null;
+    readonly collaborationStatus?: CollaborationStatusInspectorViewModel | null;
     readonly agentInChat?: AgentInChatViewModel | null;
     readonly agentInChatDetails?: readonly AgentInChatViewModel[];
   },
@@ -970,6 +1019,12 @@ export function normalizeSelection(
     return selection;
   }
   if (selection.mode === "chat-info" && data.chatInfo?.id === selection.id) {
+    return selection;
+  }
+  if (
+    selection.mode === "collaboration-status" &&
+    data.collaborationStatus?.id === selection.id
+  ) {
     return selection;
   }
   if (
@@ -1020,6 +1075,7 @@ export function createWorkbenchViewModel(
   const navigation = navigationFromSnapshot(snapshot, workspace, runtime);
   const composer = composerFromSnapshot(snapshot, runtimeSummary);
   const chatInfo = chatInfoFromSnapshot(snapshot, workspace, runtimeSummary);
+  const collaborationStatus = collaborationStatusFromSnapshot(snapshot);
   const agentInChatDetails = agentInChatDetailsFromSnapshot(snapshot);
   const agentInChat = agentInChatFromSnapshot(snapshot, options.selection ?? null);
   const agentsPage = agentsPageFromSnapshot(snapshot);
@@ -1123,6 +1179,7 @@ export function createWorkbenchViewModel(
     plan,
     runs: runsFromSnapshot(snapshot),
     chatInfo,
+    collaborationStatus,
     agentInChat,
     agentInChatDetails,
   });
@@ -1136,6 +1193,7 @@ export function createWorkbenchViewModel(
     inspector: {
       artifacts,
       chatInfo,
+      collaborationStatus,
       diff: options.activeDiff ?? null,
       permissions,
       plan,

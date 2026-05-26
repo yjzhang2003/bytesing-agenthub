@@ -8,6 +8,7 @@ import type {
   AgentInChatViewModel,
   ArtifactViewModel,
   ChatInfoViewModel,
+  CollaborationStatusInspectorViewModel,
   DiffViewModel,
   InspectorSelection,
   PermissionViewModel,
@@ -64,6 +65,7 @@ export function ContextInspector(props: {
     plan: props.model.inspector.plan,
     runs: props.model.inspector.runs,
     chatInfo: props.model.inspector.chatInfo,
+    collaborationStatus: props.model.inspector.collaborationStatus,
     agentInChat: props.model.inspector.agentInChat,
     agentInChatDetails: props.model.inspector.agentInChatDetails,
   });
@@ -130,6 +132,7 @@ function renderInspectorBody(
           {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
           {...(onUpdateConversation ? { onUpdateConversation } : {})}
           {...(onDeleteConversation ? { onDeleteConversation } : {})}
+          collaborationStatus={model.inspector.collaborationStatus}
           onSelect={onSelect}
         />
       );
@@ -149,6 +152,7 @@ function renderInspectorBody(
         {...(onRemoveAgentFromChat ? { onRemoveAgent: onRemoveAgentFromChat } : {})}
         {...(onUpdateConversation ? { onUpdateConversation } : {})}
         {...(onDeleteConversation ? { onDeleteConversation } : {})}
+        collaborationStatus={model.inspector.collaborationStatus}
         onSelect={onSelect}
       />
     ) : (
@@ -172,6 +176,14 @@ function renderInspectorBody(
       />
     ) : (
       <UnavailableDetail label="Agent unavailable in this chat" />
+    );
+  }
+
+  if (selection.mode === "collaboration-status") {
+    return model.inspector.collaborationStatus ? (
+      <CollaborationStatusDetail status={model.inspector.collaborationStatus} />
+    ) : (
+      <UnavailableDetail label="Agent status unavailable" />
     );
   }
 
@@ -470,6 +482,7 @@ function AgentInChatDetail(props: {
 
 function ChatInfoDetail(props: {
   readonly chat: ChatInfoViewModel;
+  readonly collaborationStatus?: CollaborationStatusInspectorViewModel | null;
   readonly onAddAgent?: (conversationId: string, agentId: string) => void;
   readonly onRemoveAgent?: (conversationId: string, agentId: string) => void;
   readonly onUpdateConversation?: (conversationId: string, input: UpdateConversationRequest) => void;
@@ -553,6 +566,19 @@ function ChatInfoDetail(props: {
           onClose={() => setAddDialogOpen(false)}
           open={addDialogOpen}
         />
+        {props.collaborationStatus ? (
+          <HoverButton
+            onClick={() =>
+              props.onSelect?.({
+                id: props.collaborationStatus?.id ?? props.chat.id,
+                mode: "collaboration-status",
+              })
+            }
+            type="button"
+          >
+            {i18n.t("collaboration.agentStatus", { fallback: "Agent status" })}
+          </HoverButton>
+        ) : null}
       </DetailSection>
       <ChatSettingsGroup title={i18n.t("project.project", { fallback: "Project" })}>
         {props.chat.project ? (
@@ -842,6 +868,109 @@ function UnavailableDetail(props: { readonly label: string }): React.ReactElemen
     <div className="agenthub-inspector-body" data-state="unavailable">
       <h3>{props.label}</h3>
       <p>{i18n.t("inspector.unavailable")}</p>
+    </div>
+  );
+}
+
+function CollaborationStatusDetail(props: {
+  readonly status: CollaborationStatusInspectorViewModel;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  const availabilityLabel = (availability: CollaborationStatusInspectorViewModel["agents"][number]["availability"]) => {
+    switch (availability) {
+      case "active":
+        return i18n.t("collaboration.availability.active", { fallback: "active" });
+      case "idle":
+        return i18n.t("collaboration.availability.idle", { fallback: "idle" });
+      case "blocked":
+        return i18n.t("collaboration.availability.blocked", { fallback: "blocked" });
+      case "stale":
+        return i18n.t("collaboration.availability.stale", { fallback: "stale" });
+      case "completed":
+        return i18n.t("collaboration.availability.completed", { fallback: "completed" });
+      case "failed":
+        return i18n.t("collaboration.availability.failed", { fallback: "failed" });
+      case "unavailable":
+        return i18n.t("collaboration.availability.unavailable", { fallback: "unavailable" });
+      default:
+        return i18n.t("collaboration.availability.unknown", { fallback: "unknown" });
+    }
+  };
+  if (props.status.state === "unavailable") {
+    return (
+      <div className="agenthub-inspector-body" data-state="unavailable">
+        <h3>
+          {i18n.t("collaboration.agentStatusUnavailable", {
+            fallback: "Agent status unavailable",
+          })}
+        </h3>
+        <p>{props.status.unavailableReason ?? i18n.t("inspector.unavailable")}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="agenthub-inspector-body agenthub-collaboration-status">
+      <h3>{i18n.t("collaboration.agentStatus", { fallback: "Agent status" })}</h3>
+      <DetailSection title={i18n.t("collaboration.participants", { fallback: "Participants" })}>
+        <div className="agenthub-collaboration-agent-list">
+          {props.status.agents.map((agent) => (
+            <article
+              className="agenthub-collaboration-agent-row"
+              data-availability={agent.availability}
+              key={agent.agentId}
+            >
+              <div>
+                <strong>{agent.displayName}</strong>
+                <small>{availabilityLabel(agent.availability)}</small>
+              </div>
+              <p>{agent.currentTaskTitle ?? i18n.t("collaboration.noCurrentTask")}</p>
+              <div className="agenthub-collaboration-agent-meta">
+                {agent.blockedQuestionCount > 0 ? (
+                  <span className="agenthub-warning">
+                    {i18n.t("collaboration.blockedQuestions", {
+                      count: agent.blockedQuestionCount,
+                      fallback: `${agent.blockedQuestionCount} blocked question(s)`,
+                    })}
+                  </span>
+                ) : null}
+                {agent.stale ? (
+                  <span>{i18n.t("collaboration.stale", { fallback: "stale" })}</span>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      </DetailSection>
+      {props.status.pendingUserQuestions.length > 0 ? (
+        <DetailSection title={i18n.t("collaboration.userQuestions", { fallback: "User questions" })}>
+          <div className="agenthub-collaboration-question-list">
+            {props.status.pendingUserQuestions.map((question) => (
+              <article className="agenthub-collaboration-question" key={question.questionId}>
+                <strong>{question.agentName}</strong>
+                <p>{question.prompt}</p>
+                <small>{question.createdAtLabel}</small>
+                <HoverButton type="button">
+                  {i18n.t("collaboration.answerQuestion", { fallback: "Answer question" })}
+                </HoverButton>
+              </article>
+            ))}
+          </div>
+        </DetailSection>
+      ) : null}
+      {props.status.openSpecLinks.length > 0 ? (
+        <DetailSection title={i18n.t("collaboration.openspec", { fallback: "OpenSpec" })}>
+          <ul className="agenthub-collaboration-openspec-list">
+            {props.status.openSpecLinks.map((link) => (
+              <li key={`${link.changeName}:${link.artifactLabel}`}>
+                <strong>{link.changeName}</strong>
+                <small>
+                  {link.artifactLabel} · {link.projectionStatusLabel}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </DetailSection>
+      ) : null}
     </div>
   );
 }

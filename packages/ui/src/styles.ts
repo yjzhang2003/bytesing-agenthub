@@ -2089,6 +2089,50 @@ body { overflow: hidden; }
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.agenthub-collaboration-agent-list,
+.agenthub-collaboration-question-list {
+  display: grid;
+  gap: 9px;
+}
+.agenthub-collaboration-agent-row,
+.agenthub-collaboration-question {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface-2);
+}
+.agenthub-collaboration-agent-row > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.agenthub-collaboration-agent-row p,
+.agenthub-collaboration-question p {
+  margin: 0;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-collaboration-agent-meta {
+  min-height: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--agenthub-text-muted);
+  font-size: var(--agenthub-type-sm);
+}
+.agenthub-collaboration-openspec-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agenthub-collaboration-openspec-list li {
+  display: grid;
+  gap: 2px;
+}
 .agenthub-chat-participant-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

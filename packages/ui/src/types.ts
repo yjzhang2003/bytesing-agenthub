@@ -3,6 +3,8 @@ import type {
   Artifact,
   ClaudeCodeDiscoverySummary,
   ClaudeCodeRunOptions,
+  CollaborationAgentAvailability,
+  CollaborationProjectionStatus,
   DiffFileSummary,
   MemoryHealth,
   PermissionRequest,
@@ -43,6 +45,7 @@ export type InspectorMode =
   | "empty"
   | "chat-info"
   | "conversation-agent"
+  | "collaboration-status"
   | "plan"
   | "permission"
   | "diff"
@@ -333,6 +336,43 @@ export interface ChatInfoViewModel {
   readonly note: string | null;
 }
 
+export interface CollaborationAgentStatusRowViewModel {
+  readonly agentId: string;
+  readonly displayName: string;
+  readonly availability: CollaborationAgentAvailability;
+  readonly currentTaskId: string | null;
+  readonly currentTaskTitle: string | null;
+  readonly blockedQuestionCount: number;
+  readonly stale: boolean;
+}
+
+export interface CollaborationOpenSpecLinkViewModel {
+  readonly changeName: string;
+  readonly artifactLabel: string;
+  readonly projectionStatus: CollaborationProjectionStatus;
+  readonly projectionStatusLabel: string;
+}
+
+export interface CollaborationPendingQuestionViewModel {
+  readonly questionId: string;
+  readonly requestingAgentId: string;
+  readonly agentName: string;
+  readonly taskId: string | null;
+  readonly prompt: string;
+  readonly createdAtLabel: string;
+}
+
+export interface CollaborationStatusInspectorViewModel {
+  readonly id: string;
+  readonly conversationId: string;
+  readonly projectId: string | null;
+  readonly state: "available" | "unavailable";
+  readonly unavailableReason: string | null;
+  readonly agents: readonly CollaborationAgentStatusRowViewModel[];
+  readonly openSpecLinks: readonly CollaborationOpenSpecLinkViewModel[];
+  readonly pendingUserQuestions: readonly CollaborationPendingQuestionViewModel[];
+}
+
 export interface InspectorSelection {
   readonly mode: InspectorMode;
   readonly id: string;
@@ -365,6 +405,7 @@ export interface WorkbenchViewModel {
     readonly artifacts: readonly ArtifactViewModel[];
     readonly runs: readonly RunViewModel[];
     readonly chatInfo: ChatInfoViewModel | null;
+    readonly collaborationStatus: CollaborationStatusInspectorViewModel | null;
     readonly agentInChat: AgentInChatViewModel | null;
     readonly agentInChatDetails: readonly AgentInChatViewModel[];
   };

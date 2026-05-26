@@ -22,6 +22,10 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+function eventRequiresSnapshotRefresh(type: string): boolean {
+  return type.startsWith("collaboration.");
+}
+
 function AgentHubWebApp(): React.ReactElement {
   const [snapshot, setSnapshot] = React.useState<WorkbenchSnapshot | undefined>();
   const [loading, setLoading] = React.useState(true);
@@ -56,6 +60,10 @@ function AgentHubWebApp(): React.ReactElement {
     const stream = client.openEvents((event) => {
       if (snapshotRef.current) {
         notifyForAgentHubEvent(snapshotRef.current, event);
+      }
+      if (eventRequiresSnapshotRefresh(event.type)) {
+        void loadSnapshot();
+        return;
       }
       setSnapshot((current) => {
         if (!current) {
