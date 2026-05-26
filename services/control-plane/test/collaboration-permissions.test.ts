@@ -26,6 +26,99 @@ describe("CollaborationService", () => {
     expect(service.routeMention(agent("worker")).mode).toBe("direct-agent");
   });
 
+  it("resolves agent and user mentions with collaboration intent", () => {
+    const service = new CollaborationService();
+    const reviewer = { ...agent("worker"), id: "agent_reviewer", displayName: "Reviewer" };
+    const implementer = { ...agent("worker"), id: "agent_implementer", displayName: "Implementer" };
+
+    expect(
+      service.resolveGroupMessageRoute({
+        content: "@Reviewer please review the auth flow",
+        ownerUserId: "user_1",
+        agents: [reviewer, implementer],
+      }),
+    ).toMatchObject({
+      mode: "agent-mention",
+      agentId: "agent_reviewer",
+      mentionPurpose: "review",
+      requiresPlanApproval: false,
+    });
+
+    expect(
+      service.resolveGroupMessageRoute({
+        content: "@Implementer implement the storage adapter",
+        ownerUserId: "user_1",
+        agents: [reviewer, implementer],
+      }),
+    ).toMatchObject({
+      mode: "agent-mention",
+      agentId: "agent_implementer",
+      mentionPurpose: "task-handoff",
+      requiresPlanApproval: false,
+    });
+
+    expect(
+      service.resolveGroupMessageRoute({
+        content: "@user should we allow auto-dispatch?",
+        ownerUserId: "user_1",
+        agents: [reviewer, implementer],
+      }),
+    ).toMatchObject({
+      mode: "user-question",
+      userId: "user_1",
+      mentionPurpose: "user-question",
+      requiresPlanApproval: false,
+    });
+  });
+
+  it("routes unaddressed group messages to Orchestrator without auto-dispatch", () => {
+    const service = new CollaborationService();
+    const orchestrator = {
+      ...agent("orchestrator"),
+      id: "agent_orchestrator",
+      displayName: "Orchestrator",
+    };
+    const worker = { ...agent("worker"), id: "agent_worker", displayName: "Implementer" };
+
+    expect(
+      service.resolveGroupMessageRoute({
+        content: "We need to coordinate the storage change",
+        ownerUserId: "user_1",
+        agents: [orchestrator, worker],
+      }),
+    ).toMatchObject({
+      mode: "orchestrator-coordinate",
+      agentId: "agent_orchestrator",
+      requiresPlanApproval: true,
+      autoDispatchAllowed: false,
+    });
+
+    expect(
+      service.resolveGroupMessageRoute({
+        content: "We need to coordinate the storage change",
+        ownerUserId: "user_1",
+        agents: [orchestrator, worker],
+        allowAutoDispatch: true,
+      }),
+    ).toMatchObject({
+      mode: "orchestrator-coordinate",
+      requiresPlanApproval: false,
+      autoDispatchAllowed: true,
+    });
+  });
+
+  it("rejects unknown group mentions", () => {
+    const service = new CollaborationService();
+
+    expect(() =>
+      service.resolveGroupMessageRoute({
+        content: "@Missing please review this",
+        ownerUserId: "user_1",
+        agents: [{ ...agent("worker"), id: "agent_reviewer", displayName: "Reviewer" }],
+      }),
+    ).toThrow("Mention target not found");
+  });
+
   it("validates dispatch plans and creates assignments", () => {
     const service = new CollaborationService();
     const plan = service.createDraftPlan("user_1", {

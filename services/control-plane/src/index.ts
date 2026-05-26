@@ -4,6 +4,13 @@ export { DiffArtifactService } from "./diffs.js";
 export type { FullDiffProvider, FullDiffResult } from "./diffs.js";
 export { PermissionService } from "./permissions.js";
 export type { PermissionCreateInput } from "./permissions.js";
+export { ProjectCollaborationRuntime } from "./project-collaboration-runtime.js";
+export type {
+  CollaborationScope,
+  ProjectCollaborationRuntimeOptions,
+} from "./project-collaboration-runtime.js";
+export { OpenSpecProjectionService } from "./openspec-projection.js";
+export type { OpenSpecProjectionServiceOptions } from "./openspec-projection.js";
 export { AuthError, parseBearerToken, verifySupabaseJwt } from "./auth.js";
 export { ControlPlaneEventBus } from "./events.js";
 export { readControlPlaneConfig } from "./config.js";

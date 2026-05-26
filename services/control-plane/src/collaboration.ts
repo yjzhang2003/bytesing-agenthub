@@ -1,4 +1,12 @@
-import type { Agent, Conversation, Id, ISODateTime, PlanStatus, Run } from "@agenthub/contracts";
+import type {
+  Agent,
+  CollaborationMentionPurpose,
+  Conversation,
+  Id,
+  ISODateTime,
+  PlanStatus,
+  Run,
+} from "@agenthub/contracts";
 import {
   type OrchestratorDispatchPlan,
   validateOrchestratorDispatchPlan,
@@ -16,6 +24,43 @@ export interface MentionRoute {
   readonly mode: "direct-agent" | "orchestrator-plan";
   readonly agentId: Id;
 }
+
+export interface GroupMessageRouteInput {
+  readonly content: string;
+  readonly ownerUserId: Id;
+  readonly agents: readonly Agent[];
+  readonly allowAutoDispatch?: boolean;
+}
+
+export type GroupMessageRoute =
+  | {
+      readonly mode: "agent-mention";
+      readonly agentId: Id;
+      readonly mentionPurpose: Exclude<CollaborationMentionPurpose, "user-question">;
+      readonly requiresPlanApproval: false;
+      readonly autoDispatchAllowed: false;
+    }
+  | {
+      readonly mode: "user-question";
+      readonly userId: Id;
+      readonly mentionPurpose: "user-question";
+      readonly requiresPlanApproval: false;
+      readonly autoDispatchAllowed: false;
+    }
+  | {
+      readonly mode: "orchestrator-plan";
+      readonly agentId: Id;
+      readonly mentionPurpose: "task-handoff";
+      readonly requiresPlanApproval: true;
+      readonly autoDispatchAllowed: false;
+    }
+  | {
+      readonly mode: "orchestrator-coordinate";
+      readonly agentId: Id;
+      readonly mentionPurpose: "task-handoff" | "discussion";
+      readonly requiresPlanApproval: boolean;
+      readonly autoDispatchAllowed: boolean;
+    };
 
 export interface PlanRecord {
   readonly id: Id;
@@ -69,6 +114,59 @@ export class CollaborationService {
     return {
       mode: target.role === "orchestrator" ? "orchestrator-plan" : "direct-agent",
       agentId: target.id,
+    };
+  }
+
+  resolveGroupMessageRoute(input: GroupMessageRouteInput): GroupMessageRoute {
+    const mention = this.#firstMention(input.content);
+    if (mention) {
+      if (mention.toLowerCase() === "user") {
+        return {
+          mode: "user-question",
+          userId: input.ownerUserId,
+          mentionPurpose: "user-question",
+          requiresPlanApproval: false,
+          autoDispatchAllowed: false,
+        };
+      }
+
+      const target = input.agents.find(
+        (agent) =>
+          agent.id.toLowerCase() === mention.toLowerCase() ||
+          agent.displayName.toLowerCase() === mention.toLowerCase(),
+      );
+      if (!target) {
+        throw new Error("Mention target not found");
+      }
+      if (target.role === "orchestrator") {
+        return {
+          mode: "orchestrator-plan",
+          agentId: target.id,
+          mentionPurpose: "task-handoff",
+          requiresPlanApproval: true,
+          autoDispatchAllowed: false,
+        };
+      }
+      return {
+        mode: "agent-mention",
+        agentId: target.id,
+        mentionPurpose: this.#inferMentionPurpose(input.content),
+        requiresPlanApproval: false,
+        autoDispatchAllowed: false,
+      };
+    }
+
+    const orchestrator = input.agents.find((agent) => agent.role === "orchestrator");
+    if (!orchestrator) {
+      throw new Error("Orchestrator agent not found");
+    }
+    const autoDispatchAllowed = input.allowAutoDispatch === true;
+    return {
+      mode: "orchestrator-coordinate",
+      agentId: orchestrator.id,
+      mentionPurpose: this.#looksCoordinated(input.content) ? "task-handoff" : "discussion",
+      requiresPlanApproval: !autoDispatchAllowed,
+      autoDispatchAllowed,
     };
   }
 
@@ -141,5 +239,29 @@ export class CollaborationService {
       throw new Error("Plan not found");
     }
     return plan;
+  }
+
+  #firstMention(content: string): string | null {
+    const match = content.match(/@([A-Za-z0-9._-]+)/);
+    return match?.[1] ?? null;
+  }
+
+  #inferMentionPurpose(
+    content: string,
+  ): Exclude<CollaborationMentionPurpose, "user-question"> {
+    if (/\b(review|audit|check)\b/i.test(content)) {
+      return "review";
+    }
+    if (/\b(status|progress|update|nudge)\b/i.test(content)) {
+      return "status-nudge";
+    }
+    if (/\b(implement|build|create|fix|task|handoff|assign)\b/i.test(content)) {
+      return "task-handoff";
+    }
+    return "discussion";
+  }
+
+  #looksCoordinated(content: string): boolean {
+    return /\b(coordinate|plan|dispatch|assign|implement|build|fix|work)\b/i.test(content);
   }
 }

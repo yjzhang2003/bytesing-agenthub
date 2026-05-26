@@ -4,6 +4,10 @@ import type {
   AgentHubProviderMode,
   ClaudeCodeDiscoverySummary,
   ClaudeCodeRunOptions,
+  CollaborationMentionPurpose,
+  CollaborationProjectionStatus,
+  CollaborationStatusSummary,
+  CollaborationTaskStatus,
   Conversation,
   ConversationAgentClaudeSession,
   ConversationParticipant,
@@ -92,21 +96,181 @@ export class ControlPlaneRegistry {
   readonly #providerHealth = new Map<Id, ProviderHealth>();
   readonly #memoryHealth = new Map<Id, MemoryHealth>();
   readonly #claudeCodeDiscovery = new Map<Id, ClaudeCodeDiscoverySummary>();
+  readonly #collaborationStatusProvider:
+    | ((
+        ownerUserId: Id,
+        input: {
+          readonly workspaceId: Id;
+          readonly conversationId: Id;
+          readonly projectId: Id | null;
+        },
+      ) => CollaborationStatusSummary | null)
+    | null;
 
   constructor(
     options: {
       readonly events?: ControlPlaneEventBus;
       readonly now?: () => Date;
       readonly offlineTimeoutMs?: number;
+      readonly collaborationStatusProvider?: (
+        ownerUserId: Id,
+        input: {
+          readonly workspaceId: Id;
+          readonly conversationId: Id;
+          readonly projectId: Id | null;
+        },
+      ) => CollaborationStatusSummary | null;
     } = {},
   ) {
     this.#events = options.events ?? new ControlPlaneEventBus();
     this.#now = options.now ?? (() => new Date());
     this.#offlineTimeoutMs = options.offlineTimeoutMs ?? 45_000;
+    this.#collaborationStatusProvider = options.collaborationStatusProvider ?? null;
   }
 
   get events(): ControlPlaneEventBus {
     return this.#events;
+  }
+
+  recordCollaborationMention(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly agentId?: Id | null;
+      readonly taskId?: Id | null;
+      readonly questionId?: Id | null;
+      readonly purpose: CollaborationMentionPurpose;
+    },
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "collaboration.mention.recorded",
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        agentId: input.agentId ?? null,
+        taskId: input.taskId ?? null,
+        questionId: input.questionId ?? null,
+        purpose: input.purpose,
+      },
+    });
+  }
+
+  recordCollaborationTaskStatus(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly agentId: Id;
+      readonly taskId: Id;
+      readonly status: CollaborationTaskStatus;
+    },
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "collaboration.task.status_changed",
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        agentId: input.agentId,
+        taskId: input.taskId,
+        status: input.status,
+      },
+    });
+  }
+
+  recordCollaborationUserQuestion(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly questionId: Id;
+      readonly agentId?: Id | null;
+      readonly taskId?: Id | null;
+    },
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "collaboration.question.created",
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        questionId: input.questionId,
+        agentId: input.agentId ?? null,
+        taskId: input.taskId ?? null,
+      },
+    });
+  }
+
+  answerCollaborationUserQuestion(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly questionId: Id;
+      readonly agentId?: Id | null;
+      readonly taskId?: Id | null;
+    },
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "collaboration.question.answered",
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        questionId: input.questionId,
+        agentId: input.agentId ?? null,
+        taskId: input.taskId ?? null,
+      },
+    });
+  }
+
+  recordCollaborationOpenSpecProjection(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly openspecChangeName: string;
+      readonly projectionStatus: CollaborationProjectionStatus;
+    },
+  ): void {
+    this.#events.publish({
+      id: crypto.randomUUID(),
+      type: "collaboration.openspec.updated",
+      ownerUserId,
+      workspaceId: input.workspaceId,
+      conversationId: input.conversationId,
+      runId: null,
+      occurredAt: this.#now().toISOString(),
+      payload: {
+        openspecChangeName: input.openspecChangeName,
+        projectionStatus: input.projectionStatus,
+      },
+    });
+  }
+
+  refreshCollaborationStatus(
+    ownerUserId: Id,
+    input: {
+      readonly workspaceId: Id;
+      readonly conversationId: Id;
+      readonly projectId: Id | null;
+    },
+  ): CollaborationStatusSummary | null {
+    return this.#collaborationStatusProvider?.(ownerUserId, input) ?? null;
   }
 
   registerRuntimeDevice(ownerUserId: Id, input: RegisterRuntimeDeviceInput): RuntimeDevice {
@@ -900,6 +1064,15 @@ export class ControlPlaneRegistry {
     )
       ? (this.#activeConversationIds.get(ownerUserId) ?? defaultConversation.id)
       : defaultConversation.id;
+    const activeConversation =
+      conversations.find((conversation) => conversation.id === activeConversationId) ?? null;
+    const collaborationStatus = activeConversation
+      ? this.refreshCollaborationStatus(ownerUserId, {
+          workspaceId: activeConversation.workspaceId,
+          conversationId: activeConversation.id,
+          projectId: activeConversation.projectId,
+        })
+      : null;
 
     return {
       authenticated: true,
@@ -927,6 +1100,7 @@ export class ControlPlaneRegistry {
         (message) => message.ownerUserId === ownerUserId,
       ),
       availableActions: runtimeDeviceId ? ["run.start"] : [],
+      collaborationStatus,
     };
   }
 
