@@ -547,21 +547,25 @@ body { overflow: hidden; }
   width: 100%;
   height: 100%;
 }
-.agenthub-workbench[data-layout="wide"] .agenthub-motion-right-panel {
-  position: fixed;
-  inset: 64px 0 0 auto;
-  z-index: 30;
-  width: var(--agenthub-right-column);
-  height: calc(100dvh - 64px);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, .24);
+.agenthub-workbench[data-layout="wide"] .agenthub-motion-right-panel,
+.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  position: relative;
+  z-index: auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  box-shadow: none;
   transition:
     opacity var(--agenthub-motion-medium),
     transform var(--agenthub-motion-medium);
 }
-.agenthub-workbench[data-layout="wide"][data-right-collapsed="true"] .agenthub-motion-right-panel {
+.agenthub-workbench[data-layout="wide"][data-right-collapsed="true"] .agenthub-motion-right-panel,
+.agenthub-workbench[data-layout="standard"][data-right-collapsed="true"] .agenthub-motion-right-panel {
   opacity: 0;
   pointer-events: none;
-  transform: translateX(100%);
+  transform: none;
 }
 .agenthub-left-nav {
   position: relative;
@@ -602,6 +606,24 @@ body { overflow: hidden; }
   min-width: 0;
   overflow: hidden;
   background: var(--agenthub-bg);
+}
+.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-center,
+.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-center {
+  grid-template-columns: minmax(0, 1fr) var(--agenthub-right-column);
+}
+.agenthub-workbench[data-layout="wide"][data-center-view="conversation"][data-right-collapsed="true"] .agenthub-center,
+.agenthub-workbench[data-layout="standard"][data-center-view="conversation"][data-right-collapsed="true"] .agenthub-center {
+  grid-template-columns: minmax(0, 1fr) 0px;
+}
+.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-conversation-header,
+.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-conversation-header {
+  grid-column: 1 / 3;
+}
+.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-chat-thread,
+.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-composer,
+.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-chat-thread,
+.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-composer {
+  grid-column: 1;
 }
 .agenthub-inspector {
   border-left: 1px solid var(--agenthub-border);
@@ -2740,9 +2762,8 @@ body { overflow: hidden; }
   padding: 14px 16px;
   border-bottom: 1px solid var(--agenthub-border);
 }
-.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="true"] { grid-template-columns: 58px minmax(0, 1fr); }
-.agenthub-workbench[data-left-collapsed="true"][data-right-collapsed="false"] { grid-template-columns: 58px minmax(0, 1fr); }
-.agenthub-workbench[data-left-collapsed="false"][data-right-collapsed="true"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr); }
+.agenthub-workbench[data-layout="wide"][data-left-collapsed="true"] { grid-template-columns: 58px minmax(0, 1fr); }
+.agenthub-workbench[data-layout="wide"][data-left-collapsed="false"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr); }
 .agenthub-workbench[data-center-view="agents"],
 .agenthub-workbench[data-center-view="settings"] {
   grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr) 0px;
@@ -2783,18 +2804,6 @@ body { overflow: hidden; }
   width: min(86vw, 340px);
   height: 100dvh;
   box-shadow: 0 20px 70px rgba(0, 0, 0, .32);
-}
-.agenthub-workbench[data-layout="standard"] .agenthub-motion-right-panel {
-  position: fixed;
-  inset: 64px 0 0 auto;
-  z-index: 30;
-  width: min(80vw, 340px);
-  min-width: min(80vw, 340px);
-  max-width: min(80vw, 340px);
-  height: calc(100dvh - 64px);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, .32);
-  contain: layout paint;
-  will-change: transform, opacity;
 }
 .agenthub-workbench[data-layout="narrow"] .agenthub-motion-right-panel,
 .agenthub-workbench[data-layout="mobile-web"] .agenthub-motion-right-panel {

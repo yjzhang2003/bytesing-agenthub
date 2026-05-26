@@ -235,12 +235,12 @@ export function AgentHubWorkbench(props: {
     ? { duration: 0 }
     : { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] as const };
   const mobileLayout = layoutMode === "narrow" || layoutMode === "mobile-web";
-  const overlayInspectorLayout = mobileLayout || layoutMode === "standard";
+  const overlayInspectorLayout = mobileLayout;
   const managementPage = centerView !== "conversation";
   const compactLeftNavigation = false;
   const renderLeftNavigation = !mobileLayout;
   const renderMobileLeftNavigation = mobileLayout && mobileLeftOpen;
-  const renderInspector = !managementPage && !mobileLayout && layoutMode === "wide";
+  const renderInspector = !managementPage && !mobileLayout;
   const renderOverlayInspector =
     !renderInspector && !managementPage && overlayInspectorLayout && mobileRightOpen;
   const fullScreenDiff =
@@ -755,6 +755,48 @@ export function AgentHubWorkbench(props: {
                 />
               ) : (
                 <>
+                  {renderInspector ? (
+                    <div
+                      aria-hidden={rightCollapsed ? "true" : undefined}
+                      className="agenthub-motion-right-panel"
+                    >
+                      <ContextInspector
+                        collapsed={rightCollapsed}
+                        model={model}
+                        {...(props.onAddAgentToChat
+                          ? { onAddAgentToChat: props.onAddAgentToChat }
+                          : {})}
+                        {...(props.onRemoveAgentFromChat
+                          ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
+                          : {})}
+                        {...(props.onUpdateConversation
+                          ? { onUpdateConversation: props.onUpdateConversation }
+                          : {})}
+                        {...(props.onDeleteConversation
+                          ? { onDeleteConversation: props.onDeleteConversation }
+                          : {})}
+                        {...(props.onUpdateConversationAgentSettings
+                          ? {
+                              onUpdateConversationAgentSettings:
+                                props.onUpdateConversationAgentSettings,
+                            }
+                          : {})}
+                        onOpenFullScreenDiff={() => {
+                          if (model.inspector.diff) {
+                            setFullScreenDiffId(model.inspector.diff.id);
+                          }
+                        }}
+                        onOpenGlobalAgentSettings={openGlobalAgentSettings}
+                        onSelect={setSelection}
+                        onToggleCollapsed={() => {
+                          setMobileRightOpen(false);
+                          setRightCollapsed((current) => !current);
+                        }}
+                        selection={selection}
+                        showPanelToggle
+                      />
+                    </div>
+                  ) : null}
                   <ChatTimeline
                     items={model.timeline}
                     selected={selection}
@@ -775,42 +817,6 @@ export function AgentHubWorkbench(props: {
                 </>
               )}
             </section>
-            {renderInspector ? (
-              <div
-                aria-hidden={rightCollapsed ? "true" : undefined}
-                className="agenthub-motion-right-panel"
-              >
-                <ContextInspector
-                  collapsed={rightCollapsed}
-                  model={model}
-                  {...(props.onAddAgentToChat ? { onAddAgentToChat: props.onAddAgentToChat } : {})}
-                  {...(props.onRemoveAgentFromChat
-                    ? { onRemoveAgentFromChat: props.onRemoveAgentFromChat }
-                    : {})}
-                  {...(props.onUpdateConversation
-                    ? { onUpdateConversation: props.onUpdateConversation }
-                    : {})}
-                  {...(props.onDeleteConversation
-                    ? { onDeleteConversation: props.onDeleteConversation }
-                    : {})}
-                  {...(props.onUpdateConversationAgentSettings
-                    ? { onUpdateConversationAgentSettings: props.onUpdateConversationAgentSettings }
-                    : {})}
-                  onOpenFullScreenDiff={() => {
-                    if (model.inspector.diff) {
-                      setFullScreenDiffId(model.inspector.diff.id);
-                    }
-                  }}
-                  onOpenGlobalAgentSettings={openGlobalAgentSettings}
-                  onSelect={setSelection}
-                  onToggleCollapsed={() => {
-                    setMobileRightOpen(false);
-                    setRightCollapsed((current) => !current);
-                  }}
-                  selection={selection}
-                />
-              </div>
-            ) : null}
             <AnimatePresence initial={false}>
               {renderOverlayInspector ? (
                 <>

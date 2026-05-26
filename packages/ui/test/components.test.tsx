@@ -655,7 +655,7 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("Open run details");
     expect(html.match(/aria-label="Open chat information for MVP workbench"/g)).toHaveLength(1);
     expect(html).not.toContain("agenthub-mobile-detail-action");
-    expect(html).not.toContain("Collapse Context Inspector");
+    expect(html).toContain("Collapse Context Inspector");
   });
 
   it("disables the run detail header action when the conversation has no runs", () => {
@@ -909,7 +909,7 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain("agenthub-chat-settings-group");
     expect(html).toContain("agenthub-chat-settings-row");
     expect(html).not.toContain("Back to conversation details");
-    expect(html).not.toContain('<div class="agenthub-inspector-floating-actions"');
+    expect(html).toContain("agenthub-inspector-floating-actions");
     expect(html).not.toContain(">Clear<");
     expect(workbenchCss).toContain(
       ".agenthub-agent-in-chat-detail .agenthub-input",
@@ -2038,7 +2038,7 @@ describe("@agenthub/ui components", () => {
     expect(withoutCallbacks).toContain("Implementer");
     expect(withoutCallbacks).toContain("disabled");
     expect(withoutCallbacks).toContain("agenthub-desktop-inspector-toggle");
-    expect(withoutCallbacks).not.toContain('<div class="agenthub-inspector-floating-actions"');
+    expect(withoutCallbacks).toContain("agenthub-inspector-floating-actions");
     expect(withCallbacks).toContain("agenthub-chat-add-agent-list");
     expect(withCallbacks).toContain("agenthub-chat-add-agent-option");
     expect(withCallbacks).toContain("agenthub-chat-add-agent-check");
@@ -2063,15 +2063,56 @@ describe("@agenthub/ui components", () => {
     expect(workbenchCss).toContain(".agenthub-chat-add-agent-button {\n  width: 48px;");
     expect(workbenchCss).toContain("border: 1px dashed var(--agenthub-border);");
     expect(workbenchCss).toContain("--agenthub-right-column: clamp(300px, 24vw, 340px);");
-    expect(workbenchCss).toContain("width: min(80vw, 340px);");
     expect(workbenchCss).toContain(".agenthub-chat-settings-group");
     expect(workbenchCss).toContain(".agenthub-inspector-floating-actions");
     expect(workbenchCss).toContain(".agenthub-desktop-inspector-toggle");
     expect(workbenchCss).toContain(
       '.agenthub-workbench[data-layout="narrow"] .agenthub-desktop-inspector-toggle',
     );
-    expect(workbenchCss).toContain('inset: 64px 0 0 auto');
+    expect(workbenchCss).toContain('inset: 0 0 0 auto');
     expect(workbenchCss).toContain(".agenthub-detail-section:first-child");
+  });
+
+  it("places the desktop inspector beside the conversation instead of overlaying it", () => {
+    const wideInspectorCss =
+      workbenchCss.match(
+        /\.agenthub-workbench\[data-layout="wide"\] \.agenthub-motion-right-panel,[\s\S]*?\.agenthub-workbench\[data-layout="standard"\] \.agenthub-motion-right-panel \{[^}]*\}/,
+      )?.[0] ?? "";
+
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="wide"][data-left-collapsed="false"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr); }',
+    );
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="standard"] { grid-template-columns: var(--agenthub-left-column) minmax(0, 1fr); }',
+    );
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-center',
+    );
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-center',
+    );
+    expect(workbenchCss).toContain("grid-template-columns: minmax(0, 1fr) var(--agenthub-right-column)");
+    expect(workbenchCss).toContain("grid-template-columns: minmax(0, 1fr) 0px");
+    expect(workbenchCss).toContain(
+      '.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-conversation-header',
+    );
+    expect(workbenchCss).toContain("grid-column: 1 / 3");
+    expect(wideInspectorCss).toContain("position: relative");
+    expect(wideInspectorCss).toContain("grid-column: 2");
+    expect(wideInspectorCss).toContain("grid-row: 2 / 4");
+    expect(wideInspectorCss).toContain("height: auto");
+    expect(wideInspectorCss).not.toContain("position: fixed");
+    expect(wideInspectorCss).not.toContain("inset:");
+    expect(wideInspectorCss).not.toContain("margin-top:");
+  });
+
+  it("shows the inline inspector collapse control on desktop layouts", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench layoutMode="standard" snapshot={snapshot()} />,
+    );
+
+    expect(html).toContain("Collapse Context Inspector");
+    expect(html).toContain("agenthub-inspector-floating-actions");
   });
 
   it("renders Control Plane offline and loading states", () => {
