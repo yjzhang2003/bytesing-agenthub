@@ -1,5 +1,6 @@
 import type {
   Agent,
+  CollaborationStatusSummary,
   Conversation,
   DiffFileSummary,
   PermissionRequest,
@@ -25,11 +26,13 @@ export interface AgentHubClientState {
     readonly runId: string;
     readonly files: readonly DiffFileSummary[];
   } | null;
+  readonly collaborationStatus: CollaborationStatusSummary | null;
 }
 
 export const emptyAgentHubClientState: AgentHubClientState = {
   activeDiff: null,
   activePlan: null,
+  collaborationStatus: null,
   activeWorkspaceId: null,
   agents: [],
   authenticated: false,

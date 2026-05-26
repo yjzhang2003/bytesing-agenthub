@@ -1,5 +1,6 @@
 import type {
   Agent,
+  CollaborationStatusSummary,
   Conversation,
   ConversationAgentSettings,
   ConversationParticipant,
@@ -182,6 +183,7 @@ export interface WorkbenchSnapshot {
   readonly runs: readonly Run[];
   readonly messages: readonly Message[];
   readonly availableActions: readonly string[];
+  readonly collaborationStatus?: CollaborationStatusSummary | null;
 }
 
 export interface CreateLocalRunRequest {

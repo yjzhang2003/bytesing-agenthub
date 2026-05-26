@@ -1,6 +1,13 @@
 import type { z } from "zod";
 import {
   addConversationAgentRequestSchema,
+  collaborationAgentRosterEntrySchema,
+  collaborationEventSchema,
+  collaborationHeartbeatSchema,
+  collaborationMentionMessageSchema,
+  collaborationOpenSpecLinkSchema,
+  collaborationTaskSchema,
+  collaborationUserQuestionSchema,
   conversationAgentSettingsSchema,
   createAgentConversationRequestSchema,
   conversationAgentClaudeSessionSchema,
@@ -144,6 +151,48 @@ export function validateCreateAgentRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createAgentRequestSchema>> {
   return parseWithSchema(createAgentRequestSchema, value);
+}
+
+export function validateCollaborationAgentRosterEntry(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationAgentRosterEntrySchema>> {
+  return parseWithSchema(collaborationAgentRosterEntrySchema, value);
+}
+
+export function validateCollaborationMentionMessage(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationMentionMessageSchema>> {
+  return parseWithSchema(collaborationMentionMessageSchema, value);
+}
+
+export function validateCollaborationTask(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationTaskSchema>> {
+  return parseWithSchema(collaborationTaskSchema, value);
+}
+
+export function validateCollaborationUserQuestion(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationUserQuestionSchema>> {
+  return parseWithSchema(collaborationUserQuestionSchema, value);
+}
+
+export function validateCollaborationHeartbeat(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationHeartbeatSchema>> {
+  return parseWithSchema(collaborationHeartbeatSchema, value);
+}
+
+export function validateCollaborationEvent(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationEventSchema>> {
+  return parseWithSchema(collaborationEventSchema, value);
+}
+
+export function validateCollaborationOpenSpecLink(
+  value: unknown,
+): ValidationResult<z.infer<typeof collaborationOpenSpecLinkSchema>> {
+  return parseWithSchema(collaborationOpenSpecLinkSchema, value);
 }
 
 export function validateAddConversationAgentRequest(

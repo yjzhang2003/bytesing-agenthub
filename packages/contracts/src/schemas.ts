@@ -227,6 +227,256 @@ export const conversationAgentClaudeSessionSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const collaborationAgentAvailabilitySchema = z.enum([
+  "active",
+  "idle",
+  "blocked",
+  "stale",
+  "completed",
+  "failed",
+  "unavailable",
+]);
+
+export const collaborationAgentBackendSchema = z.enum([
+  "claude-code",
+  "codex",
+  "opencode",
+  "custom",
+  "unknown",
+]);
+
+export const collaborationMentionPurposeSchema = z.enum([
+  "discussion",
+  "task-handoff",
+  "review",
+  "status-nudge",
+  "user-question",
+]);
+
+export const collaborationTaskStatusSchema = z.enum([
+  "pending",
+  "in-progress",
+  "blocked",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+export const collaborationHeartbeatStatusSchema = z.enum([
+  "idle",
+  "polling",
+  "executing",
+  "blocked",
+  "shutdown",
+  "unavailable",
+]);
+
+export const collaborationEventTypeSchema = z.enum([
+  "agent.joined",
+  "agent.removed",
+  "mention.recorded",
+  "task.created",
+  "task.claimed",
+  "task.blocked",
+  "task.completed",
+  "task.failed",
+  "question.created",
+  "question.answered",
+  "openspec.projected",
+  "openspec.projection_failed",
+]);
+
+export const collaborationOpenSpecArtifactSchema = z.enum([
+  "proposal",
+  "design",
+  "tasks",
+  "spec",
+]);
+
+export const collaborationProjectionStatusSchema = z.enum([
+  "pending",
+  "projected",
+  "failed",
+  "skipped",
+]);
+
+export const collaborationAgentRosterEntrySchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  projectId: idSchema,
+  conversationId: idSchema,
+  agentId: idSchema,
+  displayName: z.string().min(1),
+  role: z.enum(["orchestrator", "worker"]),
+  capabilities: z.array(z.string().min(1)),
+  backend: collaborationAgentBackendSchema,
+  availability: collaborationAgentAvailabilitySchema,
+  currentTaskId: idSchema.nullable(),
+  removedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const collaborationMentionMessageSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  projectId: idSchema,
+  conversationId: idSchema,
+  fromKind: z.enum(["user", "agent", "system"]),
+  fromId: idSchema,
+  toKind: z.enum(["agent", "user"]),
+  toId: idSchema,
+  purpose: collaborationMentionPurposeSchema,
+  content: z.string().min(1),
+  taskId: idSchema.nullable(),
+  questionId: idSchema.nullable(),
+  createdAt: z.string().datetime(),
+});
+
+const collaborationTaskClaimSchema = z.object({
+  token: idSchema,
+  agentId: idSchema,
+  leasedUntil: z.string().datetime(),
+});
+
+export const collaborationTaskSchema = z
+  .object({
+    id: idSchema,
+    ownerUserId: idSchema,
+    workspaceId: idSchema,
+    projectId: idSchema,
+    conversationId: idSchema,
+    title: z.string().min(1),
+    description: z.string(),
+    status: collaborationTaskStatusSchema,
+    assignedAgentId: idSchema,
+    claim: collaborationTaskClaimSchema.nullable(),
+    version: z.number().int().min(1),
+    blockedByQuestionIds: z.array(idSchema),
+    openspecChangeName: z.string().min(1).nullable(),
+    resultSummary: z.string().nullable(),
+    failureReason: z.string().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .refine((value) => value.status === "in-progress" || value.claim === null, {
+    message: "Only in-progress collaboration tasks may have an active claim",
+    path: ["claim"],
+  })
+  .refine((value) => value.status !== "completed" || value.resultSummary !== null, {
+    message: "Completed collaboration tasks require a result summary",
+    path: ["resultSummary"],
+  })
+  .refine((value) => value.status !== "failed" || value.failureReason !== null, {
+    message: "Failed collaboration tasks require a failure reason",
+    path: ["failureReason"],
+  });
+
+export const collaborationUserQuestionSchema = z
+  .object({
+    id: idSchema,
+    ownerUserId: idSchema,
+    workspaceId: idSchema,
+    projectId: idSchema,
+    conversationId: idSchema,
+    requestingAgentId: idSchema,
+    taskId: idSchema.nullable(),
+    status: z.enum(["pending", "answered", "cancelled"]),
+    prompt: z.string().min(1),
+    answer: z.string().nullable(),
+    answeredAt: z.string().datetime().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .refine((value) => value.status !== "answered" || value.answer !== null, {
+    message: "Answered collaboration questions require an answer",
+    path: ["answer"],
+  })
+  .refine((value) => value.status !== "answered" || value.answeredAt !== null, {
+    message: "Answered collaboration questions require answeredAt",
+    path: ["answeredAt"],
+  });
+
+export const collaborationHeartbeatSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  projectId: idSchema,
+  conversationId: idSchema,
+  agentId: idSchema,
+  status: collaborationHeartbeatStatusSchema,
+  currentTaskId: idSchema.nullable(),
+  lastSeenAt: z.string().datetime(),
+});
+
+export const collaborationEventSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  projectId: idSchema,
+  conversationId: idSchema,
+  type: collaborationEventTypeSchema,
+  agentId: idSchema.nullable(),
+  taskId: idSchema.nullable(),
+  questionId: idSchema.nullable(),
+  openspecChangeName: z.string().min(1).nullable(),
+  payload: z.record(z.string(), z.unknown()),
+  createdAt: z.string().datetime(),
+});
+
+export const collaborationOpenSpecLinkSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  projectId: idSchema,
+  conversationId: idSchema,
+  openspecChangeName: z.string().min(1),
+  artifact: collaborationOpenSpecArtifactSchema,
+  artifactPath: z.string().min(1),
+  collaborationTaskId: idSchema.nullable(),
+  decisionId: idSchema.nullable(),
+  projectionStatus: collaborationProjectionStatusSchema,
+  lastProjectedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+const collaborationStatusSummarySchema = z.object({
+  conversationId: idSchema,
+  projectId: idSchema.nullable(),
+  state: z.enum(["available", "unavailable"]),
+  agents: z.array(
+    z.object({
+      agentId: idSchema,
+      displayName: z.string().min(1),
+      availability: collaborationAgentAvailabilitySchema,
+      currentTaskId: idSchema.nullable(),
+      currentTaskTitle: z.string().nullable(),
+      blockedQuestionCount: z.number().int().min(0),
+      stale: z.boolean(),
+    }),
+  ),
+  openSpecLinks: z.array(
+    z.object({
+      changeName: z.string().min(1),
+      artifact: collaborationOpenSpecArtifactSchema,
+      projectionStatus: collaborationProjectionStatusSchema,
+    }),
+  ),
+  pendingUserQuestions: z.array(
+    z.object({
+      questionId: idSchema,
+      requestingAgentId: idSchema,
+      taskId: idSchema.nullable(),
+      prompt: z.string().min(1),
+      createdAt: z.string().datetime(),
+    }),
+  ),
+  unavailableReason: z.string().min(1).optional(),
+});
+
 export const runtimeRegistrationPayloadSchema = z.object({
   deviceId: idSchema.optional(),
   displayName: z.string().min(1),
@@ -569,6 +819,7 @@ export const workbenchSnapshotSchema = z.object({
   runs: z.array(runSchema),
   messages: z.array(messageSchema),
   availableActions: z.array(z.string()),
+  collaborationStatus: collaborationStatusSummarySchema.nullable().optional(),
 });
 
 export type OrchestratorDispatchPlan = z.infer<typeof orchestratorDispatchPlanSchema>;
@@ -595,6 +846,18 @@ export type ConversationAgentClaudeSessionPayload = z.infer<
   typeof conversationAgentClaudeSessionSchema
 >;
 export type ClaudeCodeDiscoverySummaryPayload = z.infer<typeof claudeCodeDiscoverySummarySchema>;
+export type CollaborationAgentRosterEntryPayload = z.infer<
+  typeof collaborationAgentRosterEntrySchema
+>;
+export type CollaborationMentionMessagePayload = z.infer<
+  typeof collaborationMentionMessageSchema
+>;
+export type CollaborationTaskPayload = z.infer<typeof collaborationTaskSchema>;
+export type CollaborationUserQuestionPayload = z.infer<typeof collaborationUserQuestionSchema>;
+export type CollaborationHeartbeatPayload = z.infer<typeof collaborationHeartbeatSchema>;
+export type CollaborationEventPayload = z.infer<typeof collaborationEventSchema>;
+export type CollaborationOpenSpecLinkPayload = z.infer<typeof collaborationOpenSpecLinkSchema>;
+export type CollaborationStatusSummaryPayload = z.infer<typeof collaborationStatusSummarySchema>;
 export type CreateAgentRequestPayload = z.infer<typeof createAgentRequestSchema>;
 export type CreateConnectionCheckRequestPayload = z.infer<
   typeof createConnectionCheckRequestSchema

@@ -41,6 +41,59 @@ export type PermissionStatus =
   | "blocked"
   | "completed";
 export type ArtifactType = "code" | "diff" | "file" | "web-preview" | "deployment" | "document";
+export type CollaborationAgentAvailability =
+  | "active"
+  | "idle"
+  | "blocked"
+  | "stale"
+  | "completed"
+  | "failed"
+  | "unavailable";
+export type CollaborationAgentBackend =
+  | "claude-code"
+  | "codex"
+  | "opencode"
+  | "custom"
+  | "unknown";
+export type CollaborationMentionPurpose =
+  | "discussion"
+  | "task-handoff"
+  | "review"
+  | "status-nudge"
+  | "user-question";
+export type CollaborationTaskStatus =
+  | "pending"
+  | "in-progress"
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "cancelled";
+export type CollaborationHeartbeatStatus =
+  | "idle"
+  | "polling"
+  | "executing"
+  | "blocked"
+  | "shutdown"
+  | "unavailable";
+export type CollaborationEventType =
+  | "agent.joined"
+  | "agent.removed"
+  | "mention.recorded"
+  | "task.created"
+  | "task.claimed"
+  | "task.blocked"
+  | "task.completed"
+  | "task.failed"
+  | "question.created"
+  | "question.answered"
+  | "openspec.projected"
+  | "openspec.projection_failed";
+export type CollaborationOpenSpecArtifact = "proposal" | "design" | "tasks" | "spec";
+export type CollaborationProjectionStatus =
+  | "pending"
+  | "projected"
+  | "failed"
+  | "skipped";
 
 export interface UserOwned {
   readonly id: Id;
@@ -133,6 +186,145 @@ export interface ConversationAgentSettings {
   readonly scopedInstructions?: string | undefined;
   readonly requireRunConfirmation?: boolean | undefined;
   readonly allowAutoDispatch?: boolean | undefined;
+}
+
+export interface CollaborationAgentRosterEntry extends UserOwned {
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly agentId: Id;
+  readonly displayName: string;
+  readonly role: AgentRole;
+  readonly capabilities: readonly string[];
+  readonly backend: CollaborationAgentBackend;
+  readonly availability: CollaborationAgentAvailability;
+  readonly currentTaskId: Id | null;
+  readonly removedAt: ISODateTime | null;
+}
+
+export interface CollaborationMentionMessage {
+  readonly id: Id;
+  readonly ownerUserId: Id;
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly fromKind: MessageAuthorKind;
+  readonly fromId: Id;
+  readonly toKind: "agent" | "user";
+  readonly toId: Id;
+  readonly purpose: CollaborationMentionPurpose;
+  readonly content: string;
+  readonly taskId: Id | null;
+  readonly questionId: Id | null;
+  readonly createdAt: ISODateTime;
+}
+
+export interface CollaborationTaskClaim {
+  readonly token: Id;
+  readonly agentId: Id;
+  readonly leasedUntil: ISODateTime;
+}
+
+export interface CollaborationTask extends UserOwned {
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly title: string;
+  readonly description: string;
+  readonly status: CollaborationTaskStatus;
+  readonly assignedAgentId: Id;
+  readonly claim: CollaborationTaskClaim | null;
+  readonly version: number;
+  readonly blockedByQuestionIds: readonly Id[];
+  readonly openspecChangeName: string | null;
+  readonly resultSummary: string | null;
+  readonly failureReason: string | null;
+}
+
+export interface CollaborationUserQuestion extends UserOwned {
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly requestingAgentId: Id;
+  readonly taskId: Id | null;
+  readonly status: "pending" | "answered" | "cancelled";
+  readonly prompt: string;
+  readonly answer: string | null;
+  readonly answeredAt: ISODateTime | null;
+}
+
+export interface CollaborationHeartbeat {
+  readonly id: Id;
+  readonly ownerUserId: Id;
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly agentId: Id;
+  readonly status: CollaborationHeartbeatStatus;
+  readonly currentTaskId: Id | null;
+  readonly lastSeenAt: ISODateTime;
+}
+
+export interface CollaborationEvent {
+  readonly id: Id;
+  readonly ownerUserId: Id;
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly type: CollaborationEventType;
+  readonly agentId: Id | null;
+  readonly taskId: Id | null;
+  readonly questionId: Id | null;
+  readonly openspecChangeName: string | null;
+  readonly payload: Record<string, unknown>;
+  readonly createdAt: ISODateTime;
+}
+
+export interface CollaborationOpenSpecLink extends UserOwned {
+  readonly workspaceId: Id;
+  readonly projectId: Id;
+  readonly conversationId: Id;
+  readonly openspecChangeName: string;
+  readonly artifact: CollaborationOpenSpecArtifact;
+  readonly artifactPath: string;
+  readonly collaborationTaskId: Id | null;
+  readonly decisionId: Id | null;
+  readonly projectionStatus: CollaborationProjectionStatus;
+  readonly lastProjectedAt: ISODateTime | null;
+}
+
+export interface CollaborationAgentStatusSummary {
+  readonly agentId: Id;
+  readonly displayName: string;
+  readonly availability: CollaborationAgentAvailability;
+  readonly currentTaskId: Id | null;
+  readonly currentTaskTitle: string | null;
+  readonly blockedQuestionCount: number;
+  readonly stale: boolean;
+}
+
+export interface CollaborationOpenSpecLinkSummary {
+  readonly changeName: string;
+  readonly artifact: CollaborationOpenSpecArtifact;
+  readonly projectionStatus: CollaborationProjectionStatus;
+}
+
+export interface CollaborationPendingUserQuestionSummary {
+  readonly questionId: Id;
+  readonly requestingAgentId: Id;
+  readonly taskId: Id | null;
+  readonly prompt: string;
+  readonly createdAt: ISODateTime;
+}
+
+export interface CollaborationStatusSummary {
+  readonly conversationId: Id;
+  readonly projectId: Id | null;
+  readonly state: "available" | "unavailable";
+  readonly agents: readonly CollaborationAgentStatusSummary[];
+  readonly openSpecLinks: readonly CollaborationOpenSpecLinkSummary[];
+  readonly pendingUserQuestions: readonly CollaborationPendingUserQuestionSummary[];
+  readonly unavailableReason?: string | undefined;
 }
 
 export interface MessagePart {

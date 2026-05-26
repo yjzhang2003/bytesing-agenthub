@@ -1,5 +1,7 @@
 import type {
   Artifact,
+  CollaborationMentionPurpose,
+  CollaborationProjectionStatus,
   Conversation,
   DiffMetadata,
   Id,
@@ -25,7 +27,12 @@ export type AgentHubEventType =
   | "artifact.updated"
   | "diff.metadata.updated"
   | "conversation.updated"
-  | "conversation.membership_changed";
+  | "conversation.membership_changed"
+  | "collaboration.mention.recorded"
+  | "collaboration.task.status_changed"
+  | "collaboration.question.created"
+  | "collaboration.question.answered"
+  | "collaboration.openspec.updated";
 
 export interface AgentHubEventBase {
   readonly id: Id;
@@ -114,6 +121,42 @@ export interface ConversationUpdatedEvent extends AgentHubEventBase {
   readonly payload: Conversation;
 }
 
+export interface CollaborationMentionRecordedEvent extends AgentHubEventBase {
+  readonly type: "collaboration.mention.recorded";
+  readonly payload: {
+    readonly agentId: Id | null;
+    readonly taskId: Id | null;
+    readonly questionId: Id | null;
+    readonly purpose: CollaborationMentionPurpose;
+  };
+}
+
+export interface CollaborationTaskStatusChangedEvent extends AgentHubEventBase {
+  readonly type: "collaboration.task.status_changed";
+  readonly payload: {
+    readonly agentId: Id;
+    readonly taskId: Id;
+    readonly status: "pending" | "in-progress" | "blocked" | "completed" | "failed" | "cancelled";
+  };
+}
+
+export interface CollaborationQuestionEvent extends AgentHubEventBase {
+  readonly type: "collaboration.question.created" | "collaboration.question.answered";
+  readonly payload: {
+    readonly questionId: Id;
+    readonly agentId: Id | null;
+    readonly taskId: Id | null;
+  };
+}
+
+export interface CollaborationOpenSpecUpdatedEvent extends AgentHubEventBase {
+  readonly type: "collaboration.openspec.updated";
+  readonly payload: {
+    readonly openspecChangeName: string;
+    readonly projectionStatus: CollaborationProjectionStatus;
+  };
+}
+
 export type AgentHubEvent =
   | RuntimeDeviceStatusChangedEvent
   | AgentRunStatusEvent
@@ -124,4 +167,8 @@ export type AgentHubEvent =
   | ArtifactEvent
   | DiffMetadataUpdatedEvent
   | ConversationUpdatedEvent
-  | ConversationMembershipChangedEvent;
+  | ConversationMembershipChangedEvent
+  | CollaborationMentionRecordedEvent
+  | CollaborationTaskStatusChangedEvent
+  | CollaborationQuestionEvent
+  | CollaborationOpenSpecUpdatedEvent;

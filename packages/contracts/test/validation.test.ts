@@ -3,6 +3,13 @@ import {
   agentHubApiPaths,
   isDiffMetadataStale,
   validateAddConversationAgentRequest,
+  validateCollaborationAgentRosterEntry,
+  validateCollaborationEvent,
+  validateCollaborationHeartbeat,
+  validateCollaborationMentionMessage,
+  validateCollaborationOpenSpecLink,
+  validateCollaborationTask,
+  validateCollaborationUserQuestion,
   validateCreateConnectionCheckRequest,
   validateConversationAgentClaudeSession,
   validateCreateAgentConversationRequest,
@@ -220,6 +227,173 @@ describe("contract validation", () => {
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts collaboration runtime record contracts", () => {
+    const now = "2026-05-24T00:00:00.000Z";
+
+    expect(
+      validateCollaborationAgentRosterEntry({
+        id: "roster_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        agentId: "agent_1",
+        displayName: "Reviewer",
+        role: "worker",
+        capabilities: ["code-review"],
+        backend: "claude-code",
+        availability: "active",
+        currentTaskId: "task_1",
+        removedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationMentionMessage({
+        id: "mention_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        fromKind: "agent",
+        fromId: "agent_1",
+        toKind: "agent",
+        toId: "agent_2",
+        purpose: "task-handoff",
+        content: "Review the auth flow.",
+        taskId: "task_1",
+        questionId: null,
+        createdAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationTask({
+        id: "task_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        title: "Review auth flow",
+        description: "Check auth for security issues.",
+        status: "in-progress",
+        assignedAgentId: "agent_2",
+        claim: {
+          token: "claim_1",
+          agentId: "agent_2",
+          leasedUntil: "2026-05-24T00:15:00.000Z",
+        },
+        version: 2,
+        blockedByQuestionIds: [],
+        openspecChangeName: "add-auth",
+        resultSummary: null,
+        failureReason: null,
+        createdAt: now,
+        updatedAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationUserQuestion({
+        id: "question_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        requestingAgentId: "agent_2",
+        taskId: "task_1",
+        status: "pending",
+        prompt: "Should we allow auto-dispatch?",
+        answer: null,
+        answeredAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationHeartbeat({
+        id: "heartbeat_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        agentId: "agent_2",
+        status: "executing",
+        currentTaskId: "task_1",
+        lastSeenAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationEvent({
+        id: "event_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        type: "task.completed",
+        agentId: "agent_2",
+        taskId: "task_1",
+        questionId: null,
+        openspecChangeName: "add-auth",
+        payload: { summary: "Reviewed auth flow" },
+        createdAt: now,
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateCollaborationOpenSpecLink({
+        id: "link_1",
+        ownerUserId: "user_1",
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        conversationId: "conversation_1",
+        openspecChangeName: "add-auth",
+        artifact: "tasks",
+        artifactPath: "openspec/changes/add-auth/tasks.md",
+        collaborationTaskId: "task_1",
+        decisionId: null,
+        projectionStatus: "projected",
+        lastProjectedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("rejects invalid collaboration task state", () => {
+    const now = "2026-05-24T00:00:00.000Z";
+
+    const result = validateCollaborationTask({
+      id: "task_1",
+      ownerUserId: "user_1",
+      workspaceId: "workspace_1",
+      projectId: "project_1",
+      conversationId: "conversation_1",
+      title: "Review auth flow",
+      description: "Check auth for security issues.",
+      status: "completed",
+      assignedAgentId: "agent_2",
+      claim: {
+        token: "claim_1",
+        agentId: "agent_2",
+        leasedUntil: "2026-05-24T00:15:00.000Z",
+      },
+      version: 2,
+      blockedByQuestionIds: [],
+      openspecChangeName: null,
+      resultSummary: "Done",
+      failureReason: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    expect(result.ok).toBe(false);
   });
 
   it("detects stale diff metadata fingerprints", () => {
@@ -557,6 +731,38 @@ describe("contract validation", () => {
       runs: [],
       messages: [],
       availableActions: ["run.start"],
+      collaborationStatus: {
+        conversationId: "conversation_local_demo",
+        projectId: "project_local_demo",
+        state: "available",
+        agents: [
+          {
+            agentId: "agent_1",
+            displayName: "Reviewer",
+            availability: "blocked",
+            currentTaskId: "task_1",
+            currentTaskTitle: "Review auth flow",
+            blockedQuestionCount: 1,
+            stale: false,
+          },
+        ],
+        openSpecLinks: [
+          {
+            changeName: "add-auth",
+            artifact: "tasks",
+            projectionStatus: "projected",
+          },
+        ],
+        pendingUserQuestions: [
+          {
+            questionId: "question_1",
+            requestingAgentId: "agent_1",
+            taskId: "task_1",
+            prompt: "Approve dispatch?",
+            createdAt: now,
+          },
+        ],
+      },
     });
 
     expect(result.ok).toBe(true);
