@@ -6,6 +6,7 @@ import type {
   Message,
   MessagePart,
   PermissionRequest,
+  Project,
   Run,
   RuntimeDevice,
   WorkbenchSnapshot,
@@ -98,6 +99,37 @@ function firstRuntime(
     snapshot?.runtimeDevices.find((runtime) => runtime.id === workspace?.runtimeDeviceId) ??
     snapshot?.runtimeDevices[0]
   );
+}
+
+function projectRuntime(snapshot: WorkbenchSnapshot | undefined, project: Project | null | undefined): RuntimeDevice | undefined {
+  return snapshot?.runtimeDevices.find((runtime) => runtime.id === project?.runtimeDeviceId);
+}
+
+function projectContextFromProject(
+  snapshot: WorkbenchSnapshot | undefined,
+  project: Project | null | undefined,
+): WorkbenchViewModel["activeProject"] {
+  if (!snapshot || !project) {
+    return null;
+  }
+  const runtime = projectRuntime(snapshot, project);
+  const runtimeStatus = runtime?.status ?? "offline";
+  return {
+    available: runtimeStatus === "online" || runtimeStatus === "active-running",
+    branchLabel: project.gitBranch,
+    id: project.id,
+    isDefault: project.isDefault,
+    name: project.name,
+    pathLabel: project.localPathLabel,
+    runtimeLabel: runtime?.displayName ?? "No Desktop Runtime",
+    runtimeStatus,
+  };
+}
+
+function activeProjectContext(snapshot: WorkbenchSnapshot | undefined): WorkbenchViewModel["activeProject"] {
+  const conversation = activeConversation(snapshot);
+  const project = snapshot?.projects.find((candidate) => candidate.id === conversation?.projectId);
+  return projectContextFromProject(snapshot, project);
 }
 
 function activeConversationTitle(snapshot: WorkbenchSnapshot | undefined): string {
@@ -488,9 +520,14 @@ function navigationFromSnapshot(
         };
       }),
     pendingPermissionCount: 0,
+    projects: (snapshot?.projects ?? [])
+      .filter((project) => !project.archivedAt)
+      .map((project) => projectContextFromProject(snapshot, project))
+      .filter((project): project is NonNullable<typeof project> => project !== null),
     runCount: snapshot?.runs.length ?? 0,
     runtimeLabel: runtime?.displayName ?? "No Desktop Runtime",
     runtimeStatus: runtime?.status ?? "offline",
+    workspaceId: workspace?.id ?? snapshot?.activeWorkspaceId ?? "workspace_unavailable",
     workspaceName: metadata?.displayName ?? workspace?.name ?? "AgentHub",
     workspacePathLabel: metadata?.localPathLabel ?? workspace?.localPath ?? "No workspace path",
   };
@@ -587,6 +624,7 @@ function composerFromSnapshot(
       target: "@Orchestrator",
     };
   const selectedAgent = activeAgents.find((agent) => agent.id === selected.id);
+  const activeProject = activeProjectContext(snapshot);
   const selectedClaudeCodeDefaults = selectedAgent
     ? claudeCodeDefaultsFromPolicy(selectedAgent.policy)
     : null;
@@ -603,8 +641,12 @@ function composerFromSnapshot(
             hooksPolicy: "disabled",
           })
         : null,
-    disabled: !runtimeSummary.canExecute,
-    disabledReason: runtimeSummary.canExecute ? null : runtimeSummary.explanation,
+    disabled: !runtimeSummary.canExecute || !activeProject,
+    disabledReason: !activeProject
+      ? "Select a project before starting local execution."
+      : runtimeSummary.canExecute
+        ? null
+        : runtimeSummary.explanation,
     modeLabel: selected.role === "orchestrator" ? "Plan Mode" : "Direct agent message",
     selectedRole: selected.role,
     selectedTarget: selected.target,
@@ -638,6 +680,7 @@ function chatInfoFromSnapshot(
       toChatParticipant(agent, participantForAgent(snapshot, conversation.id, agent.id)),
     ),
     pinned: Boolean(conversation.pinnedAt),
+    project: activeProjectContext(snapshot),
     runtimeLabel: runtimeSummary.label,
     title: conversation.title,
     updatedAtLabel: shortDate(conversation.updatedAt),
@@ -878,7 +921,9 @@ function claudeCodeDefaultsFromPolicy(
 }
 
 function runsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly RunViewModel[] {
-  return (snapshot?.runs ?? []).map((run) => ({
+  return (snapshot?.runs ?? []).map((run) => {
+    const project = snapshot?.projects.find((candidate) => candidate.id === run.projectId);
+    return {
     agentName: agentName(run.agentId, snapshot?.agents ?? []),
     claudeCodeEffortLabel: run.claudeCode?.effort ?? null,
     claudeCodeMcpLabel: run.claudeCode ? labelFromId(run.claudeCode.mcpProfileId, "none") : null,
@@ -897,9 +942,12 @@ function runsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly Run
       (run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset) ===
       "full-access",
     id: run.id,
+    projectName: project?.name ?? null,
+    projectPathLabel: project?.localPathLabel ?? null,
     startedAt: shortDate(run.startedAt),
     status: run.status,
-  }));
+  };
+  });
 }
 
 export function normalizeSelection(
@@ -1080,6 +1128,7 @@ export function createWorkbenchViewModel(
   });
 
   return {
+    activeProject: activeProjectContext(snapshot),
     activeConversationTitle: activeConversationTitle(snapshot),
     agentsPage,
     composer,

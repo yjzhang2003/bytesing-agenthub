@@ -2414,6 +2414,7 @@ body { overflow: hidden; }
   border-bottom: 2px solid var(--agenthub-accent-text);
   opacity: 0;
   transform: rotate(-45deg) translate(1px, -1px);
+  transform-origin: center;
 }
 .agenthub-chat-add-agent-option[data-selected="true"] .agenthub-chat-add-agent-check {
   border-color: var(--agenthub-accent);
@@ -2421,6 +2422,11 @@ body { overflow: hidden; }
 }
 .agenthub-chat-add-agent-option[data-selected="true"] .agenthub-chat-add-agent-check::after {
   opacity: 1;
+}
+.agenthub-chat-add-agent-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 .agenthub-chat-add-agent-name {
   min-width: 0;
@@ -2430,6 +2436,13 @@ body { overflow: hidden; }
   font-size: 15px;
   font-weight: 700;
   line-height: 1.25;
+}
+.agenthub-chat-add-agent-copy small {
+  min-width: 0;
+  color: var(--agenthub-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .agenthub-chat-add-agent-empty {
   min-height: 112px;
@@ -2510,6 +2523,110 @@ body { overflow: hidden; }
 .agenthub-chat-add-agent-modal .agenthub-dialog-body {
   max-height: min(72vh, 600px);
   overflow: hidden;
+}
+.agenthub-new-conversation-modal .agenthub-dialog-body {
+  max-height: min(72vh, 620px);
+  overflow: hidden;
+}
+.agenthub-new-conversation-modal .agenthub-modal-confirm-button:not(:disabled) {
+  border-color: var(--agenthub-accent);
+  background: var(--agenthub-accent);
+  color: var(--agenthub-accent-text);
+}
+.agenthub-new-conversation-dialog {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.agenthub-new-conversation-dialog .agenthub-chat-add-agent-list,
+.agenthub-project-picker {
+  max-height: min(50vh, 390px);
+  overflow: auto;
+}
+.agenthub-project-picker {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 2px 0;
+}
+.agenthub-project-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid transparent;
+  border-radius: var(--agenthub-radius);
+  background: transparent;
+  color: var(--agenthub-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 10px;
+  text-align: left;
+}
+.agenthub-project-option:hover,
+.agenthub-project-option:focus-visible,
+.agenthub-project-option[data-selected="true"] {
+  border-color: var(--agenthub-border-strong);
+  background: var(--agenthub-surface-hover);
+  outline: 0;
+}
+.agenthub-project-option[data-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--agenthub-accent);
+}
+.agenthub-project-option-main,
+.agenthub-project-option-meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.agenthub-project-option-main strong,
+.agenthub-project-option-main small,
+.agenthub-project-option-meta small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenthub-project-option-main strong {
+  font-size: var(--agenthub-type-lg);
+  font-weight: 720;
+}
+.agenthub-project-option-meta {
+  justify-items: end;
+  color: var(--agenthub-text-muted);
+}
+.agenthub-project-picker-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border-top: 1px solid var(--agenthub-border);
+  margin-top: 8px;
+  padding-top: 12px;
+}
+.agenthub-project-create-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  gap: 8px;
+  border-color: var(--agenthub-text) !important;
+  background: var(--agenthub-text) !important;
+  color: var(--agenthub-bg) !important;
+  font-weight: 680;
+  padding-inline: 12px;
+  white-space: normal;
+}
+.agenthub-project-create-button .agenthub-icon {
+  flex: 0 0 auto;
+  display: block;
+}
+.agenthub-project-create-button:not(:disabled):hover,
+.agenthub-project-create-button:not(:disabled):focus-visible {
+  border-color: var(--agenthub-text-muted) !important;
+  background: var(--agenthub-text-muted) !important;
+  color: var(--agenthub-bg) !important;
 }
 .agenthub-file-list {
   display: grid;

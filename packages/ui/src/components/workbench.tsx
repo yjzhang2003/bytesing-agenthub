@@ -1,9 +1,11 @@
 import type {
+  CreateAgentConversationRequest,
+  DesktopProjectRegistration,
   UpdateConversationAgentSettingsRequest,
   UpdateConversationRequest,
   WorkbenchSnapshot,
 } from "@agenthub/contracts";
-import { PanelLeftClose, PlayCircle } from "lucide-react";
+import { FolderOpen, FolderPlus, PanelLeftClose, PlayCircle } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import React from "react";
 import type { AgentHubLocale } from "../i18n.js";
@@ -11,6 +13,7 @@ import {
   AgentHubI18nProvider,
   createAgentHubI18n,
   readStoredAgentHubLocale,
+  useAgentHubI18n,
   writeStoredAgentHubLocale,
 } from "../i18n.js";
 import type {
@@ -27,7 +30,7 @@ import { AgentsPage, type AgentRoleMutationInput } from "./agents.js";
 import { ConnectionsPage } from "./connections.js";
 import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
-import { AgentHubThemeProvider } from "./system.js";
+import { AgentHubButton, AgentHubModal, AgentHubThemeProvider } from "./system.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage, type SettingsCategoryId } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
@@ -37,6 +40,11 @@ const ENTER_TO_SEND_STORAGE_KEY = "agenthub.keyboard.enterToSend";
 
 function clampPanelWidth(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+export interface ConversationProjectSelection {
+  readonly projectId: string;
+  readonly desktopProjectRegistration: DesktopProjectRegistration;
 }
 
 export function AgentHubWorkbench(props: {
@@ -62,6 +70,16 @@ export function AgentHubWorkbench(props: {
   ) => void;
   readonly onArchiveAgentRole?: (agentId: string) => void;
   readonly onCreateAgentConversation?: (agentId: string) => void | Promise<void>;
+  readonly onCreateConversation?: (input: CreateAgentConversationRequest) => void | Promise<void>;
+  readonly onChooseProjectDirectory?: () =>
+    | ConversationProjectSelection
+    | null
+    | Promise<ConversationProjectSelection | null>;
+  readonly onCreateDefaultProject?: () =>
+    | ConversationProjectSelection
+    | null
+    | Promise<ConversationProjectSelection | null>;
+  readonly desktopProjectActionsUnavailable?: boolean | undefined;
   readonly onOpenConversation?: (conversationId: string) => void;
   readonly onUpdateConversation?: (
     conversationId: string,
@@ -140,6 +158,7 @@ export function AgentHubWorkbench(props: {
   );
   const [selectedSettingsCategory, setSelectedSettingsCategory] =
     React.useState<SettingsCategoryId>("general");
+  const [conversationCreatorOpen, setConversationCreatorOpen] = React.useState(false);
   const [theme, setTheme] = React.useState<"light" | "dark">(() => {
     if (typeof window === "undefined") {
       return "dark";
@@ -435,6 +454,7 @@ export function AgentHubWorkbench(props: {
                     openConversation();
                   }}
                   onSelectConversation={openConversation}
+                  onNewConversation={() => setConversationCreatorOpen(true)}
                   onOpenSettings={() => {
                     setCenterView("settings");
                     setMobileLeftOpen(false);
@@ -520,6 +540,10 @@ export function AgentHubWorkbench(props: {
                       openConversation();
                     }}
                     onSelectConversation={openConversation}
+                    onNewConversation={() => {
+                      setConversationCreatorOpen(true);
+                      setMobileLeftOpen(false);
+                    }}
                     onOpenSettings={() => {
                       setCenterView("settings");
                       setMobileLeftOpen(false);
@@ -604,7 +628,13 @@ export function AgentHubWorkbench(props: {
                       type="button"
                     >
                       <strong>{model.activeConversationTitle}</strong>
-                      <small>{model.workspace.workspaceName}</small>
+                      <small>
+                        {model.activeProject
+                          ? model.activeProject.branchLabel
+                            ? `${model.activeProject.name} · ${model.activeProject.branchLabel}`
+                            : model.activeProject.name
+                          : i18n.t("project.unbound", { fallback: "No project selected" })}
+                      </small>
                     </button>
                   ) : (
                     <div>
@@ -860,6 +890,29 @@ export function AgentHubWorkbench(props: {
                 />
               </section>
             ) : null}
+            <NewConversationDialog
+              model={model}
+              desktopProjectActionsUnavailable={props.desktopProjectActionsUnavailable}
+              {...(props.onChooseProjectDirectory
+                ? { onChooseProjectDirectory: props.onChooseProjectDirectory }
+                : {})}
+              onClose={() => setConversationCreatorOpen(false)}
+              {...(props.onCreateDefaultProject
+                ? { onCreateDefaultProject: props.onCreateDefaultProject }
+                : {})}
+              onCreateConversation={(input) => {
+                const result =
+                  props.onCreateConversation?.(input) ??
+                  (input.agentIds.length === 1
+                    ? props.onCreateAgentConversation?.(input.agentIds[0]!)
+                    : undefined);
+                return Promise.resolve(result).then(() => {
+                  setConversationCreatorOpen(false);
+                  setCenterView("conversation");
+                });
+              }}
+              open={conversationCreatorOpen}
+            />
           </main>
         </MotionConfig>
       </AgentHubThemeProvider>
@@ -869,4 +922,256 @@ export function AgentHubWorkbench(props: {
 
 function WorkbenchStyle(): React.ReactElement {
   return <style>{workbenchCss}</style>;
+}
+
+function NewConversationDialog(props: {
+  readonly desktopProjectActionsUnavailable?: boolean | undefined;
+  readonly model: WorkbenchViewModel;
+  readonly onChooseProjectDirectory?: () =>
+    | ConversationProjectSelection
+    | null
+    | Promise<ConversationProjectSelection | null>;
+  readonly onClose: () => void;
+  readonly onCreateDefaultProject?: () =>
+    | ConversationProjectSelection
+    | null
+    | Promise<ConversationProjectSelection | null>;
+  readonly onCreateConversation: (input: CreateAgentConversationRequest) => void | Promise<void>;
+  readonly open: boolean;
+}): React.ReactElement {
+  const i18n = useAgentHubI18n();
+  const [step, setStep] = React.useState<"agents" | "project">("agents");
+  const [selectedAgentIds, setSelectedAgentIds] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
+  const [desktopProjectSelection, setDesktopProjectSelection] =
+    React.useState<ConversationProjectSelection | null>(null);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const previouslyOpen = React.useRef(false);
+
+  React.useEffect(() => {
+    if (props.open && !previouslyOpen.current) {
+      setStep("agents");
+      setSelectedAgentIds(new Set());
+      setSelectedProjectId(
+        props.model.activeProject?.id ?? props.model.workspace.projects[0]?.id ?? null,
+      );
+      setDesktopProjectSelection(null);
+      setPending(false);
+      setError(null);
+    }
+    previouslyOpen.current = props.open;
+  }, [props.model.activeProject?.id, props.model.workspace.projects, props.open]);
+
+  const selectedAgentCount = selectedAgentIds.size;
+  const canContinue = selectedAgentCount > 0;
+  const canCreate = canContinue && Boolean(selectedProjectId) && !pending;
+  const toggleAgent = (agentId: string) => {
+    setSelectedAgentIds((current) => {
+      const next = new Set(current);
+      if (next.has(agentId)) {
+        next.delete(agentId);
+      } else {
+        next.add(agentId);
+      }
+      return next;
+    });
+  };
+
+  const createConversation = () => {
+    if (!selectedProjectId || selectedAgentIds.size === 0) {
+      return;
+    }
+    const selectedDesktopProject =
+      desktopProjectSelection?.projectId === selectedProjectId ? desktopProjectSelection : null;
+    setPending(true);
+    setError(null);
+    void Promise.resolve(
+      props.onCreateConversation({
+        workspaceId: props.model.workspace.workspaceId,
+        projectId: selectedProjectId,
+        agentIds: Array.from(selectedAgentIds),
+        ...(selectedDesktopProject
+          ? { desktopProjectRegistration: selectedDesktopProject.desktopProjectRegistration }
+          : {}),
+      }),
+    )
+      .catch((reason: unknown) => {
+        setPending(false);
+        setError(reason instanceof Error ? reason.message : i18n.t("chat.createConversationFailed"));
+      });
+  };
+
+  const selectDesktopProject = (
+    createSelection: () =>
+      | ConversationProjectSelection
+      | null
+      | Promise<ConversationProjectSelection | null>,
+  ) => {
+    setPending(true);
+    setError(null);
+    void Promise.resolve(createSelection())
+      .then((selection) => {
+        if (selection) {
+          setDesktopProjectSelection(selection);
+          setSelectedProjectId(selection.projectId);
+        }
+        setPending(false);
+      })
+      .catch((reason: unknown) => {
+        setPending(false);
+        setError(reason instanceof Error ? reason.message : i18n.t("chat.createConversationFailed"));
+      });
+  };
+
+  return (
+    <AgentHubModal
+      cancelText={i18n.t("actions.cancel")}
+      className="agenthub-new-conversation-modal"
+      closeLabel={i18n.t("actions.cancel")}
+      destroyOnHidden
+      getContainer={false}
+      okButtonProps={{
+        className: "agenthub-modal-confirm-button",
+        disabled: step === "agents" ? !canContinue : !canCreate,
+      }}
+      okText={
+        step === "agents"
+          ? i18n.t("actions.next", { fallback: "Next" })
+          : pending
+            ? i18n.t("state.creating", { fallback: "Creating" })
+            : i18n.t("actions.create", { fallback: "Create" })
+      }
+      onCancel={props.onClose}
+      onOk={() => {
+        if (step === "agents") {
+          setStep("project");
+          return;
+        }
+        createConversation();
+      }}
+      open={props.open}
+      showClose={false}
+      title={i18n.t("chat.newConversation", { fallback: "New conversation" })}
+      width={460}
+    >
+      <div className="agenthub-new-conversation-dialog" data-step={step}>
+        {step === "agents" ? (
+          <div className="agenthub-chat-add-agent-list" role="listbox" aria-multiselectable="true">
+            {props.model.workspace.agents.map((agent) => {
+              const selected = selectedAgentIds.has(agent.id);
+              return (
+                <button
+                  aria-label={i18n.t("chat.selectAgentNamed", { agent: agent.label })}
+                  aria-pressed={selected}
+                  aria-selected={selected}
+                  className="agenthub-chat-add-agent-option"
+                  data-selected={selected}
+                  key={agent.id}
+                  onClick={() => toggleAgent(agent.id)}
+                  role="option"
+                  type="button"
+                >
+                  <span className="agenthub-chat-add-agent-check" aria-hidden="true" />
+                  <span className="agenthub-agent-avatar" aria-hidden="true">
+                    {agent.label.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="agenthub-chat-add-agent-copy">
+                    <span className="agenthub-chat-add-agent-name" title={agent.label}>
+                      {agent.label}
+                    </span>
+                    <small>{agent.providerLabel}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="agenthub-project-picker">
+            {props.model.workspace.projects.length === 0 ? (
+              <p className="agenthub-muted">{i18n.t("project.noProjects")}</p>
+            ) : (
+              props.model.workspace.projects.map((project) => (
+                <button
+                  aria-pressed={selectedProjectId === project.id}
+                  className="agenthub-project-option"
+                  data-selected={selectedProjectId === project.id}
+                  key={project.id}
+                  onClick={() => setSelectedProjectId(project.id)}
+                  type="button"
+                >
+                  <span className="agenthub-project-option-main">
+                    <strong title={project.name}>{project.name}</strong>
+                    <small title={project.pathLabel}>{project.pathLabel}</small>
+                  </span>
+                  <span className="agenthub-project-option-meta">
+                    <RuntimeStatusBadge status={project.runtimeStatus} />
+                    <small>{project.branchLabel ?? i18n.t("state.noBranch")}</small>
+                  </span>
+                </button>
+              ))
+            )}
+            {desktopProjectSelection ? (
+              <button
+                aria-pressed={selectedProjectId === desktopProjectSelection.projectId}
+                className="agenthub-project-option"
+                data-selected={selectedProjectId === desktopProjectSelection.projectId}
+                onClick={() => setSelectedProjectId(desktopProjectSelection.projectId)}
+                type="button"
+              >
+                <span className="agenthub-project-option-main">
+                  <strong title={desktopProjectSelection.desktopProjectRegistration.displayName}>
+                    {desktopProjectSelection.desktopProjectRegistration.displayName}
+                  </strong>
+                  <small title={desktopProjectSelection.desktopProjectRegistration.localPathLabel}>
+                    {desktopProjectSelection.desktopProjectRegistration.localPathLabel}
+                  </small>
+                </span>
+                <span className="agenthub-project-option-meta">
+                  <RuntimeStatusBadge status="online" />
+                  <small>
+                    {desktopProjectSelection.desktopProjectRegistration.gitBranch ??
+                      i18n.t("state.noBranch")}
+                  </small>
+                </span>
+              </button>
+            ) : null}
+            {props.onChooseProjectDirectory || props.onCreateDefaultProject ? (
+              <div className="agenthub-project-picker-actions">
+                {props.onChooseProjectDirectory ? (
+                  <AgentHubButton
+                    className="agenthub-project-create-button"
+                    disabled={pending}
+                    kind="primary"
+                    onClick={() => selectDesktopProject(props.onChooseProjectDirectory!)}
+                    type="button"
+                  >
+                    <Icon icon={FolderOpen} />
+                    {i18n.t("project.chooseFolder")}
+                  </AgentHubButton>
+                ) : null}
+                {props.onCreateDefaultProject ? (
+                  <AgentHubButton
+                    className="agenthub-project-create-button"
+                    disabled={pending}
+                    kind="primary"
+                    onClick={() => selectDesktopProject(props.onCreateDefaultProject!)}
+                    type="button"
+                  >
+                    <Icon icon={FolderPlus} />
+                    {i18n.t("project.useDefault")}
+                  </AgentHubButton>
+                ) : null}
+              </div>
+            ) : props.desktopProjectActionsUnavailable ? (
+              <p className="agenthub-muted">{i18n.t("project.desktopBridgeUnavailable")}</p>
+            ) : null}
+          </div>
+        )}
+        {error ? <p className="agenthub-form-error">{error}</p> : null}
+      </div>
+    </AgentHubModal>
+  );
 }

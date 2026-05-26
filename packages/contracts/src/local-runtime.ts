@@ -6,6 +6,7 @@ import type {
   Id,
   ISODateTime,
   Message,
+  Project,
   RuntimeDevice,
   Run,
   Workspace,
@@ -169,6 +170,7 @@ export interface WorkbenchSnapshot {
   readonly activeWorkspaceId: Id;
   readonly activeConversationId: Id;
   readonly workspaces: readonly Workspace[];
+  readonly projects: readonly Project[];
   readonly runtimeDevices: readonly RuntimeDevice[];
   readonly workspaceMetadata: WorkspaceMetadata | null;
   readonly providerHealth?: ProviderHealth | null;
@@ -184,6 +186,7 @@ export interface WorkbenchSnapshot {
 
 export interface CreateLocalRunRequest {
   readonly workspaceId: Id;
+  readonly projectId?: Id | undefined;
   readonly conversationId: Id;
   readonly agentId: Id;
   readonly prompt: string;
@@ -216,8 +219,48 @@ export type UpdateConversationAgentSettingsRequest = ConversationAgentSettings;
 
 export interface CreateAgentConversationRequest {
   readonly workspaceId: Id;
-  readonly agentId: Id;
+  readonly projectId: Id;
+  readonly agentIds: readonly Id[];
+  readonly desktopProjectRegistration?: DesktopProjectRegistration | undefined;
 }
+
+export interface DesktopProjectRegistration {
+  readonly source: "desktop-directory" | "desktop-default";
+  readonly runtimeDeviceId: Id;
+  readonly displayName: string;
+  readonly localPath: string;
+  readonly localPathLabel: string;
+  readonly gitBranch?: string | null | undefined;
+  readonly gitBaseCommit?: string | null | undefined;
+  readonly dirty?: boolean | undefined;
+}
+
+export const agentHubDesktopBridgeVersion = "1.0.0";
+
+export type DesktopCapabilityId = "project.choose-directory" | "project.create-default";
+
+export interface DesktopCapabilityBridgeInfo {
+  readonly version: typeof agentHubDesktopBridgeVersion;
+  readonly capabilities: readonly DesktopCapabilityId[];
+}
+
+export interface DesktopProjectSelection {
+  readonly projectId: Id;
+  readonly desktopProjectRegistration: DesktopProjectRegistration;
+}
+
+export type DesktopProjectActionResult =
+  | {
+      readonly status: "selected";
+      readonly selection: DesktopProjectSelection;
+    }
+  | {
+      readonly status: "cancelled";
+    }
+  | {
+      readonly status: "error";
+      readonly message: string;
+    };
 
 export interface UpdateConversationRequest {
   readonly title?: string | undefined;
@@ -234,6 +277,7 @@ export type RuntimeCommand =
       readonly payload: {
         readonly runId: Id;
         readonly workspaceId: Id;
+        readonly projectId?: Id | null;
         readonly conversationId: Id;
         readonly agentId: Id;
         readonly workspacePath: string;

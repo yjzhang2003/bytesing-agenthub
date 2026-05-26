@@ -852,6 +852,86 @@ describe("control plane registry", () => {
     });
   });
 
+  it("creates project-bound conversations and resolves run commands from the selected project", () => {
+    const { registry, device } = createRegisteredRunLoopRegistry();
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+    const project = snapshot.projects[0]!;
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Project Worker",
+      role: "worker",
+      systemPrompt: "Use the selected project.",
+    });
+
+    const created = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      projectId: project.id,
+      agentIds: [agent.id],
+    });
+    const run = registry.createRun("user_1", {
+      workspaceId: "workspace_1",
+      conversationId: created.conversation.id,
+      agentId: agent.id,
+      prompt: "work here",
+    });
+
+    expect(created.conversation.projectId).toBe(project.id);
+    expect(run.projectId).toBe(project.id);
+    expect(registry.takeRuntimeCommands("user_1", device.id).at(-1)).toMatchObject({
+      payload: {
+        projectId: project.id,
+        workspacePath: project.localPathLabel,
+      },
+    });
+  });
+
+  it("registers Desktop-only project metadata during conversation creation", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const agent = registry.createAgent("user_1", {
+      workspaceId: "workspace_1",
+      displayName: "Desktop Worker",
+      role: "worker",
+      systemPrompt: "Use the desktop project.",
+    });
+
+    const created = registry.createAgentConversation("user_1", {
+      workspaceId: "workspace_1",
+      projectId: "project_desktop",
+      agentIds: [agent.id],
+      desktopProjectRegistration: {
+        source: "desktop-directory",
+        runtimeDeviceId: "runtime_1",
+        displayName: "Desktop Project",
+        localPath: "/tmp/desktop-project",
+        localPathLabel: "/tmp/desktop-project",
+        gitBranch: "feature/project-binding",
+        gitBaseCommit: null,
+        dirty: false,
+      },
+    });
+    const snapshot = registry.createWorkbenchSnapshot("user_1");
+
+    expect(created.conversation.projectId).toBe("project_desktop");
+    expect(snapshot.projects.find((project) => project.id === "project_desktop")).toMatchObject({
+      name: "Desktop Project",
+      localPathLabel: "/tmp/desktop-project",
+      isDefault: false,
+    });
+  });
+
+  it("rejects project-bound conversation creation for unauthorized projects", () => {
+    const { registry } = createRegisteredRunLoopRegistry();
+    const project = registry.createWorkbenchSnapshot("user_1").projects[0]!;
+
+    expect(() =>
+      registry.createAgentConversation("user_2", {
+        workspaceId: "workspace_1",
+        projectId: project.id,
+        agentIds: [agentHubLocalDefaults.implementerAgentId],
+      }),
+    ).toThrow("Project not found");
+  });
+
   it("updates and archives user agent roles", () => {
     const { registry } = createRegisteredRunLoopRegistry();
     const agent = registry.createAgent("user_1", {

@@ -266,6 +266,277 @@ describe("AgentHub component behavior", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it("opens the Chat new-conversation flow without changing the active chat", async () => {
+    const onCreateConversation = vi.fn();
+    await render(
+      <AgentHubWorkbench
+        onCreateConversation={onCreateConversation}
+        snapshot={snapshotWithParticipants()}
+      />,
+    );
+
+    const newConversation = document.querySelector(
+      'button[aria-label="New conversation"]',
+    ) as HTMLButtonElement;
+    expect(newConversation).toBeTruthy();
+    expect(document.body.textContent).toContain("MVP workbench");
+
+    await act(async () => {
+      newConversation.click();
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("New conversation");
+    expect(document.querySelector(".agenthub-new-conversation-modal .agenthub-dialog-close")).toBeNull();
+    expect(document.body.textContent).toContain("MVP workbench");
+
+    const implementerOption = document.querySelector(
+      'button[aria-label="Select Implementer"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      implementerOption.click();
+      await settle();
+    });
+    const next = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent === "Next",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      next.click();
+      await settle();
+    });
+
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("AgentHub");
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+      "~/IdeaProjects/agenthub",
+    );
+    const create = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent === "Create",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      create.click();
+      await settle();
+    });
+
+    expect(onCreateConversation).toHaveBeenCalledWith({
+      workspaceId: "workspace_1",
+      projectId: "project_1",
+      agentIds: ["agent_2"],
+    });
+  });
+
+  it("creates group conversations and keeps Desktop-only project actions optional", async () => {
+    const onCreateConversation = vi.fn();
+    const onChooseProjectDirectory = vi.fn();
+    const onCreateDefaultProject = vi.fn();
+    await render(
+      <AgentHubWorkbench
+        onChooseProjectDirectory={onChooseProjectDirectory}
+        onCreateConversation={onCreateConversation}
+        onCreateDefaultProject={onCreateDefaultProject}
+        snapshot={snapshot()}
+      />,
+    );
+
+    await act(async () => {
+      (document.querySelector('button[aria-label="New conversation"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    for (const label of ["Select Orchestrator", "Select Implementer"]) {
+      await act(async () => {
+        (document.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement).click();
+        await settle();
+      });
+    }
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Next",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+
+    const chooseFolder = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("New from folder"),
+    ) as HTMLButtonElement;
+    const useDefault = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("New default project"),
+    ) as HTMLButtonElement;
+    expect(chooseFolder.disabled).toBe(false);
+    expect(useDefault.disabled).toBe(false);
+    await act(async () => {
+      chooseFolder.click();
+      useDefault.click();
+      await settle();
+    });
+    expect(onChooseProjectDirectory).toHaveBeenCalledOnce();
+    expect(onCreateDefaultProject).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Create",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    expect(onCreateConversation).toHaveBeenCalledWith({
+      workspaceId: "workspace_1",
+      projectId: "project_1",
+      agentIds: ["agent_1", "agent_2"],
+    });
+  });
+
+  it("keeps remote clients on existing projects and surfaces creation failures", async () => {
+    const onCreateConversation = vi.fn().mockRejectedValue(new Error("Project is offline"));
+    await render(
+      <AgentHubWorkbench onCreateConversation={onCreateConversation} snapshot={snapshot()} />,
+    );
+
+    await act(async () => {
+      (document.querySelector('button[aria-label="New conversation"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        document.querySelector('button[aria-label="Select Implementer"]') as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Next",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+
+    const chooseFolder = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("New from folder"),
+    );
+    expect(chooseFolder).toBeUndefined();
+    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain(
+      "Open Desktop to add a local project.",
+    );
+
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Create",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Project is offline");
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+  });
+
+  it("shows a concise degraded state when Desktop project capabilities are unavailable", async () => {
+    await render(<AgentHubWorkbench desktopProjectActionsUnavailable snapshot={snapshot()} />);
+
+    await act(async () => {
+      (document.querySelector('button[aria-label="New conversation"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        document.querySelector('button[aria-label="Select Implementer"]') as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Next",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+      "Desktop project actions are unavailable.",
+    );
+    expect(
+      Array.from(document.querySelectorAll("button")).find((button) =>
+        button.textContent?.includes("New from folder"),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("uses Desktop-selected project registrations when capabilities are available", async () => {
+    const onCreateConversation = vi.fn();
+    const onChooseProjectDirectory = vi.fn().mockResolvedValue({
+      projectId: "project_desktop_selected",
+      desktopProjectRegistration: {
+        source: "desktop-directory",
+        runtimeDeviceId: "runtime_local_demo",
+        displayName: "Selected project",
+        localPath: "/tmp/selected-project",
+        localPathLabel: "/tmp/selected-project",
+        gitBranch: "main",
+        dirty: false,
+      },
+    });
+    await render(
+      <AgentHubWorkbench
+        onChooseProjectDirectory={onChooseProjectDirectory}
+        onCreateConversation={onCreateConversation}
+        snapshot={snapshot()}
+      />,
+    );
+
+    await act(async () => {
+      (document.querySelector('button[aria-label="New conversation"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        document.querySelector('button[aria-label="Select Implementer"]') as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Next",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find((button) =>
+          button.textContent?.includes("New from folder"),
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Selected project");
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Create",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    expect(onCreateConversation).toHaveBeenCalledWith({
+      workspaceId: "workspace_1",
+      projectId: "project_desktop_selected",
+      agentIds: ["agent_2"],
+      desktopProjectRegistration: {
+        source: "desktop-directory",
+        runtimeDeviceId: "runtime_local_demo",
+        displayName: "Selected project",
+        localPath: "/tmp/selected-project",
+        localPathLabel: "/tmp/selected-project",
+        gitBranch: "main",
+        dirty: false,
+      },
+    });
+  });
+
   it("updates conversation settings from the Chat Info panel", async () => {
     const onUpdateConversation = vi.fn();
     const onDeleteConversation = vi.fn();

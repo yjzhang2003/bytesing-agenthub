@@ -773,6 +773,7 @@ export function Dialog(props: {
   readonly onConfirm?: (() => void) | undefined;
   readonly onOpenChange?: ((open: boolean) => void) | undefined;
   readonly open?: boolean | undefined;
+  readonly showClose?: boolean | undefined;
   readonly title?: React.ReactNode;
   readonly width?: number | string | undefined;
 }): React.ReactElement | null {
@@ -929,14 +930,16 @@ export function Dialog(props: {
       >
         <header className="agenthub-dialog-header">
           {props.title ? <h2 id={titleId}>{props.title}</h2> : null}
-          <button
-            aria-label={props.closeLabel ?? "Close"}
-            className="agenthub-dialog-close"
-            onClick={close}
-            type="button"
-          >
-            x
-          </button>
+          {props.showClose === false ? null : (
+            <button
+              aria-label={props.closeLabel ?? "Close"}
+              className="agenthub-dialog-close"
+              onClick={close}
+              type="button"
+            >
+              x
+            </button>
+          )}
         </header>
         {props.description ? (
           <p className="agenthub-dialog-description" id={descriptionId}>
@@ -975,6 +978,7 @@ export function AgentHubModal(props: {
   readonly onCancel?: () => void;
   readonly onOk?: () => void;
   readonly open?: boolean;
+  readonly showClose?: boolean;
   readonly title?: React.ReactNode;
   readonly width?: number;
 }): React.ReactElement | null {
@@ -995,6 +999,7 @@ export function AgentHubModal(props: {
         }
       }}
       open={props.open === true}
+      showClose={props.showClose}
       title={props.title}
       width={props.width}
     >

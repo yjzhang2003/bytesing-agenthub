@@ -1,5 +1,8 @@
 import { app, BrowserWindow } from "electron";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { logDesktopError, logDesktopInfo } from "./desktop-log.js";
+import { registerProjectIpcHandlers } from "./project-ipc.js";
 import { defaultDesktopShellConfig, type DesktopShellConfig } from "./shell-config.js";
 import { loadDesktopWebUrl } from "./window-loader.js";
 
@@ -22,10 +25,24 @@ export async function createAgentHubWindow(
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: join(dirname(fileURLToPath(import.meta.url)), "preload.cjs"),
     },
     width: 1280,
   });
 
+  window.webContents.on("console-message", (event) => {
+    const details = event as unknown as {
+      readonly lineNumber?: number;
+      readonly message?: string;
+      readonly sourceId?: string;
+    };
+    const message = details.message ?? "";
+    if (message.includes("Unable to load preload script") || message.includes("agentHubDesktop")) {
+      logDesktopError(
+        `[desktop] renderer diagnostic ${details.sourceId ?? "renderer"}:${details.lineNumber ?? 0} ${message}`,
+      );
+    }
+  });
   window.once("ready-to-show", () => {
     logDesktopInfo("[desktop] window ready to show");
     window.show();
@@ -33,6 +50,21 @@ export async function createAgentHubWindow(
   });
   window.webContents.on("did-finish-load", () => {
     logDesktopInfo(`[desktop] loaded ${window.webContents.getURL()}`);
+    void window.webContents
+      .executeJavaScript(
+        "Boolean(window.agentHubDesktop && window.agentHubDesktop.getCapabilities)",
+      )
+      .then((hasBridge: boolean) => {
+        if (!hasBridge) {
+          logDesktopError(
+            "[desktop] native capability bridge is unavailable; Desktop-only actions will be hidden",
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logDesktopError(`[desktop] capability bridge check failed: ${message}`);
+      });
   });
 
   logDesktopInfo(`[desktop] loading ${config.webUrl}`);
@@ -48,6 +80,7 @@ export async function startDesktopApp(): Promise<void> {
   logDesktopInfo("[desktop] waiting for Electron app readiness");
   await app.whenReady();
   logDesktopInfo("[desktop] Electron app ready");
+  registerProjectIpcHandlers();
   await createAgentHubWindow();
 
   app.on("activate", () => {

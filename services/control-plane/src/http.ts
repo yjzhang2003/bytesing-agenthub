@@ -177,10 +177,22 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
 
       const agentConversationMatch = url.pathname.match(/^\/agents\/([^/]+)\/conversations$/);
       if (request.method === "POST" && agentConversationMatch?.[1]) {
-        const body = createAgentConversationRequestSchema.parse(await readJson(request));
-        if (body.agentId !== agentConversationMatch[1]) {
+        const raw = (await readJson(request)) as Record<string, unknown>;
+        const body = {
+          workspaceId: String(raw["workspaceId"] ?? ""),
+          projectId: typeof raw["projectId"] === "string" ? raw["projectId"] : undefined,
+          agentIds: [agentConversationMatch[1]],
+        };
+        if (String(raw["agentId"] ?? agentConversationMatch[1]) !== agentConversationMatch[1]) {
           throw new Error("Agent id path and body must match");
         }
+        const conversation = registry.createAgentConversation(auth.userId, body as never);
+        sendJson(response, 201, conversation);
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === agentHubApiPaths.conversations) {
+        const body = createAgentConversationRequestSchema.parse(await readJson(request));
         const conversation = registry.createAgentConversation(auth.userId, body);
         sendJson(response, 201, conversation);
         return;
@@ -325,6 +337,7 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
           auth.userId,
           {
             workspaceId: body.workspaceId,
+            ...(body.projectId ? { projectId: body.projectId } : {}),
             conversationId: body.conversationId,
             agentId: body.agentId,
             prompt: body.prompt,

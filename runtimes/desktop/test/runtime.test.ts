@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, writeFile, chmod } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, chmod, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -114,6 +114,7 @@ describe("DesktopRuntime", () => {
     expect(config.agentMemory.enabled).toBe(true);
     expect(config.claudeCode.profileRoot).toContain("agenthub");
     expect(config.claudeCode.pluginDirs).toEqual([]);
+    expect(config.defaultProjectPath).toContain("AgentHub");
     expect(payload.workspace.displayName).toBe("AgentHub");
     expect(payload.capabilities).toContain("provider:smoke");
     expect(payload.providerHealth).toMatchObject({ status: "connected" });
@@ -131,6 +132,85 @@ describe("DesktopRuntime", () => {
     expect(config.providerMode).toBe("claude-code");
     expect(payload.capabilities).toContain("provider:claude-code");
     expect(payload.workspace.providerCapabilities).toContain("provider:claude-code");
+  });
+
+  it("registers an existing local project directory with safe metadata", async () => {
+    const projectPath = await mkdtemp(join(tmpdir(), "agenthub-project-"));
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        controlPlaneUrl: "http://localhost:5310",
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [createFakeProvider()],
+    );
+
+    const registration = await runtime.registerLocalProject({
+      runtimeDeviceId: "runtime_1",
+      localPath: projectPath,
+    });
+
+    expect(registration).toMatchObject({
+      source: "desktop-directory",
+      runtimeDeviceId: "runtime_1",
+      localPath: projectPath,
+      localPathLabel: projectPath,
+      dirty: false,
+    });
+    expect(registration.displayName).toContain("agenthub-project-");
+  });
+
+  it("creates or reuses the AgentHub-managed default project directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "agenthub-default-root-"));
+    const defaultProjectPath = join(root, "Default Project");
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        controlPlaneUrl: "http://localhost:5310",
+        defaultProjectPath,
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [createFakeProvider()],
+    );
+
+    const first = await runtime.createDefaultProjectRegistration({
+      runtimeDeviceId: "runtime_1",
+    });
+    const second = await runtime.createDefaultProjectRegistration({
+      runtimeDeviceId: "runtime_1",
+    });
+
+    expect((await stat(defaultProjectPath)).isDirectory()).toBe(true);
+    expect(first).toMatchObject({
+      source: "desktop-default",
+      displayName: "AgentHub default project",
+      localPath: defaultProjectPath,
+    });
+    expect(second.localPath).toBe(defaultProjectPath);
+  });
+
+  it("rejects local project registration for non-directory paths", async () => {
+    const root = await mkdtemp(join(tmpdir(), "agenthub-project-file-"));
+    const filePath = join(root, "README.md");
+    await writeFile(filePath, "not a directory");
+    const runtime = new DesktopRuntime(
+      {
+        authToken: "token",
+        controlPlaneUrl: "http://localhost:5310",
+        deviceName: "MacBook Pro",
+        heartbeatSeconds: 15,
+      },
+      [createFakeProvider()],
+    );
+
+    await expect(
+      runtime.registerLocalProject({
+        runtimeDeviceId: "runtime_1",
+        localPath: filePath,
+      }),
+    ).rejects.toThrow("Project path must be a directory");
   });
 
   it("reads Claude Code profile and plugin discovery config", () => {

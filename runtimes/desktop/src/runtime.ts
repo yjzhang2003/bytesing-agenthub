@@ -1,4 +1,5 @@
 import type {
+  DesktopProjectRegistration,
   ProviderHealth,
   ProviderRuntimeEvent,
   ClaudeCodeDiscoverySummary,
@@ -6,6 +7,9 @@ import type {
   RuntimeCommand,
   RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
+import { mkdir, stat } from "node:fs/promises";
+import { basename, join } from "node:path";
+import { homedir } from "node:os";
 import type { AgentMemoryRuntimeClient } from "./agent-memory-client.js";
 import { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
 import { readWorkspaceGitMetadata, type WorkspaceGitMetadata } from "./git.js";
@@ -17,6 +21,7 @@ export interface DesktopRuntimeConfig {
   readonly controlPlaneUrl: string;
   readonly authToken: string;
   readonly heartbeatSeconds: number;
+  readonly defaultProjectPath?: string;
   readonly claudeCode?: {
     readonly profileRoot: string;
     readonly pluginDirs: readonly string[];
@@ -29,6 +34,8 @@ export interface LocalWorkspaceRegistration {
   readonly localPath: string;
   readonly git: WorkspaceGitMetadata;
 }
+
+export type LocalProjectRegistration = DesktopProjectRegistration;
 
 export class DesktopRuntime {
   readonly #config: DesktopRuntimeConfig;
@@ -96,6 +103,41 @@ export class DesktopRuntime {
       ...input,
       git: await readWorkspaceGitMetadata(input.localPath),
     };
+  }
+
+  async registerLocalProject(input: {
+    readonly runtimeDeviceId: string;
+    readonly localPath: string;
+    readonly displayName?: string;
+    readonly source?: "desktop-directory" | "desktop-default";
+  }): Promise<LocalProjectRegistration> {
+    const directory = await ensureReadableDirectory(input.localPath);
+    const git = await readWorkspaceGitMetadata(directory);
+    return {
+      source: input.source ?? "desktop-directory",
+      runtimeDeviceId: input.runtimeDeviceId,
+      displayName: input.displayName?.trim() || basename(directory) || "Local project",
+      localPath: directory,
+      localPathLabel: directory,
+      gitBranch: git.branch,
+      gitBaseCommit: git.baseCommit,
+      dirty: git.dirty,
+    };
+  }
+
+  async createDefaultProjectRegistration(input: {
+    readonly runtimeDeviceId: string;
+    readonly displayName?: string;
+  }): Promise<LocalProjectRegistration> {
+    const defaultProjectPath =
+      this.#config.defaultProjectPath ?? join(homedir(), "AgentHub", "Default Project");
+    await mkdir(defaultProjectPath, { recursive: true });
+    return this.registerLocalProject({
+      runtimeDeviceId: input.runtimeDeviceId,
+      localPath: defaultProjectPath,
+      displayName: input.displayName ?? "AgentHub default project",
+      source: "desktop-default",
+    });
   }
 
   async startProviderRun(
@@ -311,4 +353,16 @@ export class DesktopRuntime {
     };
     await resultPublisher.publishRuntimeConnectionCheckResult?.(result);
   }
+}
+
+async function ensureReadableDirectory(path: string): Promise<string> {
+  const trimmed = path.trim();
+  if (!trimmed) {
+    throw new Error("Project directory is required");
+  }
+  const info = await stat(trimmed);
+  if (!info.isDirectory()) {
+    throw new Error("Project path must be a directory");
+  }
+  return trimmed;
 }

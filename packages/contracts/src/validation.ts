@@ -7,11 +7,16 @@ import {
   createConnectionCheckRequestSchema,
   createLocalRunRequestSchema,
   createAgentRequestSchema,
+  desktopCapabilityBridgeInfoSchema,
+  desktopProjectActionResultSchema,
+  desktopProjectSelectionSchema,
+  desktopProjectRegistrationSchema,
   diffMetadataSchema,
   memoryHealthSchema,
   orchestratorDispatchPlanSchema,
   providerHealthSchema,
   providerRuntimeEventSchema,
+  projectMetadataSchema,
   runtimeCommandSchema,
   runtimeConnectionCheckResultSchema,
   runtimeHeartbeatPayloadSchema,
@@ -111,6 +116,12 @@ export function validateWorkspaceMetadata(
   return parseWithSchema(workspaceMetadataSchema, value);
 }
 
+export function validateProjectMetadata(
+  value: unknown,
+): ValidationResult<z.infer<typeof projectMetadataSchema>> {
+  return parseWithSchema(projectMetadataSchema, value);
+}
+
 export function validateWorkbenchSnapshot(
   value: unknown,
 ): ValidationResult<z.infer<typeof workbenchSnapshotSchema>> {
@@ -151,6 +162,30 @@ export function validateCreateAgentConversationRequest(
   value: unknown,
 ): ValidationResult<z.infer<typeof createAgentConversationRequestSchema>> {
   return parseWithSchema(createAgentConversationRequestSchema, value);
+}
+
+export function validateDesktopProjectRegistration(
+  value: unknown,
+): ValidationResult<z.infer<typeof desktopProjectRegistrationSchema>> {
+  return parseWithSchema(desktopProjectRegistrationSchema, value);
+}
+
+export function validateDesktopCapabilityBridgeInfo(
+  value: unknown,
+): ValidationResult<z.infer<typeof desktopCapabilityBridgeInfoSchema>> {
+  return parseWithSchema(desktopCapabilityBridgeInfoSchema, value);
+}
+
+export function validateDesktopProjectSelection(
+  value: unknown,
+): ValidationResult<z.infer<typeof desktopProjectSelectionSchema>> {
+  return parseWithSchema(desktopProjectSelectionSchema, value);
+}
+
+export function validateDesktopProjectActionResult(
+  value: unknown,
+): ValidationResult<z.infer<typeof desktopProjectActionResultSchema>> {
+  return parseWithSchema(desktopProjectActionResultSchema, value);
 }
 
 export function validateUpdateAgentRequest(

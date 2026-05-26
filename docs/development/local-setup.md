@@ -155,6 +155,15 @@ If Electron was already approved, rebuild it:
 pnpm --filter @agenthub/desktop rebuild electron
 ```
 
+Desktop also has a native capability bridge that exposes local-only actions, such as choosing a project folder, to the shared workbench. If Desktop loads but behaves like the browser and does not show Desktop-only project actions, separate the failure modes this way:
+
+- Web load failure: Desktop shows the diagnostic page for `AGENTHUB_WEB_URL`; start `pnpm dev:web` or point `AGENTHUB_WEB_URL` at the printed Vite URL.
+- Control Plane failure: the workbench loads but shows a retryable Control Plane connection error; check `pnpm dev:control-plane` and `VITE_CONTROL_PLANE_URL`.
+- Desktop Runtime failure: the workbench loads but runtime/provider state is offline; check `pnpm dev:runtime`, runtime registration, and heartbeat output.
+- Desktop bridge failure: the workbench loads inside Electron but native project actions are unavailable; check the Desktop terminal for preload or renderer diagnostics such as `native capability bridge is unavailable`.
+
+The Desktop bridge should expose version `1.0.0` and project capabilities for choosing a directory and creating the AgentHub default project. A successful Web URL load alone is not enough to prove Desktop-native actions are available.
+
 ## Smoke Verification
 
 `pnpm smoke:local` starts Control Plane and Desktop Runtime in local/demo mode with `AGENTHUB_PROVIDER_MODE=smoke`, waits for health and runtime registration, creates a minimal run, verifies command delivery through the Desktop Runtime, waits for smoke provider output to appear in the workbench snapshot, verifies the run reaches `completed`, then shuts the spawned processes down. It is CI-friendly because it does not require hosted Supabase credentials or a Claude Code binary.

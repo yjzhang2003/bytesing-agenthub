@@ -8,6 +8,7 @@ import type {
   CreateLocalRunRequest,
   Message,
   PermissionRequest,
+  Project,
   Run,
   RuntimeDevice,
   WorkbenchSnapshot,
@@ -50,6 +51,24 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
     createdAt: now,
     updatedAt: now,
   };
+  const project: Project = {
+    id: "project_1",
+    ownerUserId: "user_1",
+    workspaceId: workspace.id,
+    name: "AgentHub",
+    runtimeDeviceId: runtime.id,
+    localPath: "/Users/chihayaanon/IdeaProjects/agenthub",
+    localPathLabel: "~/IdeaProjects/agenthub",
+    repoUrl: null,
+    gitBranch: "main",
+    gitBaseCommit: null,
+    dirty: false,
+    isDefault: false,
+    lastUsedAt: now,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
   const agents: Agent[] = ["Orchestrator", "Implementer", "Reviewer"].map((displayName, index) => ({
     id: `agent_${index + 1}`,
     ownerUserId: "user_1",
@@ -67,6 +86,7 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
     id: "conversation_1",
     ownerUserId: "user_1",
     workspaceId: workspace.id,
+    projectId: project.id,
     kind: "group",
     title: "AgentHub demo group chat",
     pinnedAt: null,
@@ -123,6 +143,7 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
     agents,
     authenticated: true,
     conversations: [conversation],
+    projects: [project],
     pendingPermissions: [permission],
     runtimeDevices: [runtime],
     workspaces: [workspace],
@@ -136,7 +157,10 @@ export function createDemoWorkspaceFlow(): DemoWorkspaceFlow {
 }
 
 export function createRunRequestFromSnapshot(
-  snapshot: Pick<AgentHubClientState, "activeWorkspaceId" | "agents" | "conversations"> & {
+  snapshot: Pick<
+    AgentHubClientState,
+    "activeWorkspaceId" | "agents" | "conversations" | "projects"
+  > & {
     readonly activeConversationId?: string | null;
   },
   target: string | undefined,
@@ -173,6 +197,14 @@ export function createRunRequestFromSnapshot(
   if (!activeConversationId) {
     throw new Error("No active conversation is available");
   }
+  const activeConversation = snapshot.conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
+  const activeProjectId = activeConversation?.projectId ?? undefined;
+  const activeProject = snapshot.projects.find((project) => project.id === activeProjectId);
+  if (!activeProjectId || !activeProject) {
+    throw new Error("No project is bound to the active conversation");
+  }
   if (!selectedAgent) {
     throw new Error("No runnable agent is available");
   }
@@ -198,6 +230,7 @@ export function createRunRequestFromSnapshot(
 
   const request: CreateLocalRunRequest = {
     workspaceId: snapshot.activeWorkspaceId,
+    projectId: activeProject.id,
     conversationId: activeConversationId,
     agentId: selectedAgent.id,
     prompt,

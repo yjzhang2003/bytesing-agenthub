@@ -21,6 +21,7 @@
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:claude-code:fake": "node scripts/smoke-claude-code-fake.mjs",
     "smoke:claude-code:real": "node scripts/smoke-claude-code-real.mjs",
+    "smoke:desktop-bridge": "node scripts/smoke-desktop-bridge.mjs",
     "smoke:memory": "node scripts/smoke-memory.mjs",
     "test": "vitest run",
     "typecheck": "pnpm -r --if-present typecheck"

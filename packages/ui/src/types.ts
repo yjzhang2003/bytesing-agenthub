@@ -61,7 +61,19 @@ export interface ConversationListItem {
   readonly activeRunStatus?: Run["status"];
 }
 
+export interface ProjectContextViewModel {
+  readonly id: string;
+  readonly name: string;
+  readonly pathLabel: string;
+  readonly branchLabel: string | null;
+  readonly runtimeStatus: RuntimeDeviceStatus;
+  readonly runtimeLabel: string;
+  readonly isDefault: boolean;
+  readonly available: boolean;
+}
+
 export interface WorkspaceNavigationViewModel {
+  readonly workspaceId: string;
   readonly workspaceName: string;
   readonly workspacePathLabel: string;
   readonly branchLabel: string;
@@ -71,6 +83,7 @@ export interface WorkspaceNavigationViewModel {
   readonly conversations: readonly ConversationListItem[];
   readonly agents: readonly AgentTargetViewModel[];
   readonly runCount: number;
+  readonly projects: readonly ProjectContextViewModel[];
 }
 
 export interface RuntimeSummaryViewModel {
@@ -273,6 +286,8 @@ export interface RunViewModel {
   readonly claudeCodeSettingsLabel: string | null;
   readonly claudeCodeOverrideSource: string | null;
   readonly highRiskClaudeCode: boolean;
+  readonly projectName: string | null;
+  readonly projectPathLabel: string | null;
 }
 
 export interface ChatInfoParticipantViewModel extends AgentTargetViewModel {
@@ -313,6 +328,7 @@ export interface ChatInfoViewModel {
   readonly participantCount: number;
   readonly participants: readonly ChatInfoParticipantViewModel[];
   readonly availableAgents: readonly ChatInfoParticipantViewModel[];
+  readonly project: ProjectContextViewModel | null;
   readonly announcement: string | null;
   readonly note: string | null;
 }
@@ -354,4 +370,5 @@ export interface WorkbenchViewModel {
   };
   readonly states: readonly WorkbenchVisualState[];
   readonly activeConversationTitle: string;
+  readonly activeProject: ProjectContextViewModel | null;
 }

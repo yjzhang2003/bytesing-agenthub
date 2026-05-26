@@ -23,6 +23,7 @@ export interface DesktopRuntimeProcessConfig {
     readonly profileRoot: string;
     readonly pluginDirs: readonly string[];
   };
+  readonly defaultProjectPath: string;
   readonly agentMemory: {
     readonly enabled: boolean;
     readonly url: string;
@@ -56,6 +57,8 @@ export function readDesktopRuntimeConfig(
         .split(delimiter)
         .filter(Boolean),
     },
+    defaultProjectPath:
+      env.AGENTHUB_DEFAULT_PROJECT_PATH ?? join(homedir(), "AgentHub", "Default Project"),
     agentMemory: {
       enabled: env.AGENTMEMORY_ENABLED === "1" || env.AGENTMEMORY_ENABLED === "true",
       url: env.AGENTMEMORY_URL ?? "http://127.0.0.1:3111",

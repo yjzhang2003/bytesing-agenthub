@@ -126,6 +126,19 @@ export const workspaceMetadataSchema = z.object({
   providerCapabilities: z.array(z.string()),
 });
 
+export const projectMetadataSchema = z.object({
+  projectId: idSchema,
+  workspaceId: idSchema,
+  displayName: z.string().min(1),
+  runtimeDeviceId: idSchema,
+  localPathLabel: z.string().min(1),
+  gitBranch: z.string().nullable(),
+  gitBaseCommit: z.string().nullable(),
+  dirty: z.boolean(),
+  isDefault: z.boolean(),
+  lastUsedAt: z.string().datetime().nullable(),
+});
+
 export const providerHealthSchema = z.object({
   providerMode: z.enum(["smoke", "claude-code"]),
   status: z.enum(["connected", "missing", "unavailable", "misconfigured"]),
@@ -251,6 +264,7 @@ export const runtimeConnectionCheckResultSchema = z
 
 export const createLocalRunRequestSchema = z.object({
   workspaceId: idSchema,
+  projectId: idSchema.optional(),
   conversationId: idSchema,
   agentId: idSchema,
   prompt: z.string().min(1),
@@ -305,9 +319,46 @@ export const updateConversationAgentSettingsRequestSchema = conversationAgentSet
   { message: "At least one conversation agent setting must be provided" },
 );
 
+export const desktopProjectRegistrationSchema = z.object({
+  source: z.enum(["desktop-directory", "desktop-default"]),
+  runtimeDeviceId: idSchema,
+  displayName: z.string().min(1),
+  localPath: z.string().min(1),
+  localPathLabel: z.string().min(1),
+  gitBranch: z.string().nullable().optional(),
+  gitBaseCommit: z.string().nullable().optional(),
+  dirty: z.boolean().optional(),
+});
+
+export const desktopCapabilityBridgeInfoSchema = z.object({
+  version: z.literal("1.0.0"),
+  capabilities: z.array(z.enum(["project.choose-directory", "project.create-default"])),
+});
+
+export const desktopProjectSelectionSchema = z.object({
+  projectId: idSchema,
+  desktopProjectRegistration: desktopProjectRegistrationSchema,
+});
+
+export const desktopProjectActionResultSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("selected"),
+    selection: desktopProjectSelectionSchema,
+  }),
+  z.object({
+    status: z.literal("cancelled"),
+  }),
+  z.object({
+    status: z.literal("error"),
+    message: z.string().min(1),
+  }),
+]);
+
 export const createAgentConversationRequestSchema = z.object({
   workspaceId: idSchema,
-  agentId: idSchema,
+  projectId: idSchema,
+  agentIds: z.array(idSchema).min(1),
+  desktopProjectRegistration: desktopProjectRegistrationSchema.optional(),
 });
 
 export const updateConversationRequestSchema = z
@@ -329,6 +380,7 @@ export const runtimeCommandSchema = z.discriminatedUnion("type", [
     payload: z.object({
       runId: idSchema,
       workspaceId: idSchema,
+      projectId: idSchema.nullable().optional(),
       conversationId: idSchema,
       agentId: idSchema,
       workspacePath: z.string().min(1),
@@ -373,6 +425,25 @@ const workspaceSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+const projectSchema = z.object({
+  id: idSchema,
+  ownerUserId: idSchema,
+  workspaceId: idSchema,
+  name: z.string().min(1),
+  runtimeDeviceId: idSchema,
+  localPath: z.string().nullable(),
+  localPathLabel: z.string().min(1),
+  repoUrl: z.string().nullable(),
+  gitBranch: z.string().nullable(),
+  gitBaseCommit: z.string().nullable(),
+  dirty: z.boolean(),
+  isDefault: z.boolean(),
+  lastUsedAt: z.string().datetime().nullable(),
+  archivedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
 const runtimeDeviceSchema = z.object({
   id: idSchema,
   ownerUserId: idSchema,
@@ -390,6 +461,7 @@ const conversationSchema = z.object({
   id: idSchema,
   ownerUserId: idSchema,
   workspaceId: idSchema,
+  projectId: idSchema.nullable(),
   kind: z.enum(["single-agent", "group"]),
   title: z.string().min(1),
   pinnedAt: z.string().datetime().nullable(),
@@ -429,6 +501,7 @@ const runSchema = z.object({
   id: idSchema,
   ownerUserId: idSchema,
   workspaceId: idSchema,
+  projectId: idSchema.nullable().optional(),
   conversationId: idSchema,
   agentId: idSchema,
   planId: idSchema.nullable(),
@@ -484,6 +557,7 @@ export const workbenchSnapshotSchema = z.object({
   activeWorkspaceId: idSchema,
   activeConversationId: idSchema,
   workspaces: z.array(workspaceSchema),
+  projects: z.array(projectSchema).default([]),
   runtimeDevices: z.array(runtimeDeviceSchema),
   workspaceMetadata: workspaceMetadataSchema.nullable(),
   providerHealth: providerHealthSchema.nullable().optional(),
@@ -502,6 +576,14 @@ export type AddConversationAgentRequestPayload = z.infer<typeof addConversationA
 export type ConversationAgentSettingsPayload = z.infer<typeof conversationAgentSettingsSchema>;
 export type CreateAgentConversationRequestPayload = z.infer<
   typeof createAgentConversationRequestSchema
+>;
+export type DesktopProjectRegistrationPayload = z.infer<typeof desktopProjectRegistrationSchema>;
+export type DesktopCapabilityBridgeInfoPayload = z.infer<
+  typeof desktopCapabilityBridgeInfoSchema
+>;
+export type DesktopProjectSelectionPayload = z.infer<typeof desktopProjectSelectionSchema>;
+export type DesktopProjectActionResultPayload = z.infer<
+  typeof desktopProjectActionResultSchema
 >;
 export type UpdateConversationAgentSettingsRequestPayload = z.infer<
   typeof updateConversationAgentSettingsRequestSchema
@@ -526,6 +608,7 @@ export type RuntimeConnectionCheckResultPayload = z.infer<
 >;
 export type RuntimeCommandPayload = z.infer<typeof runtimeCommandSchema>;
 export type ProviderHealthPayload = z.infer<typeof providerHealthSchema>;
+export type ProjectMetadataPayload = z.infer<typeof projectMetadataSchema>;
 export type ServiceHealthPayload = z.infer<typeof serviceHealthSchema>;
 export type UpdateAgentRequestPayload = z.infer<typeof updateAgentRequestSchema>;
 export type RuntimeRegistrationPayloadData = z.infer<typeof runtimeRegistrationPayloadSchema>;

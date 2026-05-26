@@ -554,6 +554,40 @@ function ChatInfoDetail(props: {
           open={addDialogOpen}
         />
       </DetailSection>
+      <ChatSettingsGroup title={i18n.t("project.project", { fallback: "Project" })}>
+        {props.chat.project ? (
+          <>
+            <ChatSettingsRow
+              description={props.chat.project.name}
+              title={i18n.t("project.name", { fallback: "Name" })}
+            />
+            <ChatSettingsRow
+              description={props.chat.project.pathLabel}
+              title={i18n.t("project.path", { fallback: "Path" })}
+            />
+            <ChatSettingsRow
+              description={props.chat.project.runtimeLabel}
+              title={i18n.t("project.runtime", { fallback: "Runtime" })}
+            />
+            <ChatSettingsRow
+              description={props.chat.project.branchLabel ?? i18n.t("state.noBranch")}
+              title={i18n.t("project.branch", { fallback: "Branch" })}
+            />
+            <ChatSettingsRow
+              description={
+                props.chat.project.isDefault
+                  ? i18n.t("project.defaultDirectory", {
+                      fallback: "AgentHub default directory",
+                    })
+                  : i18n.t("project.localDirectory", { fallback: "Local directory" })
+              }
+              title={i18n.t("project.source", { fallback: "Source" })}
+            />
+          </>
+        ) : (
+          <p className="agenthub-muted">{i18n.t("project.unbound")}</p>
+        )}
+      </ChatSettingsGroup>
       <ChatSettingsGroup title={i18n.t("chat.basicInfo")}>
         <ChatSettingsRow
           control={
@@ -979,6 +1013,16 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
     <div className="agenthub-inspector-body">
       <h3>{i18n.t("inspector.runStatus", { status: props.run.status })}</h3>
       <p>{props.run.agentName}</p>
+      {props.run.projectName || props.run.projectPathLabel ? (
+        <DetailSection title={i18n.t("project.project", { fallback: "Project" })}>
+          <dl>
+            <dt>{i18n.t("project.name", { fallback: "Name" })}</dt>
+            <dd>{props.run.projectName ?? i18n.t("state.unavailable")}</dd>
+            <dt>{i18n.t("project.path", { fallback: "Path" })}</dt>
+            <dd>{props.run.projectPathLabel ?? i18n.t("state.unavailable")}</dd>
+          </dl>
+        </DetailSection>
+      ) : null}
       <DetailSection title={i18n.t("inspector.timing")}>
         <dl>
           <dt>{i18n.t("inspector.started")}</dt>

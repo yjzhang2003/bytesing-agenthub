@@ -8,6 +8,7 @@ export const smokeRunStartCommandFixture: RuntimeCommand = {
   payload: {
     runId: "run_smoke_1",
     workspaceId: "workspace_1",
+    projectId: "project_1",
     conversationId: "conversation_1",
     agentId: "agent_1",
     workspacePath: "/tmp/project",

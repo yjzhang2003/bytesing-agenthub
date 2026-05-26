@@ -7,6 +7,10 @@ import {
   validateConversationAgentClaudeSession,
   validateCreateAgentConversationRequest,
   validateCreateLocalRunRequest,
+  validateDesktopCapabilityBridgeInfo,
+  validateDesktopProjectActionResult,
+  validateDesktopProjectSelection,
+  validateDesktopProjectRegistration,
   validateCreateAgentRequest,
   validateRuntimeConnectionCheckResult,
   validateRuntimeRegistrationPayload,
@@ -18,6 +22,7 @@ import {
   validateOrchestratorDispatchPlan,
   validateProviderHealth,
   validateProviderRuntimeEvent,
+  validateProjectMetadata,
   validateRuntimeCommand,
   validateUpdateAgentRequest,
 } from "../src/index.js";
@@ -56,6 +61,7 @@ describe("contract validation", () => {
     expect(
       validateCreateLocalRunRequest({
         workspaceId: "workspace_1",
+        projectId: "project_1",
         conversationId: "conversation_1",
         agentId: "agent_1",
         prompt: "Implement the feature",
@@ -95,6 +101,61 @@ describe("contract validation", () => {
     ).toBe(true);
   });
 
+  it("accepts Desktop capability bridge and project action contracts", () => {
+    const selection = {
+      projectId: "project_desktop_1",
+      desktopProjectRegistration: {
+        source: "desktop-directory",
+        runtimeDeviceId: "runtime_local_demo",
+        displayName: "agenthub",
+        localPath: "/tmp/agenthub",
+        localPathLabel: "/tmp/agenthub",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+      },
+    };
+
+    expect(
+      validateDesktopCapabilityBridgeInfo({
+        version: "1.0.0",
+        capabilities: ["project.choose-directory", "project.create-default"],
+      }).ok,
+    ).toBe(true);
+    expect(validateDesktopProjectSelection(selection).ok).toBe(true);
+    expect(
+      validateDesktopProjectActionResult({
+        status: "selected",
+        selection,
+      }).ok,
+    ).toBe(true);
+    expect(validateDesktopProjectActionResult({ status: "cancelled" }).ok).toBe(true);
+    expect(
+      validateDesktopProjectActionResult({
+        status: "error",
+        message: "Project path must be a directory",
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("rejects invalid Desktop bridge payloads", () => {
+    expect(
+      validateDesktopCapabilityBridgeInfo({
+        version: "2.0.0",
+        capabilities: ["project.choose-directory"],
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateDesktopProjectActionResult({
+        status: "selected",
+        selection: {
+          projectId: "",
+          desktopProjectRegistration: {},
+        },
+      }).ok,
+    ).toBe(false);
+  });
+
   it("accepts and preserves Claude Code run options on runtime commands", () => {
     const result = validateRuntimeCommand({
       id: "command_1",
@@ -104,6 +165,7 @@ describe("contract validation", () => {
       payload: {
         runId: "run_1",
         workspaceId: "workspace_1",
+        projectId: "project_1",
         conversationId: "conversation_1",
         agentId: "agent_1",
         workspacePath: "/tmp/project",
@@ -213,6 +275,20 @@ describe("contract validation", () => {
       providerCapabilities: ["provider:smoke"],
     };
     expect(validateWorkspaceMetadata(workspace).ok).toBe(true);
+    expect(
+      validateProjectMetadata({
+        projectId: "project_local_demo",
+        workspaceId: "workspace_local_demo",
+        displayName: "AgentHub",
+        runtimeDeviceId: "runtime_local_demo",
+        localPathLabel: "/Users/example/agenthub",
+        gitBranch: "main",
+        gitBaseCommit: "abc123",
+        dirty: false,
+        isDefault: false,
+        lastUsedAt: now,
+      }).ok,
+    ).toBe(true);
     expect(
       validateRuntimeRegistrationPayload({
         deviceId: "runtime_local_demo",
@@ -334,10 +410,37 @@ describe("contract validation", () => {
     expect(
       validateCreateAgentConversationRequest({
         workspaceId: "workspace_1",
-        agentId: "agent_1",
+        projectId: "project_1",
+        agentIds: ["agent_1"],
       }).ok,
     ).toBe(true);
+    expect(
+      validateCreateAgentConversationRequest({
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        agentIds: ["agent_1", "agent_2"],
+      }).ok,
+    ).toBe(true);
+    expect(
+      validateCreateAgentConversationRequest({
+        workspaceId: "workspace_1",
+        projectId: "project_1",
+        agentIds: [],
+      }).ok,
+    ).toBe(false);
     expect(validateCreateAgentConversationRequest({ workspaceId: "workspace_1" }).ok).toBe(false);
+    expect(
+      validateDesktopProjectRegistration({
+        source: "desktop-directory",
+        runtimeDeviceId: "runtime_local_demo",
+        displayName: "AgentHub",
+        localPath: "/Users/example/agenthub",
+        localPathLabel: "/Users/example/agenthub",
+        gitBranch: "main",
+        gitBaseCommit: null,
+        dirty: false,
+      }).ok,
+    ).toBe(true);
   });
 
   it("exposes local agent, provider status, and memory status API paths", () => {
@@ -387,6 +490,26 @@ describe("contract validation", () => {
           updatedAt: now,
         },
       ],
+      projects: [
+        {
+          id: "project_local_demo",
+          ownerUserId: "user_local_demo",
+          workspaceId: "workspace_local_demo",
+          name: "AgentHub",
+          runtimeDeviceId: "runtime_local_demo",
+          localPath: "/Users/example/agenthub",
+          localPathLabel: "/Users/example/agenthub",
+          repoUrl: null,
+          gitBranch: "main",
+          gitBaseCommit: null,
+          dirty: false,
+          isDefault: false,
+          lastUsedAt: now,
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
       workspaceMetadata: null,
       providerHealth: {
         providerMode: "claude-code",
@@ -408,6 +531,7 @@ describe("contract validation", () => {
           id: "conversation_local_demo",
           ownerUserId: "user_local_demo",
           workspaceId: "workspace_local_demo",
+          projectId: "project_local_demo",
           kind: "group",
           title: "AgentHub local demo",
           pinnedAt: null,

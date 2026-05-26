@@ -16,7 +16,11 @@ export { ClaudeCodeProviderAdapter } from "./claude-code-provider-adapter.js";
 export type { DesktopRuntimeProcessConfig } from "./config.js";
 export { readDiffSummary, readWorkspaceGitMetadata } from "./git.js";
 export { DesktopRuntime } from "./runtime.js";
-export type { DesktopRuntimeConfig, LocalWorkspaceRegistration } from "./runtime.js";
+export type {
+  DesktopRuntimeConfig,
+  LocalProjectRegistration,
+  LocalWorkspaceRegistration,
+} from "./runtime.js";
 export { SmokeProviderAdapter } from "./smoke-provider-adapter.js";
 import { DesktopRuntime } from "./runtime.js";
 export type {

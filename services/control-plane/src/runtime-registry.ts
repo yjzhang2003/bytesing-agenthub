@@ -14,6 +14,7 @@ import type {
   LocalConnectionCheckTarget,
   MemoryHealth,
   Message,
+  Project,
   ProviderHealth,
   ProviderRuntimeEvent,
   RuntimeConnectionCheckResult,
@@ -57,6 +58,7 @@ export interface WorkspaceBinding {
 
 export interface CreateRunInput {
   readonly workspaceId: Id;
+  readonly projectId?: Id;
   readonly conversationId: Id;
   readonly agentId: Id;
   readonly prompt?: string;
@@ -77,6 +79,7 @@ export class ControlPlaneRegistry {
   readonly #devices = new Map<Id, RuntimeDevice>();
   readonly #workspaceBindings = new Map<Id, WorkspaceBinding>();
   readonly #workspaceMetadata = new Map<Id, WorkspaceMetadata>();
+  readonly #projects = new Map<Id, Project>();
   readonly #runs = new Map<Id, Run>();
   readonly #messages = new Map<Id, Message>();
   readonly #commands = new Map<Id, RuntimeCommand[]>();
@@ -133,6 +136,7 @@ export class ControlPlaneRegistry {
         runtimeDeviceId: device.id,
         localPath: input.workspace.localPathLabel,
       });
+      this.#ensureDefaultProject(ownerUserId, device.id, input.workspace);
     }
     if (input.providerHealth) {
       this.#providerHealth.set(ownerUserId, input.providerHealth);
@@ -197,6 +201,15 @@ export class ControlPlaneRegistry {
   bindWorkspace(binding: WorkspaceBinding): WorkspaceBinding {
     this.#requireOwnedDevice(binding.ownerUserId, binding.runtimeDeviceId);
     this.#workspaceBindings.set(binding.workspaceId, binding);
+    this.#ensureDefaultProject(binding.ownerUserId, binding.runtimeDeviceId, {
+      workspaceId: binding.workspaceId,
+      displayName: binding.workspaceId,
+      localPathLabel: binding.localPath,
+      gitBranch: null,
+      gitBaseCommit: null,
+      dirty: false,
+      providerCapabilities: [],
+    });
     return binding;
   }
 
@@ -209,12 +222,12 @@ export class ControlPlaneRegistry {
     if (conversation && conversation.workspaceId !== input.workspaceId) {
       throw new Error("Conversation is not available in this local workspace");
     }
-    const binding = this.#workspaceBindings.get(input.workspaceId);
-    if (!binding || binding.ownerUserId !== ownerUserId) {
+    const workspaceBinding = this.#workspaceBindings.get(input.workspaceId);
+    if (!workspaceBinding || workspaceBinding.ownerUserId !== ownerUserId) {
       throw new Error("Workspace is not bound to this user runtime");
     }
-
-    const device = this.#requireOwnedDevice(ownerUserId, binding.runtimeDeviceId);
+    const project = this.#requireRunProject(ownerUserId, input.workspaceId, conversation, input.projectId);
+    const device = this.#requireOwnedDevice(ownerUserId, project.runtimeDeviceId);
     if (device.status === "offline") {
       throw new Error("Workspace runtime is offline");
     }
@@ -271,6 +284,7 @@ export class ControlPlaneRegistry {
       id: crypto.randomUUID(),
       ownerUserId,
       workspaceId: input.workspaceId,
+      projectId: project.id,
       conversationId: input.conversationId,
       agentId: input.agentId,
       planId: input.planId ?? null,
@@ -298,17 +312,18 @@ export class ControlPlaneRegistry {
     this.#messages.set(userMessage.id, userMessage);
     this.#runs.set(run.id, run);
     this.#publishRunStatus(run, "agent.run.status_changed");
-    this.#enqueueCommand(binding.runtimeDeviceId, {
+    this.#enqueueCommand(project.runtimeDeviceId, {
       id: crypto.randomUUID(),
       type: "run.start",
-      runtimeDeviceId: binding.runtimeDeviceId,
+      runtimeDeviceId: project.runtimeDeviceId,
       createdAt: now,
       payload: {
         runId: run.id,
         workspaceId: run.workspaceId,
+        projectId: project.id,
         conversationId: run.conversationId,
         agentId: run.agentId,
-        workspacePath: binding.localPath,
+        workspacePath: project.localPath ?? project.localPathLabel,
         prompt: input.prompt ?? "Run AgentHub local task",
         systemPrompt: this.#scopedSystemPrompt(agent, conversationParticipant),
         providerMode: effectiveProviderMode,
@@ -381,46 +396,68 @@ export class ControlPlaneRegistry {
   ): {
     readonly conversation: Conversation;
     readonly participant: ConversationParticipant;
+    readonly participants: readonly ConversationParticipant[];
   } {
     this.#requireWorkspaceAvailable(ownerUserId, input.workspaceId);
-    const agent = this.#requireRunnableAgent(ownerUserId, input.workspaceId, input.agentId);
+    const project = this.#createOrRequireProject(ownerUserId, input);
+    if (project.workspaceId !== input.workspaceId) {
+      throw new Error("Project is not available in this workspace");
+    }
+    const inputAgentIds = (input as { readonly agentIds?: readonly Id[] }).agentIds ?? [];
+    const requestedAgentIds =
+      inputAgentIds.length > 0
+        ? inputAgentIds
+        : ((input as unknown as { readonly agentId?: Id }).agentId
+            ? [(input as unknown as { readonly agentId: Id }).agentId]
+            : []);
+    const agents = requestedAgentIds.map((agentId) =>
+      this.#requireRunnableAgent(ownerUserId, input.workspaceId, agentId),
+    );
+    if (agents.length === 0) {
+      throw new Error("At least one agent is required");
+    }
     const now = this.#now().toISOString();
     const conversation: Conversation = {
       id: crypto.randomUUID(),
       ownerUserId,
       workspaceId: input.workspaceId,
-      kind: "single-agent",
-      title: agent.displayName,
+      projectId: project.id,
+      kind: agents.length === 1 ? "single-agent" : "group",
+      title: agents.length === 1 ? agents[0]?.displayName ?? "New conversation" : "New group chat",
       pinnedAt: null,
       notificationsMuted: false,
       archivedAt: null,
       createdAt: now,
       updatedAt: now,
     };
-    const participant: ConversationParticipant = {
-      id: crypto.randomUUID(),
-      ownerUserId,
-      conversationId: conversation.id,
-      agentId: agent.id,
-      addedByUserId: ownerUserId,
-      archivedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    };
     this.#conversations.set(conversation.id, conversation);
-    this.#conversationParticipants.set(
-      this.#participantKey(conversation.id, agent.id),
-      participant,
-    );
-    this.#ensureConversationAgentClaudeSession({
-      ownerUserId,
-      workspaceId: conversation.workspaceId,
-      conversationId: conversation.id,
-      agent,
+    const participants = agents.map((agent) => {
+      const participant: ConversationParticipant = {
+        id: crypto.randomUUID(),
+        ownerUserId,
+        conversationId: conversation.id,
+        agentId: agent.id,
+        addedByUserId: ownerUserId,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.#conversationParticipants.set(
+        this.#participantKey(conversation.id, agent.id),
+        participant,
+      );
+      this.#ensureConversationAgentClaudeSession({
+        ownerUserId,
+        workspaceId: conversation.workspaceId,
+        conversationId: conversation.id,
+        agent,
+      });
+      this.#publishMembershipChanged(participant, "added");
+      return participant;
     });
     this.#activeConversationIds.set(ownerUserId, conversation.id);
-    this.#publishMembershipChanged(participant, "added");
-    return { conversation, participant };
+    this.#touchProject(project.id);
+    return { conversation, participant: participants[0]!, participants };
   }
 
   setActiveConversation(ownerUserId: Id, conversationId: Id): Conversation | null {
@@ -695,12 +732,12 @@ export class ControlPlaneRegistry {
 
   cancelRun(ownerUserId: Id, runId: Id): Run {
     const run = this.updateRunStatus(ownerUserId, runId, "cancelling");
-    const binding = this.#workspaceBindings.get(run.workspaceId);
-    if (binding) {
-      this.#enqueueCommand(binding.runtimeDeviceId, {
+    const project = run.projectId ? this.#projects.get(run.projectId) : null;
+    if (project?.ownerUserId === ownerUserId) {
+      this.#enqueueCommand(project.runtimeDeviceId, {
         id: crypto.randomUUID(),
         type: "run.cancel",
-        runtimeDeviceId: binding.runtimeDeviceId,
+        runtimeDeviceId: project.runtimeDeviceId,
         createdAt: this.#now().toISOString(),
         payload: { runId },
       });
@@ -826,11 +863,23 @@ export class ControlPlaneRegistry {
       createdAt: now,
       updatedAt: now,
     };
+    const defaultProject = runtimeDeviceId
+      ? this.#ensureDefaultProject(ownerUserId, runtimeDeviceId, metadata ?? {
+          workspaceId: workspace.id,
+          displayName: workspace.name,
+          localPathLabel: workspace.localPath ?? "AgentHub default project",
+          gitBranch: workspace.defaultBranch,
+          gitBaseCommit: null,
+          dirty: false,
+          providerCapabilities: [],
+        })
+      : null;
 
     const defaultConversation: Conversation = {
       id: agentHubLocalDefaults.conversationId,
       ownerUserId,
       workspaceId: workspace.id,
+      projectId: defaultProject?.id ?? null,
       kind: "group",
       title: "AgentHub local runnable demo",
       pinnedAt: null,
@@ -858,6 +907,9 @@ export class ControlPlaneRegistry {
       activeWorkspaceId: workspace.id,
       activeConversationId,
       workspaces: [workspace],
+      projects: [...this.#projects.values()].filter(
+        (project) => project.ownerUserId === ownerUserId && !project.archivedAt,
+      ),
       runtimeDevices: [...this.#devices.values()].filter(
         (device) => device.ownerUserId === ownerUserId,
       ),
@@ -928,6 +980,128 @@ export class ControlPlaneRegistry {
       return;
     }
     throw new Error("Workspace not found");
+  }
+
+  #createOrRequireProject(ownerUserId: Id, input: CreateAgentConversationRequest): Project {
+    if (input.desktopProjectRegistration) {
+      const existing = this.#projects.get(input.projectId);
+      if (existing && existing.ownerUserId !== ownerUserId) {
+        throw new Error("Project not found");
+      }
+      const now = this.#now().toISOString();
+      const project: Project = {
+        id: input.projectId,
+        ownerUserId,
+        workspaceId: input.workspaceId,
+        name: input.desktopProjectRegistration.displayName,
+        runtimeDeviceId: input.desktopProjectRegistration.runtimeDeviceId,
+        localPath: input.desktopProjectRegistration.localPath,
+        localPathLabel: input.desktopProjectRegistration.localPathLabel,
+        repoUrl: null,
+        gitBranch: input.desktopProjectRegistration.gitBranch ?? null,
+        gitBaseCommit: input.desktopProjectRegistration.gitBaseCommit ?? null,
+        dirty: input.desktopProjectRegistration.dirty ?? false,
+        isDefault: input.desktopProjectRegistration.source === "desktop-default",
+        lastUsedAt: now,
+        archivedAt: null,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      this.#requireOwnedDevice(ownerUserId, project.runtimeDeviceId);
+      this.#projects.set(project.id, project);
+      return project;
+    }
+    return input.projectId
+      ? this.#requireProjectAvailable(ownerUserId, input.projectId)
+      : this.#requireDefaultProjectForWorkspace(ownerUserId, input.workspaceId);
+  }
+
+  #requireProjectAvailable(ownerUserId: Id, projectId: Id): Project {
+    const project = this.#projects.get(projectId);
+    if (!project || project.ownerUserId !== ownerUserId || project.archivedAt) {
+      throw new Error("Project not found");
+    }
+    return project;
+  }
+
+  #requireRunProject(
+    ownerUserId: Id,
+    workspaceId: Id,
+    conversation: Conversation | null,
+    projectId: Id | undefined,
+  ): Project {
+    const resolvedProjectId = projectId ?? conversation?.projectId;
+    if (!resolvedProjectId) {
+      if (!conversation) {
+        return this.#requireDefaultProjectForWorkspace(ownerUserId, workspaceId);
+      }
+      throw new Error("Project selection is required before starting a local run");
+    }
+    const project = this.#requireProjectAvailable(ownerUserId, resolvedProjectId);
+    if (conversation && project.id !== conversation.projectId) {
+      throw new Error("Run project does not match the conversation project");
+    }
+    return project;
+  }
+
+  #ensureDefaultProject(
+    ownerUserId: Id,
+    runtimeDeviceId: Id,
+    metadata: WorkspaceMetadata,
+  ): Project {
+    const existing = [...this.#projects.values()].find(
+      (project) =>
+        project.ownerUserId === ownerUserId &&
+        project.workspaceId === metadata.workspaceId &&
+        project.isDefault,
+    );
+    const now = this.#now().toISOString();
+    const project: Project = {
+      id: existing?.id ?? `${metadata.workspaceId}_default_project`,
+      ownerUserId,
+      workspaceId: metadata.workspaceId,
+      name: metadata.displayName,
+      runtimeDeviceId,
+      localPath: metadata.localPathLabel,
+      localPathLabel: metadata.localPathLabel,
+      repoUrl: null,
+      gitBranch: metadata.gitBranch,
+      gitBaseCommit: metadata.gitBaseCommit,
+      dirty: metadata.dirty,
+      isDefault: true,
+      lastUsedAt: existing?.lastUsedAt ?? null,
+      archivedAt: null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    this.#projects.set(project.id, project);
+    return project;
+  }
+
+  #requireDefaultProjectForWorkspace(ownerUserId: Id, workspaceId: Id): Project {
+    const project = [...this.#projects.values()].find(
+      (candidate) =>
+        candidate.ownerUserId === ownerUserId &&
+        candidate.workspaceId === workspaceId &&
+        candidate.isDefault &&
+        !candidate.archivedAt,
+    );
+    if (!project) {
+      throw new Error("Project selection is required before starting a local run");
+    }
+    return project;
+  }
+
+  #touchProject(projectId: Id): void {
+    const project = this.#projects.get(projectId);
+    if (!project) {
+      return;
+    }
+    this.#projects.set(projectId, {
+      ...project,
+      lastUsedAt: this.#now().toISOString(),
+      updatedAt: this.#now().toISOString(),
+    });
   }
 
   #requireConversationAvailable(ownerUserId: Id, conversationId: Id): Conversation | null {

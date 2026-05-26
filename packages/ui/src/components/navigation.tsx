@@ -7,6 +7,7 @@ import {
   Moon,
   PanelLeftClose,
   Play,
+  Plus,
   Settings,
   Sun,
 } from "lucide-react";
@@ -100,6 +101,7 @@ export function LeftNavigation(props: {
   readonly onSelect: (selection: InspectorSelection) => void;
   readonly onOpenConversation: () => void;
   readonly onSelectConversation: (conversationId: string) => void;
+  readonly onNewConversation?: () => void;
   readonly onOpenAgents: () => void;
   readonly onOpenConnections: () => void;
   readonly onOpenSettings: () => void;
@@ -260,6 +262,16 @@ export function LeftNavigation(props: {
               label={i18n.t("nav.searchConversations", { fallback: "Search conversations" })}
               placeholder={i18n.t("nav.search", { fallback: "Search" })}
             />
+            <HoverButton
+              aria-label={i18n.t("actions.newConversation", { fallback: "New conversation" })}
+              className="agenthub-icon-button"
+              disabled={!props.onNewConversation}
+              onClick={props.onNewConversation}
+              title={i18n.t("actions.newConversation", { fallback: "New conversation" })}
+              type="button"
+            >
+              <Icon icon={Plus} />
+            </HoverButton>
             <HoverButton
               aria-label={
                 props.collapsed

@@ -69,7 +69,7 @@ export class WebControlPlaneClient {
   }
 
   async createAgentConversation(input: CreateAgentConversationRequest) {
-    return this.#post(agentHubApiPaths.agentConversations(input.agentId), input);
+    return this.#post(agentHubApiPaths.conversations, input);
   }
 
   async setActiveConversation(conversationId: string) {

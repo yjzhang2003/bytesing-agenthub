@@ -3,6 +3,7 @@ import type {
   Conversation,
   DiffFileSummary,
   PermissionRequest,
+  Project,
   RuntimeDevice,
   Run,
   Workspace,
@@ -13,6 +14,7 @@ export interface AgentHubClientState {
   readonly authenticated: boolean;
   readonly activeWorkspaceId: string | null;
   readonly workspaces: readonly Workspace[];
+  readonly projects: readonly Project[];
   readonly runtimeDevices: readonly RuntimeDevice[];
   readonly conversations: readonly Conversation[];
   readonly agents: readonly Agent[];
@@ -33,8 +35,8 @@ export const emptyAgentHubClientState: AgentHubClientState = {
   authenticated: false,
   conversations: [],
   pendingPermissions: [],
+  projects: [],
   runtimeDevices: [],
   runs: [],
   workspaces: [],
 };
-

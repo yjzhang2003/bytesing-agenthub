@@ -12,6 +12,7 @@ import {
   notifyForAgentHubEvent,
   requestAgentHubNotificationPermission,
 } from "./notifications.js";
+import { createAgentHubDesktopProjectActions } from "./desktop-api.js";
 import React from "react";
 
 const CONNECTION_CHECK_POLL_INTERVAL_MS = 500;
@@ -27,6 +28,7 @@ function AgentHubWebApp(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const snapshotRef = React.useRef<WorkbenchSnapshot | undefined>(undefined);
   const client = React.useMemo(() => createDefaultWebControlPlaneClient(), []);
+  const desktopProjectActions = React.useMemo(() => createAgentHubDesktopProjectActions(), []);
 
   const loadSnapshot = React.useCallback(
     async (options: { readonly showLoading?: boolean } = {}) => {
@@ -120,15 +122,40 @@ function AgentHubWebApp(): React.ReactElement {
         if (!active) {
           return;
         }
+        const activeConversation = active.conversations.find(
+          (conversation) => conversation.id === active.activeConversationId,
+        );
+        const projectId = activeConversation?.projectId ?? active.projects[0]?.id;
+        if (!projectId) {
+          return;
+        }
         return client
           .createAgentConversation({
             workspaceId: active.activeWorkspaceId,
-            agentId,
+            projectId,
+            agentIds: [agentId],
           })
           .then(async () => {
             await loadSnapshot();
           });
       }}
+      onCreateConversation={(input) => {
+        return client.createAgentConversation(input).then(async () => {
+          await loadSnapshot();
+        });
+      }}
+      {...(desktopProjectActions.chooseProjectDirectory ||
+      desktopProjectActions.createDefaultProject
+        ? {
+            ...(desktopProjectActions.chooseProjectDirectory
+              ? { onChooseProjectDirectory: desktopProjectActions.chooseProjectDirectory }
+              : {}),
+            ...(desktopProjectActions.createDefaultProject
+              ? { onCreateDefaultProject: desktopProjectActions.createDefaultProject }
+              : {}),
+          }
+        : {})}
+      desktopProjectActionsUnavailable={desktopProjectActions.bridgeUnavailable}
       onOpenConversation={(conversationId) => {
         setSnapshot((current) =>
           current ? { ...current, activeConversationId: conversationId } : current,

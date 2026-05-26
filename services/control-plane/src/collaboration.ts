@@ -7,6 +7,7 @@ import {
 export interface ConversationCreateInput {
   readonly ownerUserId: Id;
   readonly workspaceId: Id;
+  readonly projectId?: Id | null;
   readonly kind: Conversation["kind"];
   readonly title: string;
 }
@@ -51,6 +52,7 @@ export class CollaborationService {
       id: crypto.randomUUID(),
       ownerUserId: input.ownerUserId,
       workspaceId: input.workspaceId,
+      projectId: input.projectId ?? null,
       kind: input.kind,
       title: input.title,
       pinnedAt: null,

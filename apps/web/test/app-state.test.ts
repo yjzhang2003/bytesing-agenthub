@@ -122,7 +122,8 @@ describe("web app state", () => {
     await client.archiveAgent("agent_new");
     await client.createAgentConversation({
       workspaceId: "workspace_1",
-      agentId: "agent_new",
+      projectId: "project_1",
+      agentIds: ["agent_new"],
     });
     await client.setActiveConversation("conversation_new");
     await client.updateConversation("conversation_new", {
@@ -143,7 +144,7 @@ describe("web app state", () => {
       "POST /agents",
       "PATCH /agents/agent_new",
       "POST /agents/agent_new/archive",
-      "POST /agents/agent_new/conversations",
+      "POST /conversations",
       "POST /conversations/conversation_new/active",
       "PATCH /conversations/conversation_new",
       "PATCH /conversations/conversation_new/agents/agent_new",
@@ -295,6 +296,7 @@ describe("web app state", () => {
 
     expect(request).toEqual({
       workspaceId: flow.activeWorkspace.id,
+      projectId: "project_1",
       conversationId: flow.activeConversation.id,
       agentId: "agent_3",
       prompt: "review this",

@@ -58,6 +58,21 @@ export interface Workspace extends UserOwned {
   readonly defaultBranch: string | null;
 }
 
+export interface Project extends UserOwned {
+  readonly workspaceId: Id;
+  readonly name: string;
+  readonly runtimeDeviceId: Id;
+  readonly localPath: string | null;
+  readonly localPathLabel: string;
+  readonly repoUrl: string | null;
+  readonly gitBranch: string | null;
+  readonly gitBaseCommit: string | null;
+  readonly dirty: boolean;
+  readonly isDefault: boolean;
+  readonly lastUsedAt: ISODateTime | null;
+  readonly archivedAt: ISODateTime | null;
+}
+
 export interface RuntimeDevice extends UserOwned {
   readonly displayName: string;
   readonly platform: "macos" | "windows" | "linux" | "cloud";
@@ -85,6 +100,7 @@ export interface Agent extends UserOwned {
 
 export interface Conversation extends UserOwned {
   readonly workspaceId: Id;
+  readonly projectId: Id | null;
   readonly kind: ConversationKind;
   readonly title: string;
   readonly pinnedAt: ISODateTime | null;
@@ -137,6 +153,7 @@ export interface Message extends UserOwned {
 
 export interface Run extends UserOwned {
   readonly workspaceId: Id;
+  readonly projectId: Id | null;
   readonly conversationId: Id;
   readonly agentId: Id;
   readonly planId: Id | null;

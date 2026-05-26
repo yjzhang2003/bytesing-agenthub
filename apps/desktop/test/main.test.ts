@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { defaultDesktopShellConfig, getRuntimeStartupSummary } from "../src/shell-config.js";
 import {
   createDesktopLoadFailureDataUrl,
   installDesktopLoadFailureHandler,
   loadDesktopWebUrl,
 } from "../src/window-loader.js";
+import {
+  cancelledResult,
+  registerLocalProject,
+  selectedResult,
+  selectionFromRegistration,
+  validateDesktopProjectActionResultOrThrow,
+} from "../src/project-ipc.js";
 
 describe("desktop shell config", () => {
   it("hosts the Web UI and starts runtime by default", () => {
@@ -73,5 +83,62 @@ describe("desktop shell config", () => {
 
     expect(loaded[0]).toContain("AgentHub Web UI is not reachable");
     expect(loaded[0]).toContain("ERR_CONNECTION_REFUSED");
+  });
+
+  it("creates safe Desktop project action results from local directories", async () => {
+    const projectPath = await mkdtemp(join(tmpdir(), "agenthub-desktop-project-"));
+    const registration = await registerLocalProject({
+      runtimeDeviceId: "runtime_local_demo",
+      localPath: projectPath,
+    });
+
+    const result = selectedResult(selectionFromRegistration(registration));
+
+    expect(result.status).toBe("selected");
+    if (result.status === "selected") {
+      expect(result.selection.projectId).toContain("project_desktop_");
+      expect(result.selection.desktopProjectRegistration).toMatchObject({
+        displayName: expect.stringContaining("agenthub-desktop-project-"),
+        localPath: projectPath,
+        localPathLabel: projectPath,
+        runtimeDeviceId: "runtime_local_demo",
+        source: "desktop-directory",
+      });
+    }
+  });
+
+  it("preserves Desktop project picker cancellation", () => {
+    expect(cancelledResult()).toEqual({ status: "cancelled" });
+  });
+
+  it("rejects invalid Desktop project action results before IPC returns them", () => {
+    expect(() =>
+      validateDesktopProjectActionResultOrThrow({
+        status: "selected",
+        selection: {
+          projectId: "",
+          desktopProjectRegistration: {
+            source: "desktop-directory",
+            runtimeDeviceId: "",
+            displayName: "",
+            localPath: "",
+            localPathLabel: "",
+          },
+        },
+      }),
+    ).toThrow("selection metadata is required");
+  });
+
+  it("rejects local project registration for non-directory paths", async () => {
+    const projectPath = await mkdtemp(join(tmpdir(), "agenthub-desktop-file-"));
+    const filePath = join(projectPath, "not-a-directory.txt");
+    await writeFile(filePath, "not a directory");
+
+    await expect(
+      registerLocalProject({
+        runtimeDeviceId: "runtime_local_demo",
+        localPath: filePath,
+      }),
+    ).rejects.toThrow("Project path must be a directory");
   });
 });
