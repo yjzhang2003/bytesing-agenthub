@@ -513,13 +513,13 @@ function AgentEditor(props: {
         </section>
         <section className="agenthub-agent-settings-group">
           <header>
-            <h3>Runtime</h3>
+            <h3>{i18n.t("settings.runtime", { fallback: "Runtime" })}</h3>
           </header>
           <div className="agenthub-agent-settings-body">
             <label>
-              <span>Provider</span>
+              <span>{i18n.t("agentInChat.provider", { fallback: "Provider" })}</span>
               <AgentHubSelect
-                aria-label="Agent runtime provider"
+                aria-label={i18n.t("agentInChat.provider", { fallback: "Provider" })}
                 value={runtimeProvider}
                 onValueChange={setRuntimeProvider}
                 options={[
@@ -530,8 +530,10 @@ function AgentEditor(props: {
             </label>
             {runtimeProvider === "codex" ? (
               <span className="agenthub-warning">
-                Codex runtime support is not wired yet. This saves the agent preference for the
-                future runtime adapter.
+                {i18n.t("claudeCode.codexRuntimeFuture", {
+                  fallback:
+                    "Codex runtime support is not wired yet. This saves the agent preference for the future runtime adapter.",
+                })}
               </span>
             ) : null}
           </div>
@@ -539,88 +541,145 @@ function AgentEditor(props: {
         {runtimeProvider === "claude-code" ? (
           <section className="agenthub-agent-settings-group">
             <header>
-              <h3>Claude Code defaults</h3>
+              <h3>{i18n.t("claudeCode.defaults", { fallback: "Claude Code defaults" })}</h3>
             </header>
             <div className="agenthub-agent-settings-body">
               <label>
-                <span>Permission</span>
+                <span>{i18n.t("claudeCode.permission", { fallback: "Permission" })}</span>
                 <AgentHubSelect
-                  aria-label="Claude Code permission default"
+                  aria-label={i18n.t("claudeCode.permissionDefault", {
+                    fallback: "Claude Code permission default",
+                  })}
                   value={claudePermissionPreset}
                   onValueChange={setClaudePermissionPreset}
                   options={[
-                    { label: "Plan only", value: "plan-only" },
-                    { label: "Ask first", value: "ask-first" },
-                    { label: "Auto edits", value: "auto-edits" },
-                    { label: "Full access", value: "full-access" },
+                    {
+                      label: i18n.t("claudeCode.permission.planOnly", { fallback: "Plan only" }),
+                      value: "plan-only",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.askFirst", { fallback: "Ask first" }),
+                      value: "ask-first",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.autoEdits", { fallback: "Auto edits" }),
+                      value: "auto-edits",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.fullAccess", {
+                        fallback: "Full access",
+                      }),
+                      value: "full-access",
+                    },
                   ]}
                 />
               </label>
               <label>
-                <span>Runtime profile</span>
+                <span>{i18n.t("claudeCode.runtimeProfile", { fallback: "Runtime profile" })}</span>
                 <AgentHubTextInput
-                  aria-label="Claude Code runtime profile default"
+                  aria-label={i18n.t("claudeCode.runtimeProfileDefault", {
+                    fallback: "Claude Code runtime profile default",
+                  })}
                   value={claudeRuntimeProfileId}
                   onChange={(event) => setClaudeRuntimeProfileId(event.currentTarget.value)}
                 />
               </label>
               <label>
-                <span>MCP profile</span>
+                <span>{i18n.t("claudeCode.mcpProfile", { fallback: "MCP profile" })}</span>
                 <AgentHubTextInput
-                  aria-label="Claude Code MCP profile default"
+                  aria-label={i18n.t("claudeCode.mcpProfileDefault", {
+                    fallback: "Claude Code MCP profile default",
+                  })}
                   value={claudeMcpProfileId}
                   onChange={(event) => setClaudeMcpProfileId(event.currentTarget.value)}
                 />
               </label>
               <label>
-                <span>Effort</span>
+                <span>{i18n.t("claudeCode.effort", { fallback: "Effort" })}</span>
                 <AgentHubSelect
-                  aria-label="Claude Code effort default"
+                  aria-label={i18n.t("claudeCode.effortDefault", {
+                    fallback: "Claude Code effort default",
+                  })}
                   value={claudeEffort}
                   onValueChange={setClaudeEffort}
                   options={[
-                    { label: "Low", value: "low" },
-                    { label: "Medium", value: "medium" },
-                    { label: "High", value: "high" },
-                    { label: "XHigh", value: "xhigh" },
-                    { label: "Max", value: "max" },
+                    { label: i18n.t("claudeCode.option.low", { fallback: "Low" }), value: "low" },
+                    {
+                      label: i18n.t("claudeCode.option.medium", { fallback: "Medium" }),
+                      value: "medium",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.high", { fallback: "High" }),
+                      value: "high",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.xhigh", { fallback: "XHigh" }),
+                      value: "xhigh",
+                    },
+                    { label: i18n.t("claudeCode.option.max", { fallback: "Max" }), value: "max" },
                   ]}
                 />
               </label>
               <label>
-                <span>Settings</span>
+                <span>{i18n.t("claudeCode.settings", { fallback: "Settings" })}</span>
                 <AgentHubSelect
-                  aria-label="Claude Code settings source default"
+                  aria-label={i18n.t("claudeCode.settingsSourceDefault", {
+                    fallback: "Claude Code settings source default",
+                  })}
                   value={claudeSettingsSource}
                   onValueChange={setClaudeSettingsSource}
                   options={[
-                    { label: "Inherited", value: "inherit" },
-                    { label: "Managed", value: "managed" },
-                    { label: "Isolated", value: "isolated" },
+                    {
+                      label: i18n.t("claudeCode.option.inherited", { fallback: "Inherited" }),
+                      value: "inherit",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.managed", { fallback: "Managed" }),
+                      value: "managed",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.isolated", { fallback: "Isolated" }),
+                      value: "isolated",
+                    },
                   ]}
                 />
               </label>
               <label>
-                <span>Hooks</span>
+                <span>{i18n.t("claudeCode.hooks", { fallback: "Hooks" })}</span>
                 <AgentHubSelect
-                  aria-label="Claude Code hooks default"
+                  aria-label={i18n.t("claudeCode.hooksDefault", {
+                    fallback: "Claude Code hooks default",
+                  })}
                   value={claudeHooksPolicy}
                   onValueChange={setClaudeHooksPolicy}
                   options={[
-                    { label: "Inherited", value: "inherit" },
-                    { label: "Disabled", value: "disabled" },
-                    { label: "Enabled", value: "enabled" },
+                    {
+                      label: i18n.t("claudeCode.option.inherited", { fallback: "Inherited" }),
+                      value: "inherit",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.disabled", { fallback: "Disabled" }),
+                      value: "disabled",
+                    },
+                    {
+                      label: i18n.t("claudeCode.option.enabled", { fallback: "Enabled" }),
+                      value: "enabled",
+                    },
                   ]}
                 />
               </label>
               {claudePermissionPreset === "full-access" ? (
                 <span className="agenthub-warning">
-                  Full access is a high-risk default for future runs.
+                  {i18n.t("claudeCode.fullAccessDefaultWarning", {
+                    fallback: "Full access is a high-risk default for future runs.",
+                  })}
                 </span>
               ) : null}
               {claudeHooksPolicy === "enabled" || claudeHooksPolicy === "inherit" ? (
                 <span className="agenthub-warning">
-                  Hooks may execute local commands during runs.
+                  {i18n.t("claudeCode.hooksWarning", {
+                    fallback: "Hooks may execute local commands during runs.",
+                  })}
                 </span>
               ) : null}
             </div>

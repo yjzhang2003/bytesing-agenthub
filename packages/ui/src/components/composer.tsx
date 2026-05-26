@@ -215,7 +215,7 @@ export function AgentMentionComposer(props: {
 
   return (
     <form
-      aria-label="Message composer"
+      aria-label={i18n.t("composer.messageComposer", { fallback: "Message composer" })}
       className="agenthub-composer"
       onSubmit={(event) => {
         event.preventDefault();
@@ -318,7 +318,7 @@ export function AgentMentionComposer(props: {
         ) : null}
         <div className="agenthub-composer-actions">
           <AgentHubButton
-            aria-label="Add attachment"
+            aria-label={i18n.t("composer.addAttachment", { fallback: "Add attachment" })}
             className="agenthub-composer-icon-action"
             disabled
             htmlType="button"
@@ -333,14 +333,28 @@ export function AgentMentionComposer(props: {
               >
                 <Icon icon={ShieldAlert} />
                 <AgentHubSelect
-                  ariaLabel="Permission"
+                  ariaLabel={i18n.t("claudeCode.permission", { fallback: "Permission" })}
                   value={permissionPreset}
                   onValueChange={setPermissionPreset}
                   options={[
-                    { label: "Plan only", value: "plan-only" },
-                    { label: "Ask first", value: "ask-first" },
-                    { label: "Auto edits", value: "auto-edits" },
-                    { label: "Full access", value: "full-access" },
+                    {
+                      label: i18n.t("claudeCode.permission.planOnly", { fallback: "Plan only" }),
+                      value: "plan-only",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.askFirst", { fallback: "Ask first" }),
+                      value: "ask-first",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.autoEdits", { fallback: "Auto edits" }),
+                      value: "auto-edits",
+                    },
+                    {
+                      label: i18n.t("claudeCode.permission.fullAccess", {
+                        fallback: "Full access",
+                      }),
+                      value: "full-access",
+                    },
                   ]}
                 />
               </span>
@@ -350,15 +364,17 @@ export function AgentMentionComposer(props: {
                     checked={fullAccessConfirmed}
                     onCheckedChange={setFullAccessConfirmed}
                   />
-                  <span>Confirm</span>
+                  <span>{i18n.t("claudeCode.confirm", { fallback: "Confirm" })}</span>
                 </label>
               ) : null}
             </>
           ) : selected?.runtimeProvider === "codex" ? (
-            <span className="agenthub-composer-runtime-pill">Codex soon</span>
+            <span className="agenthub-composer-runtime-pill">
+              {i18n.t("composer.codexSoon", { fallback: "Codex soon" })}
+            </span>
           ) : null}
           <AgentHubButton
-            aria-label="Voice input"
+            aria-label={i18n.t("composer.voiceInput", { fallback: "Voice input" })}
             className="agenthub-composer-icon-action"
             disabled
             htmlType="button"

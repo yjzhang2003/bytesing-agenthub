@@ -18,7 +18,7 @@ struct DiffDetailView: View {
             }
             Section(strings.text(.files)) {
                 NavigationLink("packages/ui/src/index.tsx") {
-                    Text("Single file diff detail")
+                    Text(strings.text(.singleFileDiffDetail))
                         .font(.system(.body, design: .monospaced))
                 }
             }

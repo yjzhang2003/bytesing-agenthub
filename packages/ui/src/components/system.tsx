@@ -403,6 +403,7 @@ export const AgentHubTextArea = React.forwardRef<HTMLTextAreaElement, AgentHubTe
 );
 
 export function AgentHubSelect<T extends string>(props: {
+  readonly "aria-describedby"?: string;
   readonly "aria-label"?: string;
   readonly ariaLabel?: string;
   readonly className?: string;
@@ -418,6 +419,7 @@ export function AgentHubSelect<T extends string>(props: {
 }): React.ReactElement {
   return (
     <select
+      aria-describedby={props["aria-describedby"]}
       aria-invalid={props.invalid || undefined}
       aria-label={props.ariaLabel ?? props["aria-label"]}
       className={joinClassNames("agenthub-select", props.className)}

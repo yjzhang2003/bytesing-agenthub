@@ -15,7 +15,7 @@ struct WorkspaceListView: View {
                 } label: {
                     VStack(alignment: .leading) {
                         Text(workspace.name)
-                        Text("\(strings.text(.runtime)): \(workspace.runtimeStatus.rawValue)")
+                        Text("\(strings.text(.runtime)): \(strings.text(.runtimeStatus(workspace.runtimeStatus)))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

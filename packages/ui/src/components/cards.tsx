@@ -15,7 +15,10 @@ export function PlanCard(props: {
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   return (
-    <article aria-label={`Plan ${props.status}`} className="agenthub-card agenthub-plan-card">
+    <article
+      aria-label={i18n.t("cards.planStatus", { fallback: `Plan ${props.status}`, status: props.status })}
+      className="agenthub-card agenthub-plan-card"
+    >
       <header>
         <strong>{props.title}</strong>
         <span>{props.status}</span>
@@ -38,7 +41,10 @@ export function PermissionCard(props: {
   const i18n = useAgentHubI18n();
   return (
     <article
-      aria-label={`Permission ${props.status}`}
+      aria-label={i18n.t("cards.permissionStatus", {
+        fallback: `Permission ${props.status}`,
+        status: props.status,
+      })}
       className="agenthub-card agenthub-permission-card"
     >
       <header>
@@ -71,9 +77,17 @@ export function DiffCard(props: {
   const insertions = props.files.reduce((sum, file) => sum + file.insertions, 0);
   const deletions = props.files.reduce((sum, file) => sum + file.deletions, 0);
   return (
-    <article aria-label={`Diff ${props.state}`} className="agenthub-card agenthub-diff-card">
+    <article
+      aria-label={i18n.t("cards.diffStatus", { fallback: `Diff ${props.state}`, status: props.state })}
+      className="agenthub-card agenthub-diff-card"
+    >
       <header>
-        <strong>{props.files.length} files changed</strong>
+        <strong>
+          {i18n.t("cards.filesChanged", {
+            count: props.files.length,
+            fallback: `${props.files.length} files changed`,
+          })}
+        </strong>
         <span>{props.state}</span>
       </header>
       <p>

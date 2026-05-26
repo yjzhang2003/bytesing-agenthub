@@ -12,7 +12,7 @@ struct PermissionDetailView: View {
             Section(strings.text(.request)) {
                 Text(permission.summary)
                 Text(strings.text(.risk(permission.risk)))
-                Text(strings.text(.status(permission.status.rawValue)))
+                Text(strings.text(.status(strings.text(.permissionStatus(permission.status)))))
             }
             Section(strings.text(.actions)) {
                 Button(strings.text(.allowOnce)) {}

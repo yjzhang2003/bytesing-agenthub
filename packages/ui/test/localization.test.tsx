@@ -1,11 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  AGENTHUB_LOCALE_STORAGE_KEY,
   AgentHubWorkbench,
   agentHubTranslationKeys,
   createAgentHubI18n,
   normalizeAgentHubLocale,
+  readStoredAgentHubLocale,
   supportedAgentHubLocales,
+  writeStoredAgentHubLocale,
 } from "../src/index.js";
 import { createWorkbenchViewModel } from "../src/view-model.js";
 import { snapshot } from "./test-fixtures.js";
@@ -13,10 +16,32 @@ import { snapshot } from "./test-fixtures.js";
 describe("@agenthub/ui localization", () => {
   it("defines supported locales with English fallback and Simplified Chinese translations", () => {
     expect(supportedAgentHubLocales).toEqual(["en-US", "zh-CN"]);
+    expect(normalizeAgentHubLocale("en")).toBe("en-US");
+    expect(normalizeAgentHubLocale("en-US")).toBe("en-US");
+    expect(normalizeAgentHubLocale("zh")).toBe("zh-CN");
     expect(normalizeAgentHubLocale("zh-CN")).toBe("zh-CN");
+    expect(normalizeAgentHubLocale("")).toBe("en-US");
     expect(normalizeAgentHubLocale("bogus")).toBe("en-US");
+    expect(createAgentHubI18n("zh" as never).locale).toBe("zh-CN");
     expect(createAgentHubI18n("en-US").t("actions.allowOnce")).toBe("Allow once");
     expect(createAgentHubI18n("zh-CN").t("actions.allowOnce")).toBe("允许一次");
+  });
+
+  it("normalizes persisted locale reads and writes", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+
+    values.set(AGENTHUB_LOCALE_STORAGE_KEY, "zh");
+    expect(readStoredAgentHubLocale(storage)).toBe("zh-CN");
+
+    writeStoredAgentHubLocale(storage, "zh" as never);
+    expect(values.get(AGENTHUB_LOCALE_STORAGE_KEY)).toBe("zh-CN");
+
+    values.set(AGENTHUB_LOCALE_STORAGE_KEY, "fr-FR");
+    expect(readStoredAgentHubLocale(storage)).toBe("en-US");
   });
 
   it("keeps the Simplified Chinese catalog aligned with known product chrome keys", () => {
@@ -122,5 +147,62 @@ describe("@agenthub/ui localization", () => {
     expect(chatInfo).toContain("基本信息");
     expect(narrow).toContain("Implemented ");
     expect(narrow).toContain("<code>pnpm check</code>");
+  });
+
+  it("localizes run detail product chrome while preserving technical values", () => {
+    const now = "2026-05-21T00:00:00.000Z";
+    const localized = renderToStaticMarkup(
+      <AgentHubWorkbench
+        initialInspectorSelection={{ id: "run_claude", mode: "run" }}
+        locale="zh-CN"
+        snapshot={{
+          ...snapshot(),
+          runs: [
+            {
+              agentId: "agent_2",
+              claudeCode: {
+                effectivePermissionPreset: "full-access",
+                effectiveSettingsSource: "project",
+                effort: "high",
+                hooksPolicy: "enabled",
+                mcpProfileId: "mcp.local",
+                overrideSource: "conversation",
+                permissionPreset: "workspace-write",
+                runtimeProfileId: "runtime.local",
+                settingsSource: "user",
+              },
+              completedAt: null,
+              conversationId: "conversation_1",
+              createdAt: now,
+              failureReason: "stderr: permission denied",
+              failureSummary: null,
+              id: "run_claude",
+              ownerUserId: "user_1",
+              planId: "plan_1",
+              projectId: "project_1",
+              startedAt: now,
+              status: "failed",
+              updatedAt: now,
+              workspaceId: "workspace_1",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(localized).toContain("权限");
+    expect(localized).toContain("运行时配置");
+    expect(localized).toContain("MCP 配置");
+    expect(localized).toContain("推理强度");
+    expect(localized).toContain("设置");
+    expect(localized).toContain("来源");
+    expect(localized).toContain("诊断");
+    expect(localized).toContain("本次运行选择了完全访问权限。");
+    expect(localized).toContain("runtime.local");
+    expect(localized).toContain("mcp.local");
+    expect(localized).toContain("stderr: permission denied");
+    expect(localized).not.toContain("Full access was selected for this run.");
+    expect(localized).not.toContain(">Permission<");
+    expect(localized).not.toContain(">Diagnostics<");
   });
 });

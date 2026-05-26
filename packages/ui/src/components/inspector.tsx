@@ -17,7 +17,7 @@ import type {
   RuntimeSummaryViewModel,
   WorkbenchViewModel,
 } from "../types.js";
-import { useAgentHubI18n } from "../i18n.js";
+import { type TranslationKey, useAgentHubI18n } from "../i18n.js";
 import { normalizeSelection } from "../view-model.js";
 import {
   AgentHubAvatar,
@@ -156,7 +156,7 @@ function renderInspectorBody(
         onSelect={onSelect}
       />
     ) : (
-      <UnavailableDetail label="Chat unavailable" />
+      <UnavailableDetail labelKey="inspector.chatUnavailable" />
     );
   }
 
@@ -175,7 +175,7 @@ function renderInspectorBody(
         {...(onOpenGlobalAgentSettings ? { onOpenGlobalAgentSettings } : {})}
       />
     ) : (
-      <UnavailableDetail label="Agent unavailable in this chat" />
+      <UnavailableDetail labelKey="inspector.agentUnavailableInChat" />
     );
   }
 
@@ -183,13 +183,13 @@ function renderInspectorBody(
     return model.inspector.collaborationStatus ? (
       <CollaborationStatusDetail status={model.inspector.collaborationStatus} />
     ) : (
-      <UnavailableDetail label="Agent status unavailable" />
+      <UnavailableDetail labelKey="inspector.agentStatusUnavailable" />
     );
   }
 
   if (selection.mode === "plan") {
     const plan = model.inspector.plan;
-    return plan ? <PlanDetail plan={plan} /> : <UnavailableDetail label="Plan unavailable" />;
+    return plan ? <PlanDetail plan={plan} /> : <UnavailableDetail labelKey="inspector.planUnavailable" />;
   }
 
   if (selection.mode === "permission") {
@@ -199,7 +199,7 @@ function renderInspectorBody(
     return permission ? (
       <PermissionDetail permission={permission} />
     ) : (
-      <UnavailableDetail label="Permission unavailable" />
+      <UnavailableDetail labelKey="inspector.permissionUnavailable" />
     );
   }
 
@@ -208,7 +208,7 @@ function renderInspectorBody(
     return diff ? (
       <DiffDetail diff={diff} onOpenFullScreen={onOpenFullScreenDiff} />
     ) : (
-      <UnavailableDetail label="Diff unavailable" />
+      <UnavailableDetail labelKey="inspector.diffUnavailable" />
     );
   }
 
@@ -217,12 +217,12 @@ function renderInspectorBody(
     return artifact ? (
       <ArtifactDetail artifact={artifact} />
     ) : (
-      <UnavailableDetail label="Artifact unavailable" />
+      <UnavailableDetail labelKey="inspector.artifactUnavailable" />
     );
   }
 
   const run = model.inspector.runs.find((candidate) => candidate.id === selection.id);
-  return run ? <RunDetail run={run} /> : <UnavailableDetail label="Run unavailable" />;
+  return run ? <RunDetail run={run} /> : <UnavailableDetail labelKey="inspector.runUnavailable" />;
 }
 
 function AgentInChatDetail(props: {
@@ -247,6 +247,40 @@ function AgentInChatDetail(props: {
     props.agent.role === "orchestrator"
       ? i18n.t("agents.orchestrator", { fallback: "Orchestrator" })
       : i18n.t("agents.worker", { fallback: "Worker" });
+  const participationLabel = (value: AgentInChatViewModel["participationMode"]) => {
+    switch (value) {
+      case "manual":
+        return i18n.t("agentInChat.participation.manual", { fallback: "Manual" });
+      case "orchestrated":
+        return i18n.t("agentInChat.participation.orchestrated", { fallback: "Orchestrated" });
+      case "proactive":
+        return i18n.t("agentInChat.participation.proactive", { fallback: "Proactive" });
+    }
+  };
+  const priorityLabel = (value: AgentInChatViewModel["priority"]) => {
+    switch (value) {
+      case "low":
+        return i18n.t("agentInChat.priority.low", { fallback: "Low" });
+      case "normal":
+        return i18n.t("agentInChat.priority.normal", { fallback: "Normal" });
+      case "high":
+        return i18n.t("agentInChat.priority.high", { fallback: "High" });
+    }
+  };
+  const contextScopeLabel = (value: AgentInChatViewModel["contextScope"]) => {
+    switch (value) {
+      case "conversation":
+        return i18n.t("agentInChat.contextScope.conversation", { fallback: "Conversation" });
+      case "workspace-summary":
+        return i18n.t("agentInChat.contextScope.workspaceSummary", {
+          fallback: "Workspace summary",
+        });
+      case "conversation-artifacts":
+        return i18n.t("agentInChat.contextScope.conversationArtifacts", {
+          fallback: "Conversation artifacts",
+        });
+    }
+  };
   return (
     <div className="agenthub-inspector-body agenthub-agent-in-chat-detail">
       <DetailSection title={i18n.t("agentInChat.title", { fallback: "Agent in this chat" })}>
@@ -274,7 +308,7 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubTextInput
-              ariaLabel="Display name"
+              ariaLabel={i18n.t("agentInChat.displayName", { fallback: "Display name" })}
               defaultValue={props.agent.label}
               onBlur={(event) => update({ displayNameOverride: event.currentTarget.value })}
             />
@@ -285,7 +319,7 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubTextInput
-              ariaLabel="Responsibility"
+              ariaLabel={i18n.t("agentInChat.responsibility", { fallback: "Responsibility" })}
               defaultValue={props.agent.responsibility ?? ""}
               onBlur={(event) => update({ responsibilityOverride: event.currentTarget.value })}
             />
@@ -296,7 +330,7 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubTextInput
-              ariaLabel="Notes"
+              ariaLabel={i18n.t("agentInChat.notes", { fallback: "Notes" })}
               defaultValue={props.agent.notes ?? ""}
               onBlur={(event) => update({ notes: event.currentTarget.value })}
             />
@@ -311,55 +345,65 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubSwitch
-              ariaLabel="Enabled"
+              ariaLabel={i18n.t("agentInChat.enabled", { fallback: "Enabled" })}
               checked={props.agent.enabled}
               onChange={(enabled) => update({ enabled })}
             />
           }
-          description={props.agent.enabled ? "Enabled" : "Disabled"}
+          description={
+            props.agent.enabled
+              ? i18n.t("agentInChat.enabled", { fallback: "Enabled" })
+              : i18n.t("agentInChat.disabled", { fallback: "Disabled" })
+          }
           title={i18n.t("agentInChat.enabled", { fallback: "Enabled" })}
         />
         <ChatSettingsRow
           control={
             <AgentHubSelect
-              ariaLabel="Participation mode"
+              ariaLabel={i18n.t("agentInChat.participationMode", {
+                fallback: "Participation mode",
+              })}
               onValueChange={(participationMode) => update({ participationMode })}
               value={props.agent.participationMode}
               options={[
-                { label: "Manual", value: "manual" },
-                { label: "Orchestrated", value: "orchestrated" },
-                { label: "Proactive", value: "proactive" },
+                { label: participationLabel("manual"), value: "manual" },
+                { label: participationLabel("orchestrated"), value: "orchestrated" },
+                { label: participationLabel("proactive"), value: "proactive" },
               ]}
             />
           }
-          description={props.agent.participationMode}
+          description={participationLabel(props.agent.participationMode)}
           title={i18n.t("agentInChat.participationMode", { fallback: "Participation mode" })}
         />
         <ChatSettingsRow
           control={
             <AgentHubSelect
-              ariaLabel="Priority"
+              ariaLabel={i18n.t("agentInChat.priority", { fallback: "Priority" })}
               onValueChange={(priority) => update({ priority })}
               value={props.agent.priority}
               options={[
-                { label: "Low", value: "low" },
-                { label: "Normal", value: "normal" },
-                { label: "High", value: "high" },
+                { label: priorityLabel("low"), value: "low" },
+                { label: priorityLabel("normal"), value: "normal" },
+                { label: priorityLabel("high"), value: "high" },
               ]}
             />
           }
-          description={props.agent.priority}
+          description={priorityLabel(props.agent.priority)}
           title={i18n.t("agentInChat.priority", { fallback: "Priority" })}
         />
         <ChatSettingsRow
           control={
             <AgentHubSwitch
-              ariaLabel="Quiet mode"
+              ariaLabel={i18n.t("agentInChat.quietMode", { fallback: "Quiet mode" })}
               checked={props.agent.quietMode}
               onChange={(quietMode) => update({ quietMode })}
             />
           }
-          description={props.agent.quietMode ? "Quiet" : "Normal"}
+          description={
+            props.agent.quietMode
+              ? i18n.t("agentInChat.quiet", { fallback: "Quiet" })
+              : i18n.t("agentInChat.priority.normal", { fallback: "Normal" })
+          }
           title={i18n.t("agentInChat.quietMode", { fallback: "Quiet mode" })}
         />
       </ChatSettingsGroup>
@@ -367,34 +411,43 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubSelect
-              ariaLabel="Context scope"
+              ariaLabel={i18n.t("agentInChat.contextScope", { fallback: "Context scope" })}
               onValueChange={(contextScope) => update({ contextScope })}
               value={props.agent.contextScope}
               options={[
-                { label: "Conversation", value: "conversation" },
-                { label: "Workspace summary", value: "workspace-summary" },
-                { label: "Conversation artifacts", value: "conversation-artifacts" },
+                { label: contextScopeLabel("conversation"), value: "conversation" },
+                { label: contextScopeLabel("workspace-summary"), value: "workspace-summary" },
+                {
+                  label: contextScopeLabel("conversation-artifacts"),
+                  value: "conversation-artifacts",
+                },
               ]}
             />
           }
-          description={props.agent.contextScope}
+          description={contextScopeLabel(props.agent.contextScope)}
           title={i18n.t("agentInChat.contextScope", { fallback: "Context scope" })}
         />
         <ChatSettingsRow
           control={
             <AgentHubSwitch
-              ariaLabel="History summary"
+              ariaLabel={i18n.t("agentInChat.historySummary", { fallback: "History summary" })}
               checked={props.agent.includeHistorySummary}
               onChange={(includeHistorySummary) => update({ includeHistorySummary })}
             />
           }
-          description={props.agent.includeHistorySummary ? "Included" : "Excluded"}
+          description={
+            props.agent.includeHistorySummary
+              ? i18n.t("agentInChat.included", { fallback: "Included" })
+              : i18n.t("agentInChat.excluded", { fallback: "Excluded" })
+          }
           title={i18n.t("agentInChat.historySummary", { fallback: "History summary" })}
         />
         <ChatSettingsRow
           control={
             <AgentHubTextInput
-              ariaLabel="Scoped instructions"
+              ariaLabel={i18n.t("agentInChat.scopedInstructions", {
+                fallback: "Scoped instructions",
+              })}
               defaultValue={props.agent.scopedInstructions ?? ""}
               onBlur={(event) => update({ scopedInstructions: event.currentTarget.value })}
             />
@@ -409,12 +462,18 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubSwitch
-              ariaLabel="Require run confirmation"
+              ariaLabel={i18n.t("agentInChat.requireRunConfirmation", {
+                fallback: "Run confirmation",
+              })}
               checked={props.agent.requireRunConfirmation}
               onChange={(requireRunConfirmation) => update({ requireRunConfirmation })}
             />
           }
-          description={props.agent.requireRunConfirmation ? "Required" : "Not required"}
+          description={
+            props.agent.requireRunConfirmation
+              ? i18n.t("agentInChat.required", { fallback: "Required" })
+              : i18n.t("agentInChat.notRequired", { fallback: "Not required" })
+          }
           title={i18n.t("agentInChat.requireRunConfirmation", {
             fallback: "Run confirmation",
           })}
@@ -422,12 +481,16 @@ function AgentInChatDetail(props: {
         <ChatSettingsRow
           control={
             <AgentHubSwitch
-              ariaLabel="Allow auto dispatch"
+              ariaLabel={i18n.t("agentInChat.allowAutoDispatch", { fallback: "Auto dispatch" })}
               checked={props.agent.allowAutoDispatch}
               onChange={(allowAutoDispatch) => update({ allowAutoDispatch })}
             />
           }
-          description={props.agent.allowAutoDispatch ? "Allowed" : "Not allowed"}
+          description={
+            props.agent.allowAutoDispatch
+              ? i18n.t("agentInChat.allowed", { fallback: "Allowed" })
+              : i18n.t("agentInChat.notAllowed", { fallback: "Not allowed" })
+          }
           title={i18n.t("agentInChat.allowAutoDispatch", { fallback: "Auto dispatch" })}
         />
       </ChatSettingsGroup>
@@ -443,7 +506,7 @@ function AgentInChatDetail(props: {
           title={i18n.t("agentInChat.provider", { fallback: "Provider" })}
         />
         <ChatSettingsRow
-          description={props.agent.globalCapabilityTags.join(", ") || "none"}
+          description={props.agent.globalCapabilityTags.join(", ") || i18n.t("agentInChat.none")}
           title={i18n.t("agentInChat.capabilities", { fallback: "Capabilities" })}
         />
         <div className="agenthub-chat-delete-row">
@@ -862,11 +925,11 @@ function EmptyDetail(props: {
   );
 }
 
-function UnavailableDetail(props: { readonly label: string }): React.ReactElement {
+function UnavailableDetail(props: { readonly label?: string; readonly labelKey?: TranslationKey }): React.ReactElement {
   const i18n = useAgentHubI18n();
   return (
     <div className="agenthub-inspector-body" data-state="unavailable">
-      <h3>{props.label}</h3>
+      <h3>{props.labelKey ? i18n.t(props.labelKey) : props.label}</h3>
       <p>{i18n.t("inspector.unavailable")}</p>
     </div>
   );
@@ -1163,21 +1226,25 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
       {props.run.claudeCodePermissionLabel ? (
         <DetailSection title="Claude Code">
           <dl>
-            <dt>Permission</dt>
+            <dt>{i18n.t("claudeCode.permission", { fallback: "Permission" })}</dt>
             <dd>{props.run.claudeCodePermissionLabel}</dd>
-            <dt>Runtime profile</dt>
+            <dt>{i18n.t("claudeCode.runtimeProfile", { fallback: "Runtime profile" })}</dt>
             <dd>{props.run.claudeCodeProfileLabel}</dd>
-            <dt>MCP profile</dt>
+            <dt>{i18n.t("claudeCode.mcpProfile", { fallback: "MCP profile" })}</dt>
             <dd>{props.run.claudeCodeMcpLabel}</dd>
-            <dt>Effort</dt>
+            <dt>{i18n.t("claudeCode.effort", { fallback: "Effort" })}</dt>
             <dd>{props.run.claudeCodeEffortLabel}</dd>
-            <dt>Settings</dt>
+            <dt>{i18n.t("claudeCode.settings", { fallback: "Settings" })}</dt>
             <dd>{props.run.claudeCodeSettingsLabel}</dd>
-            <dt>Source</dt>
+            <dt>{i18n.t("claudeCode.source", { fallback: "Source" })}</dt>
             <dd>{props.run.claudeCodeOverrideSource}</dd>
           </dl>
           {props.run.highRiskClaudeCode ? (
-            <p className="agenthub-warning">Full access was selected for this run.</p>
+            <p className="agenthub-warning">
+              {i18n.t("claudeCode.fullAccessRunWarning", {
+                fallback: "Full access was selected for this run.",
+              })}
+            </p>
           ) : null}
         </DetailSection>
       ) : null}
@@ -1185,7 +1252,7 @@ function RunDetail(props: { readonly run: RunViewModel }): React.ReactElement {
         <p className="agenthub-warning">{props.run.failureSummary}</p>
       ) : null}
       {props.run.failureReason ? (
-        <DetailSection title="Diagnostics">
+        <DetailSection title={i18n.t("inspector.diagnostics", { fallback: "Diagnostics" })}>
           <p className="agenthub-warning">{props.run.failureReason}</p>
         </DetailSection>
       ) : null}

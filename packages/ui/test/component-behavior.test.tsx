@@ -148,6 +148,193 @@ describe("AgentHub component behavior", () => {
     expect(document.activeElement).toBe(opener);
   });
 
+  it("keeps form controls accessible with localized Chinese labels and state text", async () => {
+    const onSwitchChange = vi.fn();
+    const onSelectChange = vi.fn();
+    const onSearchValueChange = vi.fn();
+    const onSubmitShortcut = vi.fn();
+    const textAreaRef = React.createRef<HTMLTextAreaElement>();
+
+    await render(
+      <ThemeRoot mode="light">
+        <FormField error="必须选择智能体" hint="选择一个默认智能体" label="默认智能体">
+          <Select
+            ariaLabel="选择智能体"
+            invalid
+            onValueChange={onSelectChange}
+            options={[
+              { label: "协调者", value: "orchestrator" },
+              { label: "执行者", value: "implementer" },
+            ]}
+            value="orchestrator"
+          />
+        </FormField>
+        <SearchInput
+          ariaLabel="搜索智能体"
+          clearLabel="清除搜索"
+          defaultValue="协调"
+          onValueChange={onSearchValueChange}
+          placeholder="搜索"
+        />
+        <TextArea
+          ariaLabel="补充指令"
+          invalid
+          onSubmitShortcut={onSubmitShortcut}
+          placeholder="输入补充指令"
+          ref={textAreaRef}
+        />
+        <Switch ariaLabel="启用通知" checked={false} label="通知" onCheckedChange={onSwitchChange} />
+      </ThemeRoot>,
+    );
+
+    const select = document.querySelector('select[aria-label="选择智能体"]') as HTMLSelectElement;
+    expect(select.getAttribute("aria-invalid")).toBe("true");
+    expect(select.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.body.textContent).toContain("必须选择智能体");
+    expect(document.body.textContent).toContain("选择一个默认智能体");
+    await act(async () => {
+      select.value = "implementer";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await settle();
+    });
+    expect(onSelectChange).toHaveBeenCalledWith("implementer");
+
+    const search = document.querySelector('input[aria-label="搜索智能体"]') as HTMLInputElement;
+    expect(search.placeholder).toBe("搜索");
+    expect(document.querySelector('button[aria-label="清除搜索"]')).toBeTruthy();
+    await act(async () => {
+      (document.querySelector('button[aria-label="清除搜索"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    expect(onSearchValueChange).toHaveBeenCalledWith("");
+
+    const textArea = document.querySelector('textarea[aria-label="补充指令"]') as HTMLTextAreaElement;
+    expect(textArea).toBe(textAreaRef.current);
+    expect(textArea.getAttribute("aria-invalid")).toBe("true");
+    await act(async () => {
+      textArea.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Enter", metaKey: true }),
+      );
+      await settle();
+    });
+    expect(onSubmitShortcut).toHaveBeenCalledOnce();
+
+    const switchControl = document.querySelector('button[role="switch"]') as HTMLButtonElement;
+    expect(switchControl.getAttribute("aria-label")).toBe("启用通知");
+    await act(async () => {
+      switchControl.click();
+      await settle();
+    });
+    expect(onSwitchChange).toHaveBeenCalledWith(true);
+  });
+
+  it("keeps feedback and loading behavior with localized Chinese live-region text", async () => {
+    const onDismiss = vi.fn();
+    await render(
+      <ThemeRoot mode="light">
+        <LoadingState label="正在加载工作台" variant="spinner" />
+        <Toast
+          dismissLabel="关闭通知"
+          items={[{ content: "连接已恢复", duration: 0, id: "toast_1", tone: "success" }]}
+          onDismiss={onDismiss}
+        />
+      </ThemeRoot>,
+    );
+
+    const loading = document.querySelector('[role="status"][aria-label="正在加载工作台"]');
+    expect(loading?.textContent).toBe("正在加载工作台");
+    expect(document.querySelector(".agenthub-toast-region")?.getAttribute("aria-live")).toBe(
+      "polite",
+    );
+    expect(document.body.textContent).toContain("连接已恢复");
+    await act(async () => {
+      (document.querySelector('button[aria-label="关闭通知"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    expect(onDismiss).toHaveBeenCalledWith("toast_1");
+    expect(document.body.textContent).not.toContain("连接已恢复");
+  });
+
+  it("keeps overlay keyboard behavior with localized Chinese labels", async () => {
+    const onSelect = vi.fn();
+
+    function OverlayHarness(): React.ReactElement {
+      const [dialogOpen, setDialogOpen] = React.useState(false);
+      return (
+        <ThemeRoot mode="light">
+          <button onClick={() => setDialogOpen(true)} type="button">
+            打开对话框
+          </button>
+          <Dialog
+            cancelLabel="取消"
+            closeLabel="关闭对话框"
+            confirmLabel="确认"
+            description="选择下一步操作"
+            onOpenChange={setDialogOpen}
+            open={dialogOpen}
+            title="添加智能体"
+          >
+            <DropdownMenu
+              items={[
+                { id: "edit", label: "编辑" },
+                { disabled: true, id: "delete", label: "删除" },
+              ]}
+              onSelect={onSelect}
+              trigger={<button type="button">更多操作</button>}
+            />
+            <Tooltip content="刷新状态">
+              <button type="button">刷新</button>
+            </Tooltip>
+          </Dialog>
+        </ThemeRoot>
+      );
+    }
+
+    await render(<OverlayHarness />);
+    const opener = document.querySelector("button") as HTMLButtonElement;
+    opener.focus();
+    await act(async () => {
+      opener.click();
+      await settle();
+    });
+
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.textContent).toContain("添加智能体");
+    expect(dialog.textContent).toContain("选择下一步操作");
+    expect(dialog.querySelector('button[aria-label="关闭对话框"]')).toBeTruthy();
+
+    const trigger = Array.from(dialog.querySelectorAll("button")).find(
+      (button) => button.textContent === "更多操作",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      trigger.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      await settle();
+    });
+    expect(document.querySelector('[role="menu"]')?.textContent).toContain("编辑");
+    expect(document.querySelector('[role="menu"]')?.textContent).toContain("删除");
+
+    await act(async () => {
+      (document.querySelector('[role="menuitem"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    expect(onSelect).toHaveBeenCalledWith("edit");
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    const refresh = Array.from(dialog.querySelectorAll("button")).find(
+      (button) => button.textContent === "刷新",
+    ) as HTMLButtonElement;
+    expect(refresh.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe("刷新状态");
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
   it("supports searching and multi-selecting agents in the Chat Info add-agent dialog", async () => {
     const onAddAgentToChat = vi.fn();
     const chatSnapshot = {

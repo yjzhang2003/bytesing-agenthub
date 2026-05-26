@@ -14,7 +14,7 @@ struct WorkspaceHomeView: View {
     var body: some View {
         List {
             Section(strings.text(.runtime)) {
-                Text(workspace.runtimeStatus.rawValue)
+                Text(strings.text(.runtimeStatus(workspace.runtimeStatus)))
             }
 
             Section(strings.text(.conversations)) {

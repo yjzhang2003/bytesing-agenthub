@@ -16,7 +16,14 @@ enum AgentHubMobileLocale: String, CaseIterable, Identifiable {
     }
 
     static func normalized(_ rawValue: String) -> AgentHubMobileLocale {
-        AgentHubMobileLocale(rawValue: rawValue) ?? .english
+        switch rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: "_", with: "-") {
+        case "en", "en-us":
+            return .english
+        case "zh", "zh-cn":
+            return .simplifiedChinese
+        default:
+            return .english
+        }
     }
 }
 
@@ -52,9 +59,13 @@ struct AgentHubStrings {
         case request
         case risk(String)
         case runtime
+        case runtimeStatus(RuntimeStatus)
         case settings
+        case singleFileDiffDetail
         case state(String)
         case statusLabel
+        case planStatus(PlanStatus)
+        case permissionStatus(PermissionStatus)
         case status(String)
         case summary
         case workspaces
@@ -81,9 +92,37 @@ struct AgentHubStrings {
             case .request: return "Request"
             case .risk(let value): return "Risk: \(value)"
             case .runtime: return "Runtime"
+            case .runtimeStatus(let value):
+                switch value {
+                case .online: return "Online"
+                case .offline: return "Offline"
+                case .degraded: return "Degraded"
+                case .activeRunning: return "Active run"
+                }
             case .settings: return "Settings"
+            case .singleFileDiffDetail: return "Single file diff detail"
             case .state(let value): return "State: \(value)"
             case .statusLabel: return "Status"
+            case .planStatus(let value):
+                switch value {
+                case .draft: return "Draft"
+                case .invalid: return "Invalid"
+                case .approved: return "Approved"
+                case .revisionRequested: return "Revision requested"
+                case .cancelled: return "Cancelled"
+                case .dispatched: return "Dispatched"
+                case .completed: return "Completed"
+                case .failed: return "Failed"
+                }
+            case .permissionStatus(let value):
+                switch value {
+                case .pending: return "Pending"
+                case .allowedOnce: return "Allowed once"
+                case .denied: return "Denied"
+                case .expired: return "Expired"
+                case .blocked: return "Blocked"
+                case .completed: return "Completed"
+                }
             case .status(let value): return "Status: \(value)"
             case .summary: return "Summary"
             case .workspaces: return "Workspaces"
@@ -112,9 +151,37 @@ struct AgentHubStrings {
             case .request: return "请求"
             case .risk(let value): return "风险：\(value)"
             case .runtime: return "运行时"
+            case .runtimeStatus(let value):
+                switch value {
+                case .online: return "在线"
+                case .offline: return "离线"
+                case .degraded: return "降级"
+                case .activeRunning: return "运行中"
+                }
             case .settings: return "设置"
+            case .singleFileDiffDetail: return "单文件差异详情"
             case .state(let value): return "状态：\(value)"
             case .statusLabel: return "状态"
+            case .planStatus(let value):
+                switch value {
+                case .draft: return "草稿"
+                case .invalid: return "无效"
+                case .approved: return "已批准"
+                case .revisionRequested: return "已要求修改"
+                case .cancelled: return "已取消"
+                case .dispatched: return "已派发"
+                case .completed: return "已完成"
+                case .failed: return "失败"
+                }
+            case .permissionStatus(let value):
+                switch value {
+                case .pending: return "待处理"
+                case .allowedOnce: return "已允许一次"
+                case .denied: return "已拒绝"
+                case .expired: return "已过期"
+                case .blocked: return "已阻塞"
+                case .completed: return "已完成"
+                }
             case .status(let value): return "状态：\(value)"
             case .summary: return "摘要"
             case .workspaces: return "工作区"

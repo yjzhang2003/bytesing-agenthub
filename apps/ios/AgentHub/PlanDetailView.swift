@@ -13,7 +13,7 @@ struct PlanDetailView: View {
                 Text(plan.goal)
             }
             Section(strings.text(.statusLabel)) {
-                Text(plan.status.rawValue)
+                Text(strings.text(.planStatus(plan.status)))
             }
             Section(strings.text(.agents)) {
                 ForEach(plan.assignedAgents, id: \.self) { agent in
