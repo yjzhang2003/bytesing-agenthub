@@ -221,5 +221,9 @@ function AgentHubWebApp(): React.ReactElement {
 const root = document.querySelector("#root");
 
 if (root) {
-  createRoot(root).render(<AgentHubWebApp />);
+  const globalRoot = globalThis as typeof globalThis & {
+    __agentHubRoot?: ReturnType<typeof createRoot>;
+  };
+  globalRoot.__agentHubRoot ??= createRoot(root);
+  globalRoot.__agentHubRoot.render(<AgentHubWebApp />);
 }

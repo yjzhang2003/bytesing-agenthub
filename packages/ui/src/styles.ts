@@ -930,19 +930,6 @@ body { overflow: hidden; }
   font-size: 9px;
   line-height: 1;
 }
-.agenthub-rail-status-dot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--agenthub-text-muted);
-}
-.agenthub-rail-status-dot[data-status="online"],
-.agenthub-rail-status-dot[data-status="active-running"] { background: var(--agenthub-status); }
-.agenthub-rail-status-dot[data-status="offline"],
-.agenthub-rail-status-dot[data-status="degraded"] { background: var(--agenthub-warning); }
 .agenthub-sidebar-search {
   min-height: 34px;
   display: grid;
@@ -1002,16 +989,16 @@ body { overflow: hidden; }
 }
 .agenthub-conversation-row {
   position: relative;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   grid-template-areas:
-    "title status"
-    "participants status";
-  align-items: start;
-  min-height: 64px;
-  padding: 10px 14px;
+    "avatar title time"
+    "avatar preview unread";
+  align-items: center;
+  min-height: 78px;
+  padding: 10px 14px 10px 12px;
   border-color: transparent;
   border-radius: 0;
-  gap: 2px 10px;
+  gap: 4px 10px;
   line-height: 1.25;
   transition:
     background-color var(--agenthub-motion-fast);
@@ -1021,14 +1008,56 @@ body { overflow: hidden; }
   border-color: transparent;
   background: var(--agenthub-surface-hover);
 }
-.agenthub-conversation-row .agenthub-row-main { grid-area: title; }
-.agenthub-conversation-row small {
-  grid-area: participants;
-  justify-self: start;
+.agenthub-conversation-avatar {
+  grid-area: avatar;
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--agenthub-radius);
+  background: color-mix(in srgb, var(--agenthub-accent) 11%, var(--agenthub-surface-hover));
+  color: var(--agenthub-text);
+  font-size: 11px;
+  font-weight: 750;
 }
-.agenthub-conversation-row .agenthub-row-meta {
-  grid-area: status;
-  align-self: end;
+.agenthub-conversation-title,
+.agenthub-conversation-preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenthub-conversation-title {
+  grid-area: title;
+  color: var(--agenthub-text);
+  font-weight: 650;
+}
+.agenthub-conversation-time {
+  grid-area: time;
+  justify-self: end;
+  color: var(--agenthub-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.agenthub-conversation-preview {
+  grid-area: preview;
+  color: var(--agenthub-text-muted);
+  font-size: 12px;
+}
+.agenthub-conversation-unread {
+  grid-area: unread;
+  justify-self: end;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--agenthub-accent);
+  color: var(--agenthub-accent-text);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
 }
 .agenthub-status-badge {
   display: inline-flex;

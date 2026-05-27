@@ -47,22 +47,20 @@ export function ConversationList(props: {
           onClick={() => props.onSelectConversation(conversation.id)}
           type="button"
         >
-          <span className="agenthub-row-main">{conversation.title}</span>
-          <small>
-            {conversation.participants.join(", ") ||
-              i18n.t("state.noParticipants", { fallback: "No participants" })}
-          </small>
-          <span className="agenthub-row-meta">
-            {conversation.activeRunStatus
-              ? i18n.t("state.runStatus", {
-                  fallback: `Run ${conversation.activeRunStatus}`,
-                  status: conversation.activeRunStatus,
-                })
-              : i18n.t("state.idle", { fallback: "Idle" })}
-            {conversation.pendingPermissions > 0
-              ? ` · ${i18n.t("nav.pending", { count: conversation.pendingPermissions })}`
-              : ""}
+          <span aria-hidden="true" className="agenthub-conversation-avatar">
+            {conversation.avatarLabel}
           </span>
+          <span className="agenthub-conversation-title">{conversation.title}</span>
+          <time className="agenthub-conversation-time">{conversation.lastMessageAtLabel}</time>
+          <span className="agenthub-conversation-preview">{conversation.lastMessagePreview}</span>
+          {conversation.unreadCount > 0 ? (
+            <span
+              aria-label={`${conversation.unreadCount} unread messages`}
+              className="agenthub-conversation-unread"
+            >
+              {conversation.unreadCount}
+            </span>
+          ) : null}
         </HoverButton>
       ))}
     </nav>
@@ -142,11 +140,9 @@ export function LeftNavigation(props: {
           type="button"
         >
           <Icon icon={MessageSquare} />
-          <span
-            aria-hidden="true"
-            className="agenthub-rail-status-dot"
-            data-status={props.model.runtime.status}
-          />
+          {props.model.workspace.unreadMessageCount > 0 ? (
+            <small>{props.model.workspace.unreadMessageCount}</small>
+          ) : null}
         </HoverButton>
         <HoverButton
           aria-current={props.agentsActive ? "page" : undefined}
@@ -157,7 +153,6 @@ export function LeftNavigation(props: {
           type="button"
         >
           <Icon icon={Bot} />
-          <small>{props.model.workspace.agents.length}</small>
         </HoverButton>
         <HoverButton
           aria-current={props.connectionsActive ? "page" : undefined}

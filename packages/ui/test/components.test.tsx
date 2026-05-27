@@ -1352,7 +1352,18 @@ describe("@agenthub/ui components", () => {
   });
 
   it("uses rail tools to open agents and connections pages", () => {
-    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={snapshot()} />);
+    const baseModel = createWorkbenchViewModel(snapshot());
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        viewModel={{
+          ...baseModel,
+          workspace: {
+            ...baseModel.workspace,
+            unreadMessageCount: 2,
+          },
+        }}
+      />,
+    );
 
     expect(html).toContain('aria-label="Open conversation"');
     expect(html).toContain('aria-label="Open agents"');
@@ -1360,9 +1371,43 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Resize conversation list"');
     expect(html).toContain("lucide-message-square");
     expect(html).toContain("lucide-cable");
+    expect(html).not.toContain("agenthub-rail-status-dot");
+    expect(html).toMatch(
+      /aria-label="Open conversation"[\s\S]*<small>2<\/small>[\s\S]*aria-label="Open agents"/,
+    );
+    expect(html).not.toMatch(
+      /aria-label="Open agents"[\s\S]*<small>3<\/small>[\s\S]*aria-label="Open connections"/,
+    );
     expect(html).toMatch(
       /aria-label="Search conversations"[\s\S]*aria-label="Collapse workspace navigation"/,
     );
+  });
+
+  it("renders conversation rows with avatar, message time, preview, and unread count", () => {
+    const baseModel = createWorkbenchViewModel(snapshot());
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench
+        viewModel={{
+          ...baseModel,
+          workspace: {
+            ...baseModel.workspace,
+            conversations: baseModel.workspace.conversations.map((conversation) => ({
+              ...conversation,
+              unreadCount: 2,
+            })),
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain("agenthub-conversation-avatar");
+    expect(html).toMatch(
+      /class="agenthub-conversation-title"[\s\S]*MVP workbench[\s\S]*class="agenthub-conversation-time"[\s\S]*00:00/,
+    );
+    expect(html).toContain("Implementer: Implemented the shell Details pnpm check");
+    expect(html).toMatch(/class="agenthub-conversation-unread"[\s\S]*>2<\/span>/);
+    expect(html).not.toContain(">Orchestrator, Implementer, Researcher</small>");
+    expect(html).not.toContain(">Run running</span>");
   });
 
   it("keeps the left rail visible when conversation navigation is collapsed", () => {

@@ -56,11 +56,15 @@ export type InspectorMode =
 export interface ConversationListItem {
   readonly id: string;
   readonly title: string;
+  readonly avatarLabel: string;
   readonly participants: readonly string[];
   readonly pendingPermissions: number;
+  readonly lastMessageAtLabel: string;
+  readonly lastMessagePreview: string;
   readonly active: boolean;
   readonly pinned: boolean;
   readonly notificationsMuted: boolean;
+  readonly unreadCount: number;
   readonly activeRunStatus?: Run["status"];
 }
 
@@ -83,6 +87,7 @@ export interface WorkspaceNavigationViewModel {
   readonly runtimeStatus: RuntimeDeviceStatus;
   readonly runtimeLabel: string;
   readonly pendingPermissionCount: number;
+  readonly unreadMessageCount: number;
   readonly conversations: readonly ConversationListItem[];
   readonly agents: readonly AgentTargetViewModel[];
   readonly runCount: number;

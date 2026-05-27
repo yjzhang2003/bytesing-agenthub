@@ -66,6 +66,14 @@ function shortDate(value: string | null): string {
   return value.replace("T", " ").replace(".000Z", " UTC");
 }
 
+function shortMessageTime(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const timeStart = value.indexOf("T");
+  return timeStart >= 0 ? value.slice(timeStart + 1, timeStart + 6) : shortDate(value);
+}
+
 function artifactLabel(artifact: string): string {
   return artifact.replace(/-/g, " ");
 }
@@ -91,6 +99,55 @@ function agentInitials(displayName: string): string {
     .map((word) => word[0])
     .join("")
     .toUpperCase();
+}
+
+function conversationInitials(
+  conversation: Conversation,
+  participants: readonly Agent[],
+): string {
+  const firstParticipant = participants[0];
+  if (firstParticipant) {
+    return agentInitials(firstParticipant.displayName);
+  }
+  return agentInitials(conversation.title);
+}
+
+function plainMessagePart(part: MessagePart): string {
+  if (!part.text) {
+    return "";
+  }
+  return part.text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_#>~[\]()]/g, "")
+    .replace(/^\s*[-+]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function lastMessageForConversation(
+  snapshot: WorkbenchSnapshot | null | undefined,
+  conversationId: string,
+): Message | null {
+  return (
+    snapshot?.messages
+      .filter((message) => message.conversationId === conversationId)
+      .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .at(-1) ?? null
+  );
+}
+
+function messagePreview(
+  snapshot: WorkbenchSnapshot | null | undefined,
+  message: Message | null,
+): string {
+  if (!message) {
+    return "No messages yet";
+  }
+  const authorLabel =
+    message.authorKind === "user" ? "You" : agentName(message.authorId, snapshot?.agents ?? []);
+  const body = message.parts.map(plainMessagePart).filter(Boolean).join(" ").trim();
+  return `${authorLabel}: ${body || "No message content"}`;
 }
 
 function firstWorkspace(snapshot: WorkbenchSnapshot | undefined): Workspace | undefined {
@@ -554,20 +611,25 @@ function navigationFromSnapshot(
       .sort(compareConversations)
       .map((conversation) => {
         const activeRunStatus = activeRunByConversation.get(conversation.id);
+        const participants = participantAgents(snapshot, conversation.id);
+        const lastMessage = lastMessageForConversation(snapshot, conversation.id);
         return {
           active: conversation.id === snapshot?.activeConversationId,
           ...(activeRunStatus ? { activeRunStatus } : {}),
+          avatarLabel: conversationInitials(conversation, participants),
           id: conversation.id,
+          lastMessageAtLabel: shortMessageTime(lastMessage?.createdAt ?? conversation.updatedAt),
+          lastMessagePreview: messagePreview(snapshot, lastMessage),
           notificationsMuted: conversation.notificationsMuted,
-          participants: participantAgents(snapshot, conversation.id).map(
-            (agent) => agent.displayName,
-          ),
+          participants: participants.map((agent) => agent.displayName),
           pendingPermissions: 0,
           pinned: Boolean(conversation.pinnedAt),
           title: conversation.title,
+          unreadCount: 0,
         };
       }),
     pendingPermissionCount: 0,
+    unreadMessageCount: 0,
     projects: (snapshot?.projects ?? [])
       .filter((project) => !project.archivedAt)
       .map((project) => projectContextFromProject(snapshot, project))
