@@ -2693,13 +2693,25 @@ body { overflow: hidden; }
   justify-items: end;
   color: var(--agenthub-text-muted);
 }
-.agenthub-project-picker-actions {
+.agenthub-project-new-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   border-top: 1px solid var(--agenthub-border);
   margin-top: 8px;
   padding-top: 12px;
+}
+.agenthub-project-name-field {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--agenthub-text-muted);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 640;
+}
+.agenthub-project-picker-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .agenthub-project-create-button {
   width: 100%;

@@ -30,7 +30,7 @@ import { AgentsPage, type AgentRoleMutationInput } from "./agents.js";
 import { ConnectionsPage } from "./connections.js";
 import { ContextInspector, DiffDetail } from "./inspector.js";
 import { LeftNavigation } from "./navigation.js";
-import { AgentHubButton, AgentHubModal, AgentHubThemeProvider } from "./system.js";
+import { AgentHubButton, AgentHubModal, AgentHubTextInput, AgentHubThemeProvider } from "./system.js";
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage, type SettingsCategoryId } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
@@ -75,7 +75,7 @@ export function AgentHubWorkbench(props: {
     | ConversationProjectSelection
     | null
     | Promise<ConversationProjectSelection | null>;
-  readonly onCreateDefaultProject?: () =>
+  readonly onCreateDefaultProject?: (displayName: string) =>
     | ConversationProjectSelection
     | null
     | Promise<ConversationProjectSelection | null>;
@@ -938,7 +938,7 @@ function NewConversationDialog(props: {
     | null
     | Promise<ConversationProjectSelection | null>;
   readonly onClose: () => void;
-  readonly onCreateDefaultProject?: () =>
+  readonly onCreateDefaultProject?: (displayName: string) =>
     | ConversationProjectSelection
     | null
     | Promise<ConversationProjectSelection | null>;
@@ -953,6 +953,7 @@ function NewConversationDialog(props: {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [desktopProjectSelection, setDesktopProjectSelection] =
     React.useState<ConversationProjectSelection | null>(null);
+  const [newProjectName, setNewProjectName] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const previouslyOpen = React.useRef(false);
@@ -965,6 +966,7 @@ function NewConversationDialog(props: {
         props.model.activeProject?.id ?? props.model.workspace.projects[0]?.id ?? null,
       );
       setDesktopProjectSelection(null);
+      setNewProjectName("");
       setPending(false);
       setError(null);
     }
@@ -972,8 +974,15 @@ function NewConversationDialog(props: {
   }, [props.model.activeProject?.id, props.model.workspace.projects, props.open]);
 
   const selectedAgentCount = selectedAgentIds.size;
+  const trimmedNewProjectName = newProjectName.trim();
+  const selectedDesktopProject =
+    desktopProjectSelection?.projectId === selectedProjectId ? desktopProjectSelection : null;
   const canContinue = selectedAgentCount > 0;
-  const canCreate = canContinue && Boolean(selectedProjectId) && !pending;
+  const canCreate =
+    canContinue &&
+    Boolean(selectedProjectId) &&
+    !pending &&
+    (!selectedDesktopProject || Boolean(trimmedNewProjectName));
   const toggleAgent = (agentId: string) => {
     setSelectedAgentIds((current) => {
       const next = new Set(current);
@@ -990,8 +999,10 @@ function NewConversationDialog(props: {
     if (!selectedProjectId || selectedAgentIds.size === 0) {
       return;
     }
-    const selectedDesktopProject =
-      desktopProjectSelection?.projectId === selectedProjectId ? desktopProjectSelection : null;
+    const renamedDesktopProject =
+      selectedDesktopProject && trimmedNewProjectName
+        ? renameDesktopProjectSelection(selectedDesktopProject, trimmedNewProjectName)
+        : selectedDesktopProject;
     setPending(true);
     setError(null);
     void Promise.resolve(
@@ -999,8 +1010,8 @@ function NewConversationDialog(props: {
         workspaceId: props.model.workspace.workspaceId,
         projectId: selectedProjectId,
         agentIds: Array.from(selectedAgentIds),
-        ...(selectedDesktopProject
-          ? { desktopProjectRegistration: selectedDesktopProject.desktopProjectRegistration }
+        ...(renamedDesktopProject
+          ? { desktopProjectRegistration: renamedDesktopProject.desktopProjectRegistration }
           : {}),
       }),
     )
@@ -1023,6 +1034,7 @@ function NewConversationDialog(props: {
         if (selection) {
           setDesktopProjectSelection(selection);
           setSelectedProjectId(selection.projectId);
+          setNewProjectName(selection.desktopProjectRegistration.displayName);
         }
         setPending(false);
       })
@@ -1145,31 +1157,55 @@ function NewConversationDialog(props: {
               </button>
             ) : null}
             {props.onChooseProjectDirectory || props.onCreateDefaultProject ? (
-              <div className="agenthub-project-picker-actions">
-                {props.onChooseProjectDirectory ? (
-                  <AgentHubButton
-                    className="agenthub-project-create-button"
+              <div className="agenthub-project-new-controls">
+                <label className="agenthub-project-name-field">
+                  <span>{i18n.t("project.newProjectLabel", { fallback: "or New project" })}</span>
+                  <AgentHubTextInput
+                    ariaLabel={i18n.t("project.nameInput", { fallback: "Project name" })}
                     disabled={pending}
-                    kind="primary"
-                    onClick={() => selectDesktopProject(props.onChooseProjectDirectory!)}
-                    type="button"
-                  >
-                    <Icon icon={FolderOpen} />
-                    {i18n.t("project.chooseFolder")}
-                  </AgentHubButton>
-                ) : null}
-                {props.onCreateDefaultProject ? (
-                  <AgentHubButton
-                    className="agenthub-project-create-button"
-                    disabled={pending}
-                    kind="primary"
-                    onClick={() => selectDesktopProject(props.onCreateDefaultProject!)}
-                    type="button"
-                  >
-                    <Icon icon={FolderPlus} />
-                    {i18n.t("project.useDefault")}
-                  </AgentHubButton>
-                ) : null}
+                    onInput={(event) => {
+                      const nextName = event.currentTarget.value;
+                      setNewProjectName(nextName);
+                      setDesktopProjectSelection((current) =>
+                        current ? renameDesktopProjectSelection(current, nextName) : current,
+                      );
+                    }}
+                    placeholder={i18n.t("project.newNamePlaceholder", {
+                      fallback: "Project name",
+                    })}
+                    value={newProjectName}
+                  />
+                </label>
+                <div className="agenthub-project-picker-actions">
+                  {props.onChooseProjectDirectory ? (
+                    <AgentHubButton
+                      className="agenthub-project-create-button"
+                      disabled={pending}
+                      kind="primary"
+                      onClick={() => selectDesktopProject(props.onChooseProjectDirectory!)}
+                      type="button"
+                    >
+                      <Icon icon={FolderOpen} />
+                      {i18n.t("project.chooseFolder")}
+                    </AgentHubButton>
+                  ) : null}
+                  {props.onCreateDefaultProject ? (
+                    <AgentHubButton
+                      className="agenthub-project-create-button"
+                      disabled={pending || !trimmedNewProjectName}
+                      kind="primary"
+                      onClick={() =>
+                        selectDesktopProject(() =>
+                          props.onCreateDefaultProject!(trimmedNewProjectName),
+                        )
+                      }
+                      type="button"
+                    >
+                      <Icon icon={FolderPlus} />
+                      {i18n.t("project.useDefault")}
+                    </AgentHubButton>
+                  ) : null}
+                </div>
               </div>
             ) : props.desktopProjectActionsUnavailable ? (
               <p className="agenthub-muted">{i18n.t("project.desktopBridgeUnavailable")}</p>
@@ -1180,4 +1216,17 @@ function NewConversationDialog(props: {
       </div>
     </AgentHubModal>
   );
+}
+
+function renameDesktopProjectSelection(
+  selection: ConversationProjectSelection,
+  displayName: string,
+): ConversationProjectSelection {
+  return {
+    ...selection,
+    desktopProjectRegistration: {
+      ...selection.desktopProjectRegistration,
+      displayName,
+    },
+  };
 }

@@ -84,8 +84,46 @@ describe("desktop bridge detection", () => {
     const actions = createAgentHubDesktopProjectActions();
 
     await expect(actions.chooseProjectDirectory?.()).resolves.toBeNull();
-    await expect(actions.createDefaultProject?.()).rejects.toThrow(
+    await expect(actions.createDefaultProject?.("Broken project")).rejects.toThrow(
       "Project path must be a directory",
     );
+  });
+
+  it("passes default project names through the Desktop bridge", async () => {
+    const bridge: AgentHubDesktopBridge = {
+      getCapabilities: () => ({
+        version: "1.0.0",
+        capabilities: ["project.create-default"],
+      }),
+      chooseProjectDirectory: async () => ({ status: "cancelled" }),
+      createDefaultProject: vi.fn(async (displayName: string) => ({
+        status: "selected",
+        selection: {
+          projectId: "project_named",
+          desktopProjectRegistration: {
+            source: "desktop-default",
+            runtimeDeviceId: "runtime_local_demo",
+            displayName,
+            localPath: `/tmp/${displayName}`,
+            localPathLabel: `/tmp/${displayName}`,
+          },
+        },
+      })),
+    };
+    vi.stubGlobal("window", {});
+    Object.defineProperty(window, "agentHubDesktop", {
+      configurable: true,
+      value: bridge,
+    });
+
+    const actions = createAgentHubDesktopProjectActions();
+
+    await expect(actions.createDefaultProject?.("API Client")).resolves.toMatchObject({
+      desktopProjectRegistration: {
+        displayName: "API Client",
+        localPath: "/tmp/API Client",
+      },
+    });
+    expect(bridge.createDefaultProject).toHaveBeenCalledWith("API Client");
   });
 });

@@ -8,14 +8,16 @@ import type {
 export interface AgentHubDesktopBridge {
   readonly getCapabilities: () => DesktopCapabilityBridgeInfo;
   readonly chooseProjectDirectory: () => Promise<DesktopProjectActionResult>;
-  readonly createDefaultProject: () => Promise<DesktopProjectActionResult>;
+  readonly createDefaultProject: (displayName: string) => Promise<DesktopProjectActionResult>;
 }
 
 export interface AgentHubDesktopProjectActions {
   readonly capabilities: DesktopCapabilityBridgeInfo;
   readonly bridgeUnavailable: boolean;
   readonly chooseProjectDirectory?: (() => Promise<DesktopProjectSelection | null>) | undefined;
-  readonly createDefaultProject?: (() => Promise<DesktopProjectSelection | null>) | undefined;
+  readonly createDefaultProject?:
+    | ((displayName: string) => Promise<DesktopProjectSelection | null>)
+    | undefined;
 }
 
 declare global {
@@ -63,7 +65,8 @@ export function createAgentHubDesktopProjectActions(): AgentHubDesktopProjectAct
       : {}),
     ...(hasCapability("project.create-default")
       ? {
-          createDefaultProject: () => resolveDesktopProjectAction(bridge.createDefaultProject()),
+          createDefaultProject: (displayName: string) =>
+            resolveDesktopProjectAction(bridge.createDefaultProject(displayName)),
         }
       : {}),
   };

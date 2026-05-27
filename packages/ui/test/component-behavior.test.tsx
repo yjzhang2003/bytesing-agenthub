@@ -549,14 +549,26 @@ describe("AgentHub component behavior", () => {
       (button) => button.textContent?.includes("New default project"),
     ) as HTMLButtonElement;
     expect(chooseFolder.disabled).toBe(false);
-    expect(useDefault.disabled).toBe(false);
+    expect(useDefault.disabled).toBe(true);
     await act(async () => {
       chooseFolder.click();
+      await settle();
+    });
+    const nameInput = document.querySelector(
+      'input[aria-label="Project name"]',
+    ) as HTMLInputElement;
+    await act(async () => {
+      nameInput.value = "Group project";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    expect(useDefault.disabled).toBe(false);
+    await act(async () => {
       useDefault.click();
       await settle();
     });
     expect(onChooseProjectDirectory).toHaveBeenCalledOnce();
-    expect(onCreateDefaultProject).toHaveBeenCalledOnce();
+    expect(onCreateDefaultProject).toHaveBeenCalledWith("Group project");
 
     await act(async () => {
       (
@@ -650,14 +662,14 @@ describe("AgentHub component behavior", () => {
     ).toBeUndefined();
   });
 
-  it("uses Desktop-selected project registrations when capabilities are available", async () => {
+  it("lets users name Desktop-selected folder projects before creating conversations", async () => {
     const onCreateConversation = vi.fn();
     const onChooseProjectDirectory = vi.fn().mockResolvedValue({
       projectId: "project_desktop_selected",
       desktopProjectRegistration: {
         source: "desktop-directory",
         runtimeDeviceId: "runtime_local_demo",
-        displayName: "Selected project",
+        displayName: "selected-project",
         localPath: "/tmp/selected-project",
         localPathLabel: "/tmp/selected-project",
         gitBranch: "main",
@@ -699,7 +711,16 @@ describe("AgentHub component behavior", () => {
       await settle();
     });
 
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Selected project");
+    const nameInput = document.querySelector(
+      'input[aria-label="Project name"]',
+    ) as HTMLInputElement;
+    expect(nameInput.value).toBe("selected-project");
+    await act(async () => {
+      nameInput.value = "Renamed project";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Renamed project");
     await act(async () => {
       (
         Array.from(document.querySelectorAll("button")).find(
@@ -715,13 +736,76 @@ describe("AgentHub component behavior", () => {
       desktopProjectRegistration: {
         source: "desktop-directory",
         runtimeDeviceId: "runtime_local_demo",
-        displayName: "Selected project",
+        displayName: "Renamed project",
         localPath: "/tmp/selected-project",
         localPathLabel: "/tmp/selected-project",
         gitBranch: "main",
         dirty: false,
       },
     });
+  });
+
+  it("requires a name for default Desktop projects and sends it to the bridge", async () => {
+    const onCreateConversation = vi.fn();
+    const onCreateDefaultProject = vi.fn().mockResolvedValue({
+      projectId: "project_desktop_named_default",
+      desktopProjectRegistration: {
+        source: "desktop-default",
+        runtimeDeviceId: "runtime_local_demo",
+        displayName: "API Client",
+        localPath: "/Users/example/AgentHub/API Client",
+        localPathLabel: "/Users/example/AgentHub/API Client",
+        gitBranch: null,
+        dirty: false,
+      },
+    });
+    await render(
+      <AgentHubWorkbench
+        onCreateConversation={onCreateConversation}
+        onCreateDefaultProject={onCreateDefaultProject}
+        snapshot={snapshot()}
+      />,
+    );
+
+    await act(async () => {
+      (document.querySelector('button[aria-label="New conversation"]') as HTMLButtonElement).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        document.querySelector('button[aria-label="Select Implementer"]') as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+    await act(async () => {
+      (
+        Array.from(document.querySelectorAll("button")).find(
+          (button) => button.textContent === "Next",
+        ) as HTMLButtonElement
+      ).click();
+      await settle();
+    });
+
+    const nameInput = document.querySelector(
+      'input[aria-label="Project name"]',
+    ) as HTMLInputElement;
+    const createDefault = Array.from(document.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("New default project"),
+    ) as HTMLButtonElement;
+    expect(createDefault.disabled).toBe(true);
+    await act(async () => {
+      nameInput.value = "API Client";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await settle();
+    });
+    expect(createDefault.disabled).toBe(false);
+    await act(async () => {
+      createDefault.click();
+      await settle();
+    });
+
+    expect(onCreateDefaultProject).toHaveBeenCalledWith("API Client");
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("API Client");
   });
 
   it("updates conversation settings from the Chat Info panel", async () => {

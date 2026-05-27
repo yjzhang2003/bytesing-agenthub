@@ -43,8 +43,11 @@ const bridge = {
   getCapabilities: () => bridgeInfo,
   chooseProjectDirectory: () =>
     ipcRenderer.invoke("agenthub:choose-project-directory") as Promise<DesktopProjectActionResult>,
-  createDefaultProject: () =>
-    ipcRenderer.invoke("agenthub:create-default-project") as Promise<DesktopProjectActionResult>,
+  createDefaultProject: (displayName: string) =>
+    ipcRenderer.invoke(
+      "agenthub:create-default-project",
+      displayName,
+    ) as Promise<DesktopProjectActionResult>,
 };
 
 contextBridge.exposeInMainWorld("agentHubDesktop", bridge);

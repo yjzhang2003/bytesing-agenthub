@@ -8,7 +8,7 @@ import type {
   RuntimeRegistrationPayload,
 } from "@agenthub/contracts";
 import { mkdir, stat } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import type { AgentMemoryRuntimeClient } from "./agent-memory-client.js";
 import { DesktopRuntimeControlPlaneClient } from "./control-plane-client.js";
@@ -131,11 +131,15 @@ export class DesktopRuntime {
   }): Promise<LocalProjectRegistration> {
     const defaultProjectPath =
       this.#config.defaultProjectPath ?? join(homedir(), "AgentHub", "Default Project");
-    await mkdir(defaultProjectPath, { recursive: true });
+    const displayName = input.displayName?.trim();
+    const localPath = displayName
+      ? join(dirname(defaultProjectPath), displayName)
+      : defaultProjectPath;
+    await mkdir(localPath, { recursive: true });
     return this.registerLocalProject({
       runtimeDeviceId: input.runtimeDeviceId,
-      localPath: defaultProjectPath,
-      displayName: input.displayName ?? "AgentHub default project",
+      localPath,
+      displayName: displayName ?? "AgentHub default project",
       source: "desktop-default",
     });
   }

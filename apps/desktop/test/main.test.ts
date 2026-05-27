@@ -11,6 +11,7 @@ import {
 import {
   cancelledResult,
   registerLocalProject,
+  resolveDefaultProjectPath,
   selectedResult,
   selectionFromRegistration,
   validateDesktopProjectActionResultOrThrow,
@@ -109,6 +110,12 @@ describe("desktop shell config", () => {
 
   it("preserves Desktop project picker cancellation", () => {
     expect(cancelledResult()).toEqual({ status: "cancelled" });
+  });
+
+  it("uses the requested default project name as the managed folder name", () => {
+    expect(resolveDefaultProjectPath("/Users/example/AgentHub/Default Project", "API Client")).toBe(
+      "/Users/example/AgentHub/API Client",
+    );
   });
 
   it("rejects invalid Desktop project action results before IPC returns them", () => {

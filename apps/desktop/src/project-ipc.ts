@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from "electron";
 
@@ -62,6 +62,17 @@ function readDesktopRuntimeProjectConfig(): DesktopRuntimeProjectConfig {
       process.env.AGENTHUB_DEFAULT_PROJECT_PATH ?? join(homedir(), "AgentHub", "Default Project"),
     deviceId: process.env.AGENTHUB_RUNTIME_DEVICE_ID ?? "runtime_local_demo",
   };
+}
+
+export function resolveDefaultProjectPath(defaultProjectPath: string, displayName: string): string {
+  const folderName = displayName.trim();
+  if (!folderName) {
+    throw new Error("Project name is required");
+  }
+  if (folderName.includes("/") || folderName.includes("\\")) {
+    throw new Error("Project name cannot contain path separators");
+  }
+  return join(dirname(defaultProjectPath), folderName);
 }
 
 export function selectionFromRegistration(
@@ -144,14 +155,16 @@ export function registerProjectIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle("agenthub:create-default-project", async () => {
+  ipcMain.handle("agenthub:create-default-project", async (_event, displayName: unknown) => {
     try {
       const config = readDesktopRuntimeProjectConfig();
-      await mkdir(config.defaultProjectPath, { recursive: true });
+      const projectName = typeof displayName === "string" ? displayName.trim() : "";
+      const defaultProjectPath = resolveDefaultProjectPath(config.defaultProjectPath, projectName);
+      await mkdir(defaultProjectPath, { recursive: true });
       const registration = await registerLocalProject({
-        displayName: "AgentHub default project",
+        displayName: projectName,
         runtimeDeviceId: config.deviceId,
-        localPath: config.defaultProjectPath,
+        localPath: defaultProjectPath,
         source: "desktop-default",
       });
       return selectedResult(selectionFromRegistration(registration));
