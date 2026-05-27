@@ -42,4 +42,4 @@
 - [x] 6.2 Add behavior tests for selecting one agent, selecting multiple agents, choosing existing/default/directory projects on Desktop, remote-client existing-project-only behavior, cancelling, and surfacing creation failures.
 - [x] 6.3 Add Control Plane tests for project-bound conversation creation, project ownership validation, and project-bound run command path resolution.
 - [x] 6.4 Add Desktop Runtime tests for default project directory creation/reuse and directory registration failure handling.
-- [ ] 6.5 Run relevant contract, Control Plane/runtime, UI, and localization tests plus a browser verification pass covering the full new conversation creation flow.
+- [x] 6.5 Run relevant contract, Control Plane/runtime, UI, and localization tests plus a browser verification pass covering the full new conversation creation flow.
