@@ -13,15 +13,18 @@ export interface ControlPlaneConfig {
   readonly providerMode: AgentHubProviderMode;
 }
 
-export function readControlPlaneConfig(
-  env: NodeJS.ProcessEnv = process.env,
-): ControlPlaneConfig {
+export function readControlPlaneConfig(env: NodeJS.ProcessEnv = process.env): ControlPlaneConfig {
   const authMode = env.AGENTHUB_AUTH_MODE === "supabase" ? "supabase" : "local-demo";
   const providerMode = env.AGENTHUB_PROVIDER_MODE === "smoke" ? "smoke" : "claude-code";
+  const jwtSecret = env.SUPABASE_JWT_SECRET ?? "";
+
+  if (authMode === "supabase" && !jwtSecret) {
+    throw new Error("SUPABASE_JWT_SECRET is required when AGENTHUB_AUTH_MODE=supabase");
+  }
 
   return {
     authMode,
-    jwtSecret: env.SUPABASE_JWT_SECRET ?? "dev-only-secret",
+    jwtSecret: jwtSecret || "dev-only-secret",
     localAuthToken: env.AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
     localUserId: env.AGENTHUB_LOCAL_USER_ID ?? agentHubLocalDefaults.userId,
     port: Number.parseInt(

@@ -16,6 +16,7 @@
     "dev:web": "pnpm --filter @agenthub/web dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:check:changed": "node scripts/check-format-changed.mjs",
     "prepare": "git config core.hooksPath .githooks",
     "lint": "eslint .",
     "smoke:local": "node scripts/smoke-local.mjs",

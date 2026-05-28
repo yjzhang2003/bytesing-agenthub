@@ -7,11 +7,12 @@ import {
   createRunRequestFromSnapshot,
   hasFreshConnectionCheckResults,
 } from "./app-state.js";
-import { createDefaultWebControlPlaneClient } from "./control-plane-client.js";
 import {
-  notifyForAgentHubEvent,
-  requestAgentHubNotificationPermission,
-} from "./notifications.js";
+  createAuthenticatedWebControlPlaneClient,
+  type WebControlPlaneClient,
+} from "./control-plane-client.js";
+import { AuthenticationRequiredError } from "./auth-session.js";
+import { notifyForAgentHubEvent, requestAgentHubNotificationPermission } from "./notifications.js";
 import { createAgentHubDesktopProjectActions } from "./desktop-api.js";
 import React from "react";
 
@@ -26,12 +27,14 @@ function eventRequiresSnapshotRefresh(type: string): boolean {
   return type.startsWith("collaboration.");
 }
 
-function AgentHubWebApp(): React.ReactElement {
+function AgentHubConnectedApp(props: {
+  readonly client: WebControlPlaneClient;
+}): React.ReactElement {
   const [snapshot, setSnapshot] = React.useState<WorkbenchSnapshot | undefined>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const snapshotRef = React.useRef<WorkbenchSnapshot | undefined>(undefined);
-  const client = React.useMemo(() => createDefaultWebControlPlaneClient(), []);
+  const client = props.client;
   const desktopProjectActions = React.useMemo(() => createAgentHubDesktopProjectActions(), []);
 
   const loadSnapshot = React.useCallback(
@@ -216,6 +219,43 @@ function AgentHubWebApp(): React.ReactElement {
       {...(snapshot ? { snapshot } : {})}
     />
   );
+}
+
+function AgentHubWebApp(): React.ReactElement {
+  const [client, setClient] = React.useState<WebControlPlaneClient | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  const initializeClient = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setClient(await createAuthenticatedWebControlPlaneClient());
+    } catch (caught) {
+      setClient(null);
+      setError(
+        caught instanceof AuthenticationRequiredError
+          ? "Sign in to access AgentHub."
+          : caught instanceof Error
+            ? caught.message
+            : "Unable to initialize AgentHub.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void initializeClient();
+  }, [initializeClient]);
+
+  if (!client) {
+    return (
+      <AgentHubWorkbench error={error} loading={loading} onRetry={() => void initializeClient()} />
+    );
+  }
+
+  return <AgentHubConnectedApp client={client} />;
 }
 
 const root = document.querySelector("#root");

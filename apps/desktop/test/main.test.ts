@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { defaultDesktopShellConfig, getRuntimeStartupSummary } from "../src/shell-config.js";
+import {
+  defaultDesktopShellConfig,
+  getRuntimeStartupSummary,
+  readDesktopShellConfig,
+} from "../src/shell-config.js";
 import {
   createDesktopLoadFailureDataUrl,
   installDesktopLoadFailureHandler,
@@ -22,6 +26,18 @@ describe("desktop shell config", () => {
     expect(defaultDesktopShellConfig.webUrl).toContain("127.0.0.1");
     expect(defaultDesktopShellConfig.startsRuntime).toBe(true);
     expect(getRuntimeStartupSummary()).toContain("heartbeat=");
+  });
+
+  it("reads release endpoints from environment configuration", () => {
+    expect(
+      readDesktopShellConfig({
+        AGENTHUB_CONTROL_PLANE_URL: "https://api.agenthub.example",
+        AGENTHUB_WEB_URL: "https://app.agenthub.example",
+      }),
+    ).toMatchObject({
+      controlPlaneUrl: "https://api.agenthub.example",
+      webUrl: "https://app.agenthub.example",
+    });
   });
 
   it("keeps the desktop window open with a diagnostic page when Web UI loading fails", async () => {

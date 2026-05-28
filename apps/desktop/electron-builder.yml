@@ -1,0 +1,14 @@
+appId: com.agenthub.desktop
+productName: AgentHub
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+mac:
+  category: public.app-category.developer-tools
+  identity: null
+  target:
+    - dmg
+    - zip
+asar: true

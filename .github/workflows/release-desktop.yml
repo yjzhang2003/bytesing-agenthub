@@ -1,0 +1,46 @@
+name: Release Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify
+        run: pnpm check
+
+      - name: Build Desktop package
+        env:
+          AGENTHUB_CONTROL_PLANE_URL: ${{ vars.AGENTHUB_CONTROL_PLANE_URL }}
+          AGENTHUB_WEB_URL: ${{ vars.AGENTHUB_WEB_URL }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: pnpm --filter @agenthub/desktop run dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/release/*
+          fail_on_unmatched_files: true

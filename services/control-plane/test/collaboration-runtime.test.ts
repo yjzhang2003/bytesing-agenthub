@@ -61,13 +61,27 @@ describe("ProjectCollaborationRuntime", () => {
     const { rootDir, runtime } = await createRuntime();
     const status = await runtime.initializeConversation(scope);
 
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/agents.json"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/events.jsonl"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/tasks"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/inbox"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/outbox"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/questions"))).resolves.toBeTruthy();
-    await expect(stat(join(rootDir, ".agenthub/collaboration/conversation_1/openspec-links.json"))).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/agents.json")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/events.jsonl")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/tasks")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/inbox")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/outbox")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/questions")),
+    ).resolves.toBeTruthy();
+    await expect(
+      stat(join(rootDir, ".agenthub/collaboration/conversation_1/openspec-links.json")),
+    ).resolves.toBeTruthy();
     expect(JSON.stringify(status)).not.toContain(rootDir);
     expect(status).toMatchObject({
       conversationId: "conversation_1",
@@ -149,6 +163,7 @@ describe("ProjectCollaborationRuntime", () => {
 
     const status = await runtime.summarizeStatus(scope);
     expect(claimed.status).toBe("in-progress");
+    expect(blockedTask.status).toBe("blocked");
     expect(status.agents).toEqual([
       expect.objectContaining({
         agentId: "agent_1",
@@ -184,7 +199,12 @@ describe("ProjectCollaborationRuntime", () => {
     const claimed = await runtime.claimTask(scope, task.id, "agent_1", task.version, {
       leaseMs: 15 * 60 * 1000,
     });
-    const completed = await runtime.completeTask(scope, task.id, claimed.claim?.token ?? "", "Done.");
+    const completed = await runtime.completeTask(
+      scope,
+      task.id,
+      claimed.claim?.token ?? "",
+      "Done.",
+    );
     await runtime.recordHeartbeat(scope, {
       agentId: "agent_1",
       status: "idle",
@@ -258,7 +278,11 @@ describe("ProjectCollaborationRuntime", () => {
       expect.objectContaining({ questionId: question.id, prompt: question.prompt }),
     ]);
 
-    const answered = await runtime.answerUserQuestion(scope, question.id, "Keep them in the right sidebar.");
+    const answered = await runtime.answerUserQuestion(
+      scope,
+      question.id,
+      "Keep them in the right sidebar.",
+    );
     const resumed = await runtime.claimTask(scope, task.id, implementer.id, blockedTask.version, {
       leaseMs: 15 * 60 * 1000,
     });
@@ -270,7 +294,10 @@ describe("ProjectCollaborationRuntime", () => {
     );
     const finalStatus = await runtime.summarizeStatus(scope);
 
-    expect(answered).toMatchObject({ status: "answered", answer: "Keep them in the right sidebar." });
+    expect(answered).toMatchObject({
+      status: "answered",
+      answer: "Keep them in the right sidebar.",
+    });
     expect(completed.status).toBe("completed");
     expect(finalStatus.pendingUserQuestions).toHaveLength(0);
     expect(finalStatus.agents.find((entry) => entry.agentId === implementer.id)).toMatchObject({

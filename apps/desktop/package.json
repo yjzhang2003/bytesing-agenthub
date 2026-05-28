@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check:electron": "tsx src/check-electron.ts",
     "dev": "pnpm check:electron && pnpm build && AGENTHUB_ELECTRON_ENTRY=1 electron dist/main.js",
+    "dist": "pnpm build && electron-builder",
+    "pack": "pnpm build && electron-builder --dir",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -14,6 +17,7 @@
     "@supabase/supabase-js": "^2.106.1"
   },
   "devDependencies": {
+    "electron-builder": "^26.0.12",
     "electron": "^42.2.0",
     "typescript": "^5.9.3"
   }

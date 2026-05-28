@@ -1,6 +1,5 @@
 import {
   agentHubApiPaths,
-  agentHubLocalDefaults,
   type AgentHubEventType,
   type AgentHubEvent,
   type ConnectionCheckTarget,
@@ -13,6 +12,12 @@ import {
   type UpdateAgentRequest,
   type WorkbenchSnapshot,
 } from "@agenthub/contracts";
+import {
+  resolveWebControlPlaneClientOptions,
+  sessionFromSupabase,
+  type WebAuthSession,
+} from "./auth-session.js";
+import { createWebSupabaseClient } from "./supabase.js";
 
 const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
   "runtime.device.status_changed",
@@ -174,9 +179,25 @@ export class WebControlPlaneClient {
 export function createDefaultWebControlPlaneClient(
   env: ImportMetaEnv = import.meta.env,
 ): WebControlPlaneClient {
-  return new WebControlPlaneClient({
-    accessToken: env.VITE_AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
-    baseUrl:
-      env.VITE_CONTROL_PLANE_URL ?? `http://127.0.0.1:${agentHubLocalDefaults.controlPlanePort}`,
+  return new WebControlPlaneClient(resolveWebControlPlaneClientOptions({ env, session: null }));
+}
+
+export function createWebControlPlaneClientFromSession(input: {
+  readonly env?: ImportMetaEnv;
+  readonly session: WebAuthSession | null;
+}): WebControlPlaneClient {
+  return new WebControlPlaneClient(resolveWebControlPlaneClientOptions(input));
+}
+
+export async function createAuthenticatedWebControlPlaneClient(
+  env: ImportMetaEnv = import.meta.env,
+): Promise<WebControlPlaneClient> {
+  const supabase = createWebSupabaseClient({
+    anonKey: env.VITE_SUPABASE_ANON_KEY ?? "",
+    url: env.VITE_SUPABASE_URL ?? "",
   });
+  const session = supabase
+    ? sessionFromSupabase((await supabase.auth.getSession()).data.session)
+    : null;
+  return createWebControlPlaneClientFromSession({ env, session });
 }

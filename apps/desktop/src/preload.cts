@@ -1,4 +1,14 @@
-const { contextBridge, ipcRenderer } = require("electron") as typeof import("electron");
+import type {
+  contextBridge as ElectronContextBridge,
+  ipcRenderer as ElectronIpcRenderer,
+} from "electron";
+
+// Electron preload runs as CommonJS because Electron loads this file before the ESM app entry.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { contextBridge, ipcRenderer } = require("electron") as {
+  contextBridge: typeof ElectronContextBridge;
+  ipcRenderer: typeof ElectronIpcRenderer;
+};
 
 interface DesktopCapabilityBridgeInfo {
   readonly version: "1.0.0";
