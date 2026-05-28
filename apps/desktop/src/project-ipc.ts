@@ -4,7 +4,7 @@ import { mkdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from "electron";
+import type { BrowserWindow, dialog, ipcMain, OpenDialogOptions } from "electron";
 
 const execFileAsync = promisify(execFile);
 
@@ -129,7 +129,22 @@ export function validateDesktopProjectActionResultOrThrow(
   return value;
 }
 
-export function registerProjectIpcHandlers(): void {
+async function loadElectronProjectIpc(): Promise<{
+  readonly BrowserWindow: typeof BrowserWindow;
+  readonly dialog: typeof dialog;
+  readonly ipcMain: typeof ipcMain;
+}> {
+  const electron = await import("electron");
+  return {
+    BrowserWindow: electron.BrowserWindow,
+    dialog: electron.dialog,
+    ipcMain: electron.ipcMain,
+  };
+}
+
+export async function registerProjectIpcHandlers(): Promise<void> {
+  const { BrowserWindow, dialog, ipcMain } = await loadElectronProjectIpc();
+
   ipcMain.handle("agenthub:choose-project-directory", async (event) => {
     try {
       const window = BrowserWindow.fromWebContents(event.sender) ?? undefined;

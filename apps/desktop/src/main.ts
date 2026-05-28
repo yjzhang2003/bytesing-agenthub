@@ -80,7 +80,7 @@ export async function startDesktopApp(): Promise<void> {
   logDesktopInfo("[desktop] waiting for Electron app readiness");
   await app.whenReady();
   logDesktopInfo("[desktop] Electron app ready");
-  registerProjectIpcHandlers();
+  await registerProjectIpcHandlers();
   await createAgentHubWindow();
 
   app.on("activate", () => {
@@ -98,7 +98,7 @@ export async function startDesktopApp(): Promise<void> {
 
 if (process.env.AGENTHUB_ELECTRON_ENTRY === "1") {
   void startDesktopApp().catch((error: unknown) => {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
     logDesktopError(`[desktop] startup failed\n${message}`);
     app.exit(1);
   });
