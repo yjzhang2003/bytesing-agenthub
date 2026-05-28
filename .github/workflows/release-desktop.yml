@@ -29,6 +29,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Rebuild Electron
+        run: pnpm --filter @agenthub/desktop rebuild electron
+
       - name: Verify
         run: pnpm check
 
