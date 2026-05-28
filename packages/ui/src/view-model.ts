@@ -101,10 +101,7 @@ function agentInitials(displayName: string): string {
     .toUpperCase();
 }
 
-function conversationInitials(
-  conversation: Conversation,
-  participants: readonly Agent[],
-): string {
+function conversationInitials(conversation: Conversation, participants: readonly Agent[]): string {
   const firstParticipant = participants[0];
   if (firstParticipant) {
     return agentInitials(firstParticipant.displayName);
@@ -167,7 +164,10 @@ function firstRuntime(
   );
 }
 
-function projectRuntime(snapshot: WorkbenchSnapshot | undefined, project: Project | null | undefined): RuntimeDevice | undefined {
+function projectRuntime(
+  snapshot: WorkbenchSnapshot | undefined,
+  project: Project | null | undefined,
+): RuntimeDevice | undefined {
   return snapshot?.runtimeDevices.find((runtime) => runtime.id === project?.runtimeDeviceId);
 }
 
@@ -192,7 +192,9 @@ function projectContextFromProject(
   };
 }
 
-function activeProjectContext(snapshot: WorkbenchSnapshot | undefined): WorkbenchViewModel["activeProject"] {
+function activeProjectContext(
+  snapshot: WorkbenchSnapshot | undefined,
+): WorkbenchViewModel["activeProject"] {
   const conversation = activeConversation(snapshot);
   const project = snapshot?.projects.find((candidate) => candidate.id === conversation?.projectId);
   return projectContextFromProject(snapshot, project);
@@ -292,10 +294,7 @@ function participantAgents(
   return snapshot.agents.filter((agent) => participantIds.has(agent.id));
 }
 
-function agentScopedLabel(
-  agent: Agent,
-  participant: ConversationParticipant | undefined,
-): string {
+function agentScopedLabel(agent: Agent, participant: ConversationParticipant | undefined): string {
   return participant?.conversationAgentSettings?.displayNameOverride ?? agent.displayName;
 }
 
@@ -434,9 +433,7 @@ function claudeCodePermissionLabel(run: Run): string | null {
   }[preset];
 }
 
-function runFailureCategory(
-  failureReason: string | null,
-): RunViewModel["failureCategory"] {
+function runFailureCategory(failureReason: string | null): RunViewModel["failureCategory"] {
   if (!failureReason) {
     return null;
   }
@@ -665,8 +662,7 @@ function runtimeFromSnapshot(
 ): RuntimeSummaryViewModel {
   const status = runtime?.status ?? "offline";
   const providerHealth = snapshot?.providerHealth ?? null;
-  const providerExecutable =
-    !providerHealth || providerHealth.status === "connected";
+  const providerExecutable = !providerHealth || providerHealth.status === "connected";
   const canExecute = (status === "online" || status === "active-running") && providerExecutable;
   const memoryHealth = snapshot?.memoryHealth ?? null;
   const claudeCodeDiscovery = snapshot?.claudeCodeDiscovery ?? null;
@@ -839,6 +835,51 @@ function connectionTone(status: string, disabled = false): "connected" | "warnin
   return status === "connected" || status === "online" ? "connected" : "warning";
 }
 
+function connectionSetupGuidance(
+  runtimeOnline: boolean,
+  providerHealth: RuntimeSummaryViewModel["providerHealth"],
+  discovery: RuntimeSummaryViewModel["claudeCodeDiscovery"],
+): WorkbenchViewModel["connections"]["items"][number]["setupGuidance"] {
+  const status = providerHealth?.status;
+  const failureReason = providerHealth?.failureReason ?? null;
+  if (runFailureCategory(failureReason) === "claude-code-auth-required") {
+    return {
+      diagnostic: failureReason,
+      messageKey: "connections.guidance.authRequired",
+      titleKey: "connections.setupGuidance",
+    };
+  }
+  if (status === "missing") {
+    return {
+      diagnostic: failureReason,
+      messageKey: "connections.guidance.binaryMissing",
+      titleKey: "connections.setupGuidance",
+    };
+  }
+  if (status === "misconfigured") {
+    return {
+      diagnostic: failureReason,
+      messageKey: "connections.guidance.misconfigured",
+      titleKey: "connections.setupGuidance",
+    };
+  }
+  if (!runtimeOnline) {
+    return {
+      diagnostic: null,
+      messageKey: "connections.guidance.runtimeOffline",
+      titleKey: "connections.setupGuidance",
+    };
+  }
+  if (!discovery) {
+    return {
+      diagnostic: null,
+      messageKey: "connections.guidance.discoveryUnavailable",
+      titleKey: "connections.setupGuidance",
+    };
+  }
+  return null;
+}
+
 function connectionsFromSnapshot(
   runtimeSummary: RuntimeSummaryViewModel,
   checkingConnectionIds: readonly string[] = [],
@@ -852,6 +893,121 @@ function connectionsFromSnapshot(
     ? null
     : "Desktop Runtime must be online to check this connection.";
   const providerDisabledReason = localDisabledReason;
+  const workspaceFiles = discovery
+    ? [
+        discovery.workspaceClaudeFiles.claudeDir ? ".claude/" : null,
+        discovery.workspaceClaudeFiles.settingsJson ? "settings.json" : null,
+        discovery.workspaceClaudeFiles.settingsLocalJson ? "settings.local.json" : null,
+        discovery.workspaceClaudeFiles.mcpJson ? ".mcp.json" : null,
+        discovery.workspaceClaudeFiles.claudeMd ? "CLAUDE.md" : null,
+      ]
+        .filter(Boolean)
+        .join(", ") || "None"
+    : "Unavailable";
+  const capabilityRows = [
+    {
+      label: "Profile root",
+      labelKey: "connections.profileRoot",
+      value: discovery?.profileRootLabel ?? "Unavailable",
+    },
+    {
+      label: "Binary",
+      labelKey: "connections.binary",
+      value: discovery?.binaryPathLabel ?? "Unavailable",
+    },
+    {
+      label: "Plugins",
+      labelKey: "connections.plugins",
+      value: String(discovery?.plugins.length ?? 0),
+    },
+    {
+      label: "Plugin names",
+      labelKey: "connections.pluginNames",
+      value: discovery?.plugins.map((plugin) => plugin.name).join(", ") || "None",
+    },
+    {
+      label: "Skills",
+      labelKey: "connections.skills",
+      value: String(discovery?.skills.length ?? 0),
+    },
+    {
+      label: "Skill names",
+      labelKey: "connections.skillNames",
+      value:
+        discovery?.skills
+          .slice(0, 6)
+          .map((skill) => skill.name)
+          .join(", ") || "None",
+    },
+    {
+      label: "MCP servers",
+      labelKey: "connections.mcpServers",
+      value: String(discovery?.mcpServers.length ?? 0),
+    },
+    {
+      label: "MCP names",
+      labelKey: "connections.mcpNames",
+      value:
+        discovery?.mcpServers.map((server) => `${server.name} (${server.transport})`).join(", ") ||
+        "None",
+    },
+    { label: "Workspace files", labelKey: "connections.workspaceFiles", value: workspaceFiles },
+  ];
+  const providerDetailGroups = [
+    {
+      id: "capabilities",
+      titleKey: "connections.capabilities",
+      rows: capabilityRows,
+    },
+    {
+      id: "profiles",
+      titleKey: "connections.agentHubManagedProfile",
+      rows: [
+        {
+          label: "System Claude environment",
+          labelKey: "connections.systemClaudeEnvironment",
+          value: "Inherited from ~/.claude when settings source is inherit",
+          valueKey: "connections.systemClaudeInherited",
+        },
+        {
+          label: "AgentHub-managed profile",
+          labelKey: "connections.agentHubManagedProfile",
+          value: discovery ? "Available" : "Unavailable",
+        },
+        {
+          label: "Profile root",
+          labelKey: "connections.profileRoot",
+          value: discovery?.profileRootLabel ?? "Unavailable",
+        },
+        {
+          label: "Hooks",
+          labelKey: "connections.hooks",
+          value: "Controlled by selected profile policy",
+        },
+      ],
+    },
+    {
+      id: "dependencies",
+      titleKey: "connections.dependencies",
+      rows: [
+        {
+          label: "Runtime",
+          labelKey: "connections.runtime",
+          value: runtimeSummary.status,
+        },
+        {
+          label: "Memory",
+          labelKey: "connections.memory",
+          value: memoryHealth?.status ?? "unknown",
+        },
+        {
+          label: "Memory URL",
+          labelKey: "connections.memoryUrl",
+          value: memoryHealth?.url ?? "Unavailable",
+        },
+      ],
+    },
+  ];
   const items = [
     {
       checkTarget: "provider" as const,
@@ -859,75 +1015,39 @@ function connectionsFromSnapshot(
       checkedAt: providerHealth?.checkedAt ?? "Unavailable",
       checking: checkingConnectionIds.includes("provider"),
       description: "Local provider connection",
+      detailCheckTarget: "claude-code" as const,
+      detailCheckable: runtimeOnline,
+      detailChecking: checkingConnectionIds.includes("claude-code"),
+      detailGroups: providerDetailGroups,
       disabledReason: providerDisabledReason,
       failureReason: displayFailureReason(providerHealth?.failureReason),
       id: "provider",
       kind: "provider" as const,
       label: "Claude Code",
       metadata: [
-        { label: "Mode", value: providerHealth?.providerMode ?? "claude-code" },
-        { label: "Binary", value: providerHealth?.binaryPathLabel ?? "Unavailable" },
+        {
+          label: "Mode",
+          labelKey: "connections.mode",
+          value: providerHealth?.providerMode ?? "claude-code",
+        },
+        {
+          label: "Binary",
+          labelKey: "connections.binary",
+          value: providerHealth?.binaryPathLabel ?? "Unavailable",
+        },
         ...(providerHealth?.failureReason
-          ? [{ label: "Diagnostics", value: providerHealth.failureReason }]
+          ? [
+              {
+                label: "Diagnostics",
+                labelKey: "connections.diagnostics",
+                value: providerHealth.failureReason,
+              },
+            ]
           : []),
       ],
+      setupGuidance: connectionSetupGuidance(runtimeOnline, providerHealth, discovery),
       status: providerHealth?.status ?? "unknown",
       statusTone: connectionTone(providerHealth?.status ?? "unknown"),
-    },
-    {
-      checkTarget: "claude-code" as const,
-      checkable: runtimeOnline,
-      checkedAt: discovery?.checkedAt ?? "Unavailable",
-      checking: checkingConnectionIds.includes("claude-code"),
-      description: "Claude Code plugins, skills, MCP, hooks, and managed profiles",
-      disabledReason: localDisabledReason,
-      failureReason: null,
-      id: "claude-code-discovery",
-      kind: "claude-code-discovery" as const,
-      label: "Claude Code capabilities",
-      metadata: [
-        { label: "Profile root", value: discovery?.profileRootLabel ?? "Unavailable" },
-        { label: "Binary", value: discovery?.binaryPathLabel ?? "Unavailable" },
-        { label: "Plugins", value: String(discovery?.plugins.length ?? 0) },
-        {
-          label: "Plugin names",
-          value: discovery?.plugins.map((plugin) => plugin.name).join(", ") || "None",
-        },
-        { label: "Skills", value: String(discovery?.skills.length ?? 0) },
-        {
-          label: "Skill names",
-          value:
-            discovery?.skills
-              .slice(0, 6)
-              .map((skill) => skill.name)
-              .join(", ") || "None",
-        },
-        { label: "MCP servers", value: String(discovery?.mcpServers.length ?? 0) },
-        {
-          label: "MCP names",
-          value:
-            discovery?.mcpServers
-              .map((server) => `${server.name} (${server.transport})`)
-              .join(", ") || "None",
-        },
-        { label: "Hooks", value: "Controlled by selected profile policy" },
-        {
-          label: "Workspace files",
-          value: discovery
-            ? [
-                discovery.workspaceClaudeFiles.claudeDir ? ".claude/" : null,
-                discovery.workspaceClaudeFiles.settingsJson ? "settings.json" : null,
-                discovery.workspaceClaudeFiles.settingsLocalJson ? "settings.local.json" : null,
-                discovery.workspaceClaudeFiles.mcpJson ? ".mcp.json" : null,
-                discovery.workspaceClaudeFiles.claudeMd ? "CLAUDE.md" : null,
-              ]
-                .filter(Boolean)
-                .join(", ") || "None"
-            : "Unavailable",
-        },
-      ],
-      status: discovery ? "available" : "unknown",
-      statusTone: discovery ? ("connected" as const) : ("warning" as const),
     },
     {
       checkTarget: null,
@@ -935,15 +1055,20 @@ function connectionsFromSnapshot(
       checkedAt: "Unavailable",
       checking: false,
       description: "Future provider slot",
+      detailCheckTarget: null,
+      detailCheckable: false,
+      detailChecking: false,
+      detailGroups: [],
       disabledReason: "Not configured yet.",
       failureReason: null,
       id: "codex",
       kind: "future-provider" as const,
       label: "Codex",
       metadata: [
-        { label: "Mode", value: "codex" },
-        { label: "Binary", value: "Not configured" },
+        { label: "Mode", labelKey: "connections.mode", value: "codex" },
+        { label: "Binary", labelKey: "connections.binary", value: "Not configured" },
       ],
+      setupGuidance: null,
       status: "disabled",
       statusTone: "disabled" as const,
     },
@@ -1034,29 +1159,29 @@ function runsFromSnapshot(snapshot: WorkbenchSnapshot | undefined): readonly Run
   return (snapshot?.runs ?? []).map((run) => {
     const project = snapshot?.projects.find((candidate) => candidate.id === run.projectId);
     return {
-    agentName: agentName(run.agentId, snapshot?.agents ?? []),
-    claudeCodeEffortLabel: run.claudeCode?.effort ?? null,
-    claudeCodeMcpLabel: run.claudeCode ? labelFromId(run.claudeCode.mcpProfileId, "none") : null,
-    claudeCodeOverrideSource: run.claudeCode?.overrideSource ?? null,
-    claudeCodePermissionLabel: claudeCodePermissionLabel(run),
-    claudeCodeProfileLabel: run.claudeCode
-      ? labelFromId(run.claudeCode.runtimeProfileId, "default")
-      : null,
-    claudeCodeSettingsLabel:
-      run.claudeCode?.effectiveSettingsSource ?? run.claudeCode?.settingsSource ?? null,
-    completedAt: shortDate(run.completedAt),
-    failureCategory: runFailureCategory(run.failureReason),
-    failureReason: run.failureReason,
-    failureSummary: runFailureSummary(run.failureReason),
-    highRiskClaudeCode:
-      (run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset) ===
-      "full-access",
-    id: run.id,
-    projectName: project?.name ?? null,
-    projectPathLabel: project?.localPathLabel ?? null,
-    startedAt: shortDate(run.startedAt),
-    status: run.status,
-  };
+      agentName: agentName(run.agentId, snapshot?.agents ?? []),
+      claudeCodeEffortLabel: run.claudeCode?.effort ?? null,
+      claudeCodeMcpLabel: run.claudeCode ? labelFromId(run.claudeCode.mcpProfileId, "none") : null,
+      claudeCodeOverrideSource: run.claudeCode?.overrideSource ?? null,
+      claudeCodePermissionLabel: claudeCodePermissionLabel(run),
+      claudeCodeProfileLabel: run.claudeCode
+        ? labelFromId(run.claudeCode.runtimeProfileId, "default")
+        : null,
+      claudeCodeSettingsLabel:
+        run.claudeCode?.effectiveSettingsSource ?? run.claudeCode?.settingsSource ?? null,
+      completedAt: shortDate(run.completedAt),
+      failureCategory: runFailureCategory(run.failureReason),
+      failureReason: run.failureReason,
+      failureSummary: runFailureSummary(run.failureReason),
+      highRiskClaudeCode:
+        (run.claudeCode?.effectivePermissionPreset ?? run.claudeCode?.permissionPreset) ===
+        "full-access",
+      id: run.id,
+      projectName: project?.name ?? null,
+      projectPathLabel: project?.localPathLabel ?? null,
+      startedAt: shortDate(run.startedAt),
+      status: run.status,
+    };
   });
 }
 
@@ -1083,10 +1208,7 @@ export function normalizeSelection(
   if (selection.mode === "chat-info" && data.chatInfo?.id === selection.id) {
     return selection;
   }
-  if (
-    selection.mode === "collaboration-status" &&
-    data.collaborationStatus?.id === selection.id
-  ) {
+  if (selection.mode === "collaboration-status" && data.collaborationStatus?.id === selection.id) {
     return selection;
   }
   if (

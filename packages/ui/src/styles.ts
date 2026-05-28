@@ -2030,7 +2030,15 @@ body { overflow: hidden; }
   min-width: 0;
 }
 .agenthub-connection-profile {
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+}
+.agenthub-connection-profile-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .agenthub-connection-contact-row .agenthub-agent-contact-copy small {
   min-width: 0;

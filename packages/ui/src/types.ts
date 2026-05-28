@@ -179,17 +179,26 @@ export interface ProviderConnectionViewModel {
   readonly comingSoon: boolean;
 }
 
-export type ConnectionItemKind =
-  | "runtime"
-  | "provider"
-  | "memory"
-  | "claude-code-discovery"
-  | "future-provider";
+export type ConnectionItemKind = "runtime" | "provider" | "memory" | "future-provider";
 export type ConnectionCheckTargetId = "runtime" | "provider" | "memory" | "claude-code";
 
 export interface ConnectionMetadataRow {
   readonly label: string;
+  readonly labelKey?: string;
   readonly value: string;
+  readonly valueKey?: string;
+}
+
+export interface ConnectionSetupGuidance {
+  readonly titleKey: string;
+  readonly messageKey: string;
+  readonly diagnostic: string | null;
+}
+
+export interface ConnectionDetailGroup {
+  readonly id: string;
+  readonly titleKey: string;
+  readonly rows: readonly ConnectionMetadataRow[];
 }
 
 export interface ConnectionItemViewModel {
@@ -205,7 +214,12 @@ export interface ConnectionItemViewModel {
   readonly checking: boolean;
   readonly disabledReason: string | null;
   readonly checkTarget: ConnectionCheckTargetId | null;
+  readonly detailCheckTarget: ConnectionCheckTargetId | null;
+  readonly detailCheckable: boolean;
+  readonly detailChecking: boolean;
+  readonly setupGuidance: ConnectionSetupGuidance | null;
   readonly metadata: readonly ConnectionMetadataRow[];
+  readonly detailGroups: readonly ConnectionDetailGroup[];
 }
 
 export interface ConnectionsPageViewModel {

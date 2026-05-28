@@ -129,6 +129,12 @@ describe("@agenthub/ui localization", () => {
     expect(agents).not.toContain("保存更改");
     expect(connections).toContain("连接");
     expect(connections).toContain("检查连接");
+    expect(connections).toContain("刷新能力");
+    expect(connections).toContain("能力");
+    expect(connections).toContain("依赖");
+    expect(connections).toContain("系统 Claude 环境");
+    expect(connections).toContain("设置来源为继承时使用 ~/.claude");
+    expect(connections).toContain("AgentHub 托管配置");
     expect(connections).toContain("全部检查");
     expect(narrow).toContain("打开工作区导航");
     expect(narrow).toContain("打开 MVP workbench 的聊天信息");

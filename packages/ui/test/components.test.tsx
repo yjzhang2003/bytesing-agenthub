@@ -644,7 +644,12 @@ describe("@agenthub/ui components", () => {
 
     const provider = model.connections.items.find((item) => item.id === "provider");
     expect(provider?.failureReason).toContain("Claude Code CLI needs login");
+    expect(provider?.setupGuidance?.messageKey).toBe("connections.guidance.authRequired");
     expect(JSON.stringify(provider?.metadata)).toContain(rawFailure);
+    const html = renderToStaticMarkup(
+      <AgentHubWorkbench initialCenterView="connections" viewModel={model} />,
+    );
+    expect(html).toContain("Authenticate the local Claude Code CLI");
   });
 
   it("renders the chat title as the conversation detail action and keeps run detail in the header", () => {
@@ -659,9 +664,7 @@ describe("@agenthub/ui components", () => {
   });
 
   it("disables the run detail header action when the conversation has no runs", () => {
-    const html = renderToStaticMarkup(
-      <AgentHubWorkbench snapshot={{ ...snapshot(), runs: [] }} />,
-    );
+    const html = renderToStaticMarkup(<AgentHubWorkbench snapshot={{ ...snapshot(), runs: [] }} />);
 
     expect(html).toMatch(/aria-label="Open run details"[^>]*disabled=""/);
   });
@@ -677,9 +680,12 @@ describe("@agenthub/ui components", () => {
     expect(agents).toContain("Provider");
     expect(agents).toContain("Full access is a high-risk default");
     expect(agents).toContain("Hooks may execute local commands");
-    expect(model.connections.items.map((item) => item.label)).toContain("Claude Code capabilities");
-    expect(JSON.stringify(model.connections.items)).toContain("superpowers");
-    expect(JSON.stringify(model.connections.items)).toContain("test-driven-development");
+    const provider = model.connections.items.find((item) => item.id === "provider");
+    expect(model.connections.items.map((item) => item.label)).not.toContain(
+      "Claude Code capabilities",
+    );
+    expect(JSON.stringify(provider?.detailGroups)).toContain("superpowers");
+    expect(JSON.stringify(provider?.detailGroups)).toContain("test-driven-development");
   });
 
   it("renders conversation messages as IM bubbles and active agent replies as one random status word with bouncing dots", () => {
@@ -841,8 +847,9 @@ describe("@agenthub/ui components", () => {
       contextScope: "conversation-artifacts",
       allowAutoDispatch: false,
     });
-    expect(model.inspector.chatInfo?.participants.find((participant) => participant.id === "agent_2"))
-      .toMatchObject({ label: "Chat implementer", target: "@Chat implementer" });
+    expect(
+      model.inspector.chatInfo?.participants.find((participant) => participant.id === "agent_2"),
+    ).toMatchObject({ label: "Chat implementer", target: "@Chat implementer" });
     expect(model.composer.targets.map((target) => target.id)).not.toContain("agent_2");
   });
 
@@ -911,9 +918,7 @@ describe("@agenthub/ui components", () => {
     expect(html).not.toContain("Back to conversation details");
     expect(html).toContain("agenthub-inspector-floating-actions");
     expect(html).not.toContain(">Clear<");
-    expect(workbenchCss).toContain(
-      ".agenthub-agent-in-chat-detail .agenthub-input",
-    );
+    expect(workbenchCss).toContain(".agenthub-agent-in-chat-detail .agenthub-input");
     expect(workbenchCss).toContain("--agenthub-agent-in-chat-label-width: 128px");
     expect(workbenchCss).toContain(
       "grid-template-columns: var(--agenthub-agent-in-chat-label-width) minmax(0, 1fr)",
@@ -921,9 +926,7 @@ describe("@agenthub/ui components", () => {
     expect(workbenchCss).toContain(".agenthub-agent-in-chat-detail .agenthub-select");
     expect(workbenchCss).toContain(".agenthub-agent-in-chat-profile");
     expect(workbenchCss).toContain(".agenthub-button.agenthub-chat-global-agent-settings-button");
-    expect(workbenchCss).toMatch(
-      /\.agenthub-chat-delete-row \{[^}]*display: grid;[^}]*gap: 8px;/,
-    );
+    expect(workbenchCss).toMatch(/\.agenthub-chat-delete-row \{[^}]*display: grid;[^}]*gap: 8px;/);
     expect(workbenchCss).toContain("grid-template-columns: 56px minmax(0, 1fr)");
     expect(workbenchCss).toContain("overflow-wrap: anywhere");
     expect(workbenchCss).toContain("max-width: none");
@@ -1307,10 +1310,22 @@ describe("@agenthub/ui components", () => {
     expect(html).toContain('aria-label="Resize provider list"');
     expect(html).toContain("connected");
     expect(html).toContain("/usr/local/bin/claude");
+    expect(html).toContain("Capabilities");
+    expect(html).toContain("superpowers");
+    expect(html).toContain("test-driven-development");
+    expect(html).toContain("Refresh capabilities");
+    expect(html).toMatch(
+      /agenthub-connection-profile[\s\S]*Check connection[\s\S]*Refresh capabilities[\s\S]*<\/header>/,
+    );
+    expect(html).toContain("System Claude environment");
+    expect(html).toContain("Inherited from ~/.claude when settings source is inherit");
+    expect(html).toContain("Dependencies");
+    expect(html).toContain("AgentHub-managed profile");
     expect(html).toContain("Check connection");
     expect(html).toContain("Check all");
     expect(html).toContain("Codex");
     expect(html).toContain("disabled");
+    expect(html).not.toContain("Claude Code capabilities");
     expect(html).not.toContain("Desktop Runtime");
     expect(html).not.toContain("agentmemory");
     expect(html).not.toContain('aria-label="Conversation navigation"');
@@ -1346,6 +1361,8 @@ describe("@agenthub/ui components", () => {
 
     expect(html).toContain("Checking");
     expect(html).toContain("Claude Code binary was not found");
+    expect(html).toContain("Setup guidance");
+    expect(html).toContain("Install or expose the Claude Code CLI, then check again.");
     expect(html).toContain("Desktop Runtime must be online");
     expect(html).toContain("Not configured yet");
     expect(html).not.toContain("agentmemory is disabled");
@@ -1445,12 +1462,16 @@ describe("@agenthub/ui components", () => {
     expect(model.agentsPage.agents.map((agent) => agent.label)).toContain("Researcher");
     expect(model.connections.items.map((connection) => connection.label)).toEqual([
       "Claude Code",
-      "Claude Code capabilities",
       "Codex",
     ]);
     expect(
       model.connections.items.find((connection) => connection.id === "provider")?.checkable,
     ).toBe(true);
+    expect(
+      JSON.stringify(
+        model.connections.items.find((connection) => connection.id === "provider")?.detailGroups,
+      ),
+    ).toContain("superpowers");
     expect(
       model.connections.items.find((connection) => connection.id === "memory"),
     ).toBeUndefined();
@@ -1650,9 +1671,9 @@ describe("@agenthub/ui components", () => {
     expect(createWorkbenchViewModel(withRunMessage).timeline.map((item) => item.id)).not.toContain(
       "run-message-run_1",
     );
-    expect(createWorkbenchViewModel(failedAfterOutput).timeline.map((item) => item.id)).not.toContain(
-      "run-message-run_1",
-    );
+    expect(
+      createWorkbenchViewModel(failedAfterOutput).timeline.map((item) => item.id),
+    ).not.toContain("run-message-run_1");
     expect(
       createWorkbenchViewModel(failedAfterOutput).timeline.some((item) =>
         item.body.includes("Command failed"),
@@ -1751,72 +1772,75 @@ describe("@agenthub/ui components", () => {
   });
 
   it("renders inspector modes for chat info, collaboration status, permission, diff, runtime, artifact, run, and empty states", () => {
-    const model = createWorkbenchViewModel({
-      ...snapshot(),
-      collaborationStatus: {
-        agents: [
-          {
-            agentId: "agent_2",
-            availability: "blocked",
-            blockedQuestionCount: 1,
-            currentTaskId: "task_2",
-            currentTaskTitle: "Build collaboration plugin",
-            displayName: "Implementer",
-            stale: false,
-          },
-        ],
-        conversationId: "conversation_1",
-        openSpecLinks: [
-          {
-            artifact: "design",
-            changeName: "add-openspec-agent-collaboration-plugin",
-            projectionStatus: "projected",
-          },
-        ],
-        pendingUserQuestions: [
-          {
-            createdAt: now,
-            prompt: "Confirm the sidebar scope.",
-            questionId: "question_1",
-            requestingAgentId: "agent_2",
-            taskId: "task_2",
-          },
-        ],
-        projectId: "project_1",
-        state: "available",
+    const model = createWorkbenchViewModel(
+      {
+        ...snapshot(),
+        collaborationStatus: {
+          agents: [
+            {
+              agentId: "agent_2",
+              availability: "blocked",
+              blockedQuestionCount: 1,
+              currentTaskId: "task_2",
+              currentTaskTitle: "Build collaboration plugin",
+              displayName: "Implementer",
+              stale: false,
+            },
+          ],
+          conversationId: "conversation_1",
+          openSpecLinks: [
+            {
+              artifact: "design",
+              changeName: "add-openspec-agent-collaboration-plugin",
+              projectionStatus: "projected",
+            },
+          ],
+          pendingUserQuestions: [
+            {
+              createdAt: now,
+              prompt: "Confirm the sidebar scope.",
+              questionId: "question_1",
+              requestingAgentId: "agent_2",
+              taskId: "task_2",
+            },
+          ],
+          projectId: "project_1",
+          state: "available",
+        },
       },
-    }, {
-      activePlan: {
-        assumptions: ["Runtime is online"],
-        conversationId: "conversation_1",
-        goal: "Finalize MVP workbench UI",
-        id: "plan_1",
-        status: "draft",
-        steps: [
-          {
-            assignedAgentId: "agent_2",
-            dependsOnStepIds: [],
-            expectedArtifacts: ["diff"],
-            id: "step_1",
-            riskNotes: ["Requires visual QA"],
-            title: "Implement workbench shell",
-          },
-        ],
-        workspaceId: "workspace_1",
+      {
+        activePlan: {
+          assumptions: ["Runtime is online"],
+          conversationId: "conversation_1",
+          goal: "Finalize MVP workbench UI",
+          id: "plan_1",
+          status: "draft",
+          steps: [
+            {
+              assignedAgentId: "agent_2",
+              dependsOnStepIds: [],
+              expectedArtifacts: ["diff"],
+              id: "step_1",
+              riskNotes: ["Requires visual QA"],
+              title: "Implement workbench shell",
+            },
+          ],
+          workspaceId: "workspace_1",
+        },
+        activeDiff: {
+          baseCommit: "abc123",
+          files: [
+            { path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 },
+          ],
+          id: "diff_1",
+          runId: "run_1",
+          state: "metadata-only",
+          warning: "Full diff requires runtime",
+        },
+        artifacts: [artifact],
+        pendingPermissions: [pendingPermission],
       },
-      activeDiff: {
-        baseCommit: "abc123",
-        files: [
-          { path: "packages/ui/src/index.tsx", status: "modified", insertions: 20, deletions: 4 },
-        ],
-        id: "diff_1",
-        runId: "run_1",
-        state: "metadata-only",
-        warning: "Full diff requires runtime",
-      },
-      artifacts: [artifact],
-      pendingPermissions: [pendingPermission],
-    });
+    );
 
     expect(
       renderToStaticMarkup(
@@ -2104,7 +2128,9 @@ describe("@agenthub/ui components", () => {
 
   it("lays out chat participants in four columns with avatar-sized add control", () => {
     expect(workbenchCss).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
-    expect(workbenchCss).toContain(".agenthub-chat-participant-tile {\n  position: relative;\n  width: 64px;");
+    expect(workbenchCss).toContain(
+      ".agenthub-chat-participant-tile {\n  position: relative;\n  width: 64px;",
+    );
     expect(workbenchCss).toContain(".agenthub-chat-add-agent-button {\n  width: 48px;");
     expect(workbenchCss).toContain("border: 1px dashed var(--agenthub-border);");
     expect(workbenchCss).toContain("--agenthub-right-column: clamp(300px, 24vw, 340px);");
@@ -2114,7 +2140,7 @@ describe("@agenthub/ui components", () => {
     expect(workbenchCss).toContain(
       '.agenthub-workbench[data-layout="narrow"] .agenthub-desktop-inspector-toggle',
     );
-    expect(workbenchCss).toContain('inset: 0 0 0 auto');
+    expect(workbenchCss).toContain("inset: 0 0 0 auto");
     expect(workbenchCss).toContain(".agenthub-detail-section:first-child");
   });
 
@@ -2136,7 +2162,9 @@ describe("@agenthub/ui components", () => {
     expect(workbenchCss).toContain(
       '.agenthub-workbench[data-layout="standard"][data-center-view="conversation"] .agenthub-center',
     );
-    expect(workbenchCss).toContain("grid-template-columns: minmax(0, 1fr) var(--agenthub-right-column)");
+    expect(workbenchCss).toContain(
+      "grid-template-columns: minmax(0, 1fr) var(--agenthub-right-column)",
+    );
     expect(workbenchCss).toContain("grid-template-columns: minmax(0, 1fr) 0px");
     expect(workbenchCss).toContain(
       '.agenthub-workbench[data-layout="wide"][data-center-view="conversation"] .agenthub-conversation-header',
