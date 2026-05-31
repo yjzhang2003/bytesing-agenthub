@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkspaceHomeView: View {
     let state: AgentHubMobileState
     let workspace: WorkspaceSummary
+    @EnvironmentObject private var authSession: AgentHubAuthSession
     @AppStorage("agenthub.locale") private var localeRaw = AgentHubMobileLocale.english.rawValue
     private var locale: AgentHubMobileLocale {
         AgentHubMobileLocale.normalized(localeRaw)
@@ -36,6 +37,9 @@ struct WorkspaceHomeView: View {
                     ForEach(AgentHubMobileLocale.allCases) { locale in
                         Text(locale.displayName).tag(locale.rawValue)
                     }
+                }
+                Button(strings.text(.signOut)) {
+                    authSession.signOut()
                 }
             }
         }

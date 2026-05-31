@@ -13,6 +13,7 @@ import {
   type WorkbenchSnapshot,
 } from "@agenthub/contracts";
 import {
+  AuthenticationRequiredError,
   resolveWebControlPlaneClientOptions,
   sessionFromSupabase,
   type WebAuthSession,
@@ -46,15 +47,19 @@ const AGENTHUB_EVENT_TYPES: readonly AgentHubEventType[] = [
 export interface WebControlPlaneClientOptions {
   readonly baseUrl: string;
   readonly accessToken: string;
+  readonly onAuthenticationFailure?: (() => void) | undefined;
 }
 
 export class WebControlPlaneClient {
   readonly #baseUrl: string;
   readonly #accessToken: string;
+  readonly #eventStreams = new Set<EventSource>();
+  readonly #onAuthenticationFailure: (() => void) | undefined;
 
   constructor(options: WebControlPlaneClientOptions) {
     this.#baseUrl = options.baseUrl.replace(/\/$/, "");
     this.#accessToken = options.accessToken;
+    this.#onAuthenticationFailure = options.onAuthenticationFailure;
   }
 
   async createRun(input: CreateLocalRunRequest) {
@@ -144,6 +149,7 @@ export class WebControlPlaneClient {
     for (const eventType of AGENTHUB_EVENT_TYPES) {
       stream.addEventListener(eventType, handleEvent);
     }
+    this.#eventStreams.add(stream);
     return stream;
   }
 
@@ -154,6 +160,7 @@ export class WebControlPlaneClient {
       },
       method: "GET",
     });
+    this.#handleAuthenticationRejection(response);
     if (!response.ok) {
       throw new Error(`Control plane request failed: ${response.status}`);
     }
@@ -169,10 +176,27 @@ export class WebControlPlaneClient {
       },
       method,
     });
+    this.#handleAuthenticationRejection(response);
     if (!response.ok) {
       throw new Error(`Control plane request failed: ${response.status}`);
     }
     return response.json();
+  }
+
+  #handleAuthenticationRejection(response: Response): void {
+    if (response.status !== 401) {
+      return;
+    }
+    this.#closeEventStreams();
+    this.#onAuthenticationFailure?.();
+    throw new AuthenticationRequiredError();
+  }
+
+  #closeEventStreams(): void {
+    for (const stream of this.#eventStreams) {
+      stream.close();
+    }
+    this.#eventStreams.clear();
   }
 }
 
@@ -185,12 +209,17 @@ export function createDefaultWebControlPlaneClient(
 export function createWebControlPlaneClientFromSession(input: {
   readonly env?: ImportMetaEnv;
   readonly session: WebAuthSession | null;
+  readonly onAuthenticationFailure?: (() => void) | undefined;
 }): WebControlPlaneClient {
-  return new WebControlPlaneClient(resolveWebControlPlaneClientOptions(input));
+  return new WebControlPlaneClient({
+    ...resolveWebControlPlaneClientOptions(input),
+    onAuthenticationFailure: input.onAuthenticationFailure,
+  });
 }
 
 export async function createAuthenticatedWebControlPlaneClient(
   env: ImportMetaEnv = import.meta.env,
+  options: { readonly onAuthenticationFailure?: (() => void) | undefined } = {},
 ): Promise<WebControlPlaneClient> {
   const supabase = createWebSupabaseClient({
     anonKey: env.VITE_SUPABASE_ANON_KEY ?? "",
@@ -199,5 +228,9 @@ export async function createAuthenticatedWebControlPlaneClient(
   const session = supabase
     ? sessionFromSupabase((await supabase.auth.getSession()).data.session)
     : null;
-  return createWebControlPlaneClientFromSession({ env, session });
+  return createWebControlPlaneClientFromSession({
+    env,
+    onAuthenticationFailure: options.onAuthenticationFailure,
+    session,
+  });
 }

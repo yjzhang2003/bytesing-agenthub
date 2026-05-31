@@ -9,6 +9,11 @@ export interface AgentHubDesktopBridge {
   readonly getCapabilities: () => DesktopCapabilityBridgeInfo;
   readonly chooseProjectDirectory: () => Promise<DesktopProjectActionResult>;
   readonly createDefaultProject: (displayName: string) => Promise<DesktopProjectActionResult>;
+  readonly completeAuthCallback?:
+    | ((callbackUrl: string) => Promise<DesktopAuthActionResult>)
+    | undefined;
+  readonly signOut?: (() => Promise<DesktopAuthActionResult>) | undefined;
+  readonly startGitHubLogin?: (() => Promise<DesktopAuthActionResult>) | undefined;
 }
 
 export interface AgentHubDesktopProjectActions {
@@ -18,7 +23,17 @@ export interface AgentHubDesktopProjectActions {
   readonly createDefaultProject?:
     | ((displayName: string) => Promise<DesktopProjectSelection | null>)
     | undefined;
+  readonly startGitHubLogin?: (() => Promise<void>) | undefined;
 }
+
+type DesktopAuthActionResult =
+  | { readonly status: "started" }
+  | { readonly status: "signed-out" }
+  | {
+      readonly status: "completed";
+      readonly callback: { readonly code: string; readonly state: string };
+    }
+  | { readonly status: "error"; readonly message: string };
 
 declare global {
   interface Window {
@@ -60,13 +75,19 @@ export function createAgentHubDesktopProjectActions(): AgentHubDesktopProjectAct
     capabilities,
     ...(hasCapability("project.choose-directory")
       ? {
-          chooseProjectDirectory: () => resolveDesktopProjectAction(bridge.chooseProjectDirectory()),
+          chooseProjectDirectory: () =>
+            resolveDesktopProjectAction(bridge.chooseProjectDirectory()),
         }
       : {}),
     ...(hasCapability("project.create-default")
       ? {
           createDefaultProject: (displayName: string) =>
             resolveDesktopProjectAction(bridge.createDefaultProject(displayName)),
+        }
+      : {}),
+    ...(hasCapability("auth.browser-login") && bridge.startGitHubLogin
+      ? {
+          startGitHubLogin: () => resolveDesktopAuthAction(bridge.startGitHubLogin?.()),
         }
       : {}),
   };
@@ -83,4 +104,16 @@ async function resolveDesktopProjectAction(
     return null;
   }
   throw new Error(result.message);
+}
+
+async function resolveDesktopAuthAction(
+  action: Promise<DesktopAuthActionResult> | undefined,
+): Promise<void> {
+  if (!action) {
+    throw new Error("Desktop auth bridge is unavailable");
+  }
+  const result = await action;
+  if (result.status === "error") {
+    throw new Error(result.message);
+  }
 }

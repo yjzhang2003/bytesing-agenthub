@@ -7,7 +7,10 @@ import {
   createRunRequestFromSnapshot,
   hasFreshConnectionCheckResults,
 } from "../src/app-state.js";
-import { createDefaultWebControlPlaneClient } from "../src/control-plane-client.js";
+import {
+  createDefaultWebControlPlaneClient,
+  WebControlPlaneClient,
+} from "../src/control-plane-client.js";
 import { notificationForAgentHubEvent } from "../src/notifications.js";
 import { readWebSupabaseConfig } from "../src/supabase.js";
 
@@ -92,6 +95,42 @@ describe("web app state", () => {
     expect(received).toEqual(["agent.run.message_delta"]);
     expect(listeners.has("agent.run.completed")).toBe(true);
     expect(listeners.has("conversation.updated")).toBe(true);
+  });
+
+  it("closes Control Plane event streams when authentication is rejected", async () => {
+    const closed: string[] = [];
+    class FakeEventSource {
+      readonly url: string;
+
+      constructor(url: string) {
+        this.url = url;
+      }
+
+      addEventListener() {
+        // Test fake.
+      }
+
+      close() {
+        closed.push(this.url);
+      }
+    }
+    vi.stubGlobal("EventSource", FakeEventSource);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ error: "JWT is expired" }), { status: 401 })),
+    );
+    const onAuthenticationFailure = vi.fn();
+    const client = new WebControlPlaneClient({
+      accessToken: "expired-jwt",
+      baseUrl: "https://api.agenthub.example",
+      onAuthenticationFailure,
+    });
+
+    client.openEvents(() => {});
+    await expect(client.getSnapshot()).rejects.toThrow("Authentication is required");
+
+    expect(closed).toEqual(["https://api.agenthub.example/events?access_token=expired-jwt"]);
+    expect(onAuthenticationFailure).toHaveBeenCalledOnce();
   });
 
   it("calls Control Plane agent role APIs", async () => {

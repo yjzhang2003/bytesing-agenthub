@@ -20,3 +20,8 @@ expectEqual(chinese.text(.planStatus(.revisionRequested)), "已要求修改", "C
 expectEqual(english.text(.permissionStatus(.allowedOnce)), "Allowed once", "English permission status")
 expectEqual(chinese.text(.permissionStatus(.allowedOnce)), "已允许一次", "Chinese permission status")
 expectEqual(chinese.text(.singleFileDiffDetail), "单文件差异详情", "Chinese diff detail")
+expectEqual(english.text(.loginTitle), "Sign in to AgentHub", "English login title")
+expectEqual(chinese.text(.loginTitle), "登录 AgentHub", "Chinese login title")
+expectEqual(english.text(.continueWithGitHub), "Continue with GitHub", "English GitHub sign-in")
+expectEqual(chinese.text(.continueWithGitHub), "使用 GitHub 继续", "Chinese GitHub sign-in")
+expectEqual(chinese.text(.authError("redirect_uri_mismatch")), "登录失败：redirect_uri_mismatch", "Chinese auth error")

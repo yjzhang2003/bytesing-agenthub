@@ -12,7 +12,11 @@ const { contextBridge, ipcRenderer } = require("electron") as {
 
 interface DesktopCapabilityBridgeInfo {
   readonly version: "1.0.0";
-  readonly capabilities: readonly ("project.choose-directory" | "project.create-default")[];
+  readonly capabilities: readonly (
+    | "project.choose-directory"
+    | "project.create-default"
+    | "auth.browser-login"
+  )[];
 }
 
 interface DesktopProjectRegistration {
@@ -44,9 +48,18 @@ type DesktopProjectActionResult =
       readonly message: string;
     };
 
+type DesktopAuthActionResult =
+  | { readonly status: "started" }
+  | { readonly status: "signed-out" }
+  | {
+      readonly status: "completed";
+      readonly callback: { readonly code: string; readonly state: string };
+    }
+  | { readonly status: "error"; readonly message: string };
+
 const bridgeInfo: DesktopCapabilityBridgeInfo = {
   version: "1.0.0",
-  capabilities: ["project.choose-directory", "project.create-default"],
+  capabilities: ["project.choose-directory", "project.create-default", "auth.browser-login"],
 };
 
 const bridge = {
@@ -58,6 +71,14 @@ const bridge = {
       "agenthub:create-default-project",
       displayName,
     ) as Promise<DesktopProjectActionResult>,
+  completeAuthCallback: (callbackUrl: string) =>
+    ipcRenderer.invoke(
+      "agenthub:auth-complete-callback",
+      callbackUrl,
+    ) as Promise<DesktopAuthActionResult>,
+  signOut: () => ipcRenderer.invoke("agenthub:auth-sign-out") as Promise<DesktopAuthActionResult>,
+  startGitHubLogin: () =>
+    ipcRenderer.invoke("agenthub:auth-start-github") as Promise<DesktopAuthActionResult>,
 };
 
 contextBridge.exposeInMainWorld("agentHubDesktop", bridge);

@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { Session } from "@supabase/supabase-js";
 import {
   AuthenticationRequiredError,
+  signInWithGitHub,
+  signOutOfWebAuth,
   resolveWebControlPlaneClientOptions,
   sessionFromSupabase,
 } from "../src/auth-session.js";
@@ -56,5 +58,41 @@ describe("web auth session", () => {
       accessToken: agentHubLocalDefaults.authToken,
       baseUrl: `http://127.0.0.1:${agentHubLocalDefaults.controlPlanePort}`,
     });
+  });
+
+  it("starts GitHub OAuth with Supabase and a redirect URL", async () => {
+    const signInWithOAuth = vi.fn(async () => ({ data: {}, error: null }));
+    await signInWithGitHub({
+      redirectTo: "agenthub://auth/callback",
+      supabase: { auth: { signInWithOAuth } },
+    });
+
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: "github",
+      options: { redirectTo: "agenthub://auth/callback" },
+    });
+  });
+
+  it("reports GitHub OAuth startup errors", async () => {
+    await expect(
+      signInWithGitHub({
+        redirectTo: "https://app.agenthub.example/auth/callback",
+        supabase: {
+          auth: {
+            signInWithOAuth: vi.fn(async () => ({
+              data: {},
+              error: { message: "provider disabled" },
+            })),
+          },
+        },
+      }),
+    ).rejects.toThrow("provider disabled");
+  });
+
+  it("signs out through Supabase", async () => {
+    const signOut = vi.fn(async () => ({ error: null }));
+    await signOutOfWebAuth({ auth: { signOut } });
+
+    expect(signOut).toHaveBeenCalled();
   });
 });

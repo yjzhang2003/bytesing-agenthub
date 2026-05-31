@@ -11,6 +11,38 @@ Staging and production use the same shape:
 
 Desktop Runtime and Claude Code execution stay on the user's machine. Hosted services coordinate identity, account-scoped metadata, runtime registration, command delivery, and Web shell access.
 
+## Staging Baseline
+
+The completed `add-cross-platform-github-login` and `production-auth-release-pipeline` changes are the staging baseline. Keep both changes unarchived until staging smoke has proved the hosted login and release flow, then archive them with the staging evidence available for reference.
+
+Initial staging provider choices:
+
+- Web: Vercel static deployment for `apps/web`.
+- Control Plane: Render Web Service for `services/control-plane`.
+- Supabase: dedicated staging Supabase project with GitHub Auth enabled.
+- Desktop artifacts: GitHub Releases from the existing tag-triggered workflow.
+
+Initial staging URLs:
+
+```text
+Web: https://agenthub-staging.vercel.app
+Control Plane: https://agenthub-control-plane-staging.onrender.com
+Supabase: https://ymzmsdwxmgmwxwtexvow.supabase.co
+Desktop callback: agenthub://auth/callback
+iOS callback: agenthub-ios://auth/callback
+Local Web callback: http://127.0.0.1:5173/auth/callback
+```
+
+Secrets and non-committed values:
+
+```text
+Supabase JWT secret: Render secret environment variable SUPABASE_JWT_SECRET
+Supabase publishable key: Vercel encrypted environment variable VITE_SUPABASE_ANON_KEY and GitHub repository variable VITE_SUPABASE_ANON_KEY
+Supabase project URL: Vercel encrypted environment variable VITE_SUPABASE_URL and GitHub repository variable VITE_SUPABASE_URL
+GitHub OAuth client secret: Supabase Auth provider dashboard
+Deployment provider tokens: Vercel, Render, and GitHub secret stores only
+```
+
 ## Environment
 
 Local-demo development:
@@ -28,9 +60,9 @@ Staging and production Web:
 
 ```text
 VITE_AGENTHUB_AUTH_MODE=supabase
-VITE_CONTROL_PLANE_URL=https://api.agenthub.example
-VITE_SUPABASE_URL=https://project.supabase.co
-VITE_SUPABASE_ANON_KEY=<supabase-anon-key>
+VITE_CONTROL_PLANE_URL=https://agenthub-control-plane-staging.onrender.com
+VITE_SUPABASE_URL=https://ymzmsdwxmgmwxwtexvow.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_f1y1Jdh3IZYu0WCCq8wzSQ_yomvF0ff
 ```
 
 Staging and production Control Plane:
@@ -42,11 +74,32 @@ CONTROL_PLANE_PORT=5310
 AGENTHUB_PROVIDER_MODE=claude-code
 ```
 
+Supabase GitHub Auth:
+
+- Enable the GitHub provider in Supabase Auth with the GitHub OAuth app client ID and secret.
+- Add the hosted Web callback to the Supabase allowed redirect URLs:
+  `https://agenthub-staging.vercel.app/auth/callback`.
+- Add the Desktop callback URL used by packaged builds:
+  `agenthub://auth/callback`.
+- Add the iOS callback URL scheme configured in the native app:
+  `agenthub-ios://auth/callback`.
+- For local Web verification, add the Vite dev callback:
+  `http://127.0.0.1:5173/auth/callback`.
+- Keep provider names such as `github` and callback URLs unchanged in diagnostics so redirect mismatches can be copied directly into Supabase or GitHub OAuth settings.
+
+Current staging Supabase status:
+
+- Project ref `ymzmsdwxmgmwxwtexvow` is linked through Supabase CLI.
+- Remote Auth `site_url` and redirect allow list are synced from `supabase/config.toml`.
+- Initial database migration `202605210001_initial_agenthub_schema.sql` is applied to the remote project.
+- GitHub provider is enabled with OAuth client ID `Ov23liyQA7u7WwWQqz2L`; the client secret is injected during `supabase config push` through `SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET` and is not committed.
+- Supabase GitHub authorize verification returns a GitHub OAuth redirect for the staging Web callback.
+
 Desktop release repository variables:
 
 ```text
-AGENTHUB_CONTROL_PLANE_URL=https://api.agenthub.example
-AGENTHUB_WEB_URL=https://app.agenthub.example
+AGENTHUB_CONTROL_PLANE_URL=https://agenthub-control-plane-staging.onrender.com
+AGENTHUB_WEB_URL=https://agenthub-staging.vercel.app
 ```
 
 Future signed macOS release secrets:

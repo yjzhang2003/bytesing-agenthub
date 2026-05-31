@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logDesktopError, logDesktopInfo } from "./desktop-log.js";
+import { registerAuthIpcHandlers } from "./auth-ipc.js";
 import { registerProjectIpcHandlers } from "./project-ipc.js";
 import { defaultDesktopShellConfig, type DesktopShellConfig } from "./shell-config.js";
 import { loadDesktopWebUrl } from "./window-loader.js";
@@ -80,6 +81,7 @@ export async function startDesktopApp(): Promise<void> {
   logDesktopInfo("[desktop] waiting for Electron app readiness");
   await app.whenReady();
   logDesktopInfo("[desktop] Electron app ready");
+  await registerAuthIpcHandlers();
   await registerProjectIpcHandlers();
   await createAgentHubWindow();
 

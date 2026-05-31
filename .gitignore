@@ -8,6 +8,7 @@ build/
 coverage/
 .turbo/
 .vite/
+apps/desktop/release/
 
 # local env
 .env
@@ -29,4 +30,3 @@ tmp/
 DerivedData/
 *.xcuserdata/
 *.xcuserstate
-

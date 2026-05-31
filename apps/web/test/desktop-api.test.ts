@@ -126,4 +126,31 @@ describe("desktop bridge detection", () => {
     });
     expect(bridge.createDefaultProject).toHaveBeenCalledWith("API Client");
   });
+
+  it("creates Desktop auth actions when browser-login capability exists", async () => {
+    const bridge: AgentHubDesktopBridge = {
+      getCapabilities: () => ({
+        version: "1.0.0",
+        capabilities: ["auth.browser-login"],
+      }),
+      chooseProjectDirectory: async () => ({ status: "cancelled" }),
+      createDefaultProject: async () => ({ status: "cancelled" }),
+      startGitHubLogin: vi.fn(async () => ({ status: "started" })),
+      completeAuthCallback: async () => ({
+        status: "completed",
+        callback: { code: "abc", state: "state_123" },
+      }),
+      signOut: async () => ({ status: "signed-out" }),
+    };
+    vi.stubGlobal("window", {});
+    Object.defineProperty(window, "agentHubDesktop", {
+      configurable: true,
+      value: bridge,
+    });
+
+    const actions = createAgentHubDesktopProjectActions();
+
+    await expect(actions.startGitHubLogin?.()).resolves.toBeUndefined();
+    expect(bridge.startGitHubLogin).toHaveBeenCalled();
+  });
 });

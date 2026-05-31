@@ -17,6 +17,19 @@ import type {
 } from "@agenthub/contracts";
 
 export type WorkbenchLayoutMode = "wide" | "standard" | "narrow" | "mobile-web";
+export type AuthViewState =
+  | { readonly status: "unauthenticated" }
+  | { readonly status: "authenticating" }
+  | { readonly status: "authenticated"; readonly userLabel?: string | undefined }
+  | { readonly status: "error"; readonly message: string };
+
+export interface LoginSurfaceProps {
+  readonly authState: AuthViewState;
+  readonly locale?: "en-US" | "zh-CN" | string | undefined;
+  readonly onRetry?: (() => void) | undefined;
+  readonly onSignInWithGitHub: () => void;
+}
+
 export type WorkbenchVisualState =
   | "loading"
   | "empty"

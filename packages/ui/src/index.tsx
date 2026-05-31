@@ -20,6 +20,8 @@ export type {
   WorkbenchViewModel,
   WorkbenchVisualState,
   WorkspaceNavigationViewModel,
+  AuthViewState,
+  LoginSurfaceProps,
 } from "./types.js";
 
 export { createWorkbenchViewModel, workbenchLayoutForWidth } from "./view-model.js";
@@ -35,6 +37,7 @@ export {
 } from "./i18n.js";
 export type { AgentHubLocale, TranslationKey } from "./i18n.js";
 export { AgentHubWorkbench } from "./components/workbench.js";
+export { AgentHubLoginPage } from "./components/auth.js";
 export { AgentMentionComposer } from "./components/composer.js";
 export { ChatTimeline } from "./components/timeline.js";
 export { ConversationList, WorkspaceStatusSurface } from "./components/navigation.js";

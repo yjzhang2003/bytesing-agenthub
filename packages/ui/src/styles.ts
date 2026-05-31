@@ -58,6 +58,67 @@ export const componentSystemCss = `
   cursor: not-allowed;
   opacity: .58;
 }
+.agenthub-auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--agenthub-bg);
+}
+.agenthub-auth-panel {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+}
+.agenthub-auth-brand {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface-2);
+  color: var(--agenthub-text);
+  font-weight: 700;
+}
+.agenthub-auth-copy {
+  display: grid;
+  gap: 7px;
+}
+.agenthub-auth-copy h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+.agenthub-auth-copy p {
+  margin: 0;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-auth-error {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--agenthub-danger) 35%, var(--agenthub-border));
+  border-radius: var(--agenthub-radius);
+  color: var(--agenthub-danger);
+  background: color-mix(in srgb, var(--agenthub-danger) 8%, var(--agenthub-surface));
+}
+.agenthub-auth-error code {
+  color: inherit;
+  font-family: var(--agenthub-mono);
+  overflow-wrap: anywhere;
+}
+.agenthub-web-auth-actions {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+}
 .agenthub-icon-button {
   width: 32px;
   padding: 0 !important;

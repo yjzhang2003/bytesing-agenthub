@@ -254,8 +254,9 @@ describe("control plane registry", () => {
       },
     });
     expect(
-      registry.createWorkbenchSnapshot("user_1").agents.find((candidate) => candidate.id === agent.id)
-        ?.policy,
+      registry
+        .createWorkbenchSnapshot("user_1")
+        .agents.find((candidate) => candidate.id === agent.id)?.policy,
     ).toMatchObject({
       claudeCode: {
         permissionPreset: "ask-first",
@@ -304,7 +305,9 @@ describe("control plane registry", () => {
         },
       },
     });
-    expect(firstCommand?.type === "run.start" ? firstCommand.payload.claudeCode?.session : null).toBeUndefined();
+    expect(
+      firstCommand?.type === "run.start" ? firstCommand.payload.claudeCode?.session : null,
+    ).toBeUndefined();
 
     registry.recordProviderRuntimeEvent("user_1", {
       type: "provider.session",
@@ -1005,7 +1008,9 @@ describe("control plane registry", () => {
 
     registry.archiveConversation("user_1", conversation.id);
     const snapshot = registry.createWorkbenchSnapshot("user_1");
-    expect(snapshot.conversations.some((candidate) => candidate.id === conversation.id)).toBe(false);
+    expect(snapshot.conversations.some((candidate) => candidate.id === conversation.id)).toBe(
+      false,
+    );
     expect(snapshot.activeConversationId).toBe(agentHubLocalDefaults.conversationId);
   });
 
@@ -1222,6 +1227,37 @@ describe("control plane registry", () => {
 });
 
 describe("control plane HTTP local mode", () => {
+  it("rejects local-demo tokens in Supabase auth mode and accepts Supabase JWTs", async () => {
+    const server = createControlPlaneServer({
+      authMode: "supabase",
+      jwtSecret: "test-secret",
+      localAuthToken: "local-token",
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected TCP server address");
+    }
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    try {
+      const localDemoResponse = await fetch(`${baseUrl}/workbench/snapshot`, {
+        headers: { authorization: "Bearer local-token" },
+      });
+      expect(localDemoResponse.status).toBe(401);
+
+      const supabaseResponse = await fetch(`${baseUrl}/workbench/snapshot`, {
+        headers: { authorization: `Bearer ${signTestJwt("github_user_1")}` },
+      });
+      expect(supabaseResponse.status).toBe(200);
+      await expect(supabaseResponse.json()).resolves.toMatchObject({
+        activeWorkspaceId: expect.any(String),
+      });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("serves health, registration, snapshot, commands, and runtime events", async () => {
     const registry = new ControlPlaneRegistry();
     const server = createControlPlaneServer({

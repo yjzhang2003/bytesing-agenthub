@@ -239,7 +239,10 @@ export interface DesktopProjectRegistration {
 
 export const agentHubDesktopBridgeVersion = "1.0.0";
 
-export type DesktopCapabilityId = "project.choose-directory" | "project.create-default";
+export type DesktopCapabilityId =
+  | "project.choose-directory"
+  | "project.create-default"
+  | "auth.browser-login";
 
 export interface DesktopCapabilityBridgeInfo {
   readonly version: typeof agentHubDesktopBridgeVersion;
@@ -295,10 +298,10 @@ export type RuntimeCommand =
       readonly type: "run.cancel";
       readonly runtimeDeviceId: Id;
       readonly createdAt: ISODateTime;
-    readonly payload: {
-      readonly runId: Id;
-    };
-  }
+      readonly payload: {
+        readonly runId: Id;
+      };
+    }
   | {
       readonly id: Id;
       readonly type: "connection.check";

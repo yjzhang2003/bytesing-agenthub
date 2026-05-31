@@ -286,12 +286,7 @@ export const collaborationEventTypeSchema = z.enum([
   "openspec.projection_failed",
 ]);
 
-export const collaborationOpenSpecArtifactSchema = z.enum([
-  "proposal",
-  "design",
-  "tasks",
-  "spec",
-]);
+export const collaborationOpenSpecArtifactSchema = z.enum(["proposal", "design", "tasks", "spec"]);
 
 export const collaborationProjectionStatusSchema = z.enum([
   "pending",
@@ -555,9 +550,7 @@ export const conversationAgentSettingsSchema = z.object({
   participationMode: z.enum(["manual", "orchestrated", "proactive"]).optional(),
   priority: z.enum(["low", "normal", "high"]).optional(),
   quietMode: z.boolean().optional(),
-  contextScope: z
-    .enum(["conversation", "workspace-summary", "conversation-artifacts"])
-    .optional(),
+  contextScope: z.enum(["conversation", "workspace-summary", "conversation-artifacts"]).optional(),
   includeHistorySummary: z.boolean().optional(),
   scopedInstructions: z.string().optional(),
   requireRunConfirmation: z.boolean().optional(),
@@ -582,7 +575,9 @@ export const desktopProjectRegistrationSchema = z.object({
 
 export const desktopCapabilityBridgeInfoSchema = z.object({
   version: z.literal("1.0.0"),
-  capabilities: z.array(z.enum(["project.choose-directory", "project.create-default"])),
+  capabilities: z.array(
+    z.enum(["project.choose-directory", "project.create-default", "auth.browser-login"]),
+  ),
 });
 
 export const desktopProjectSelectionSchema = z.object({
@@ -829,13 +824,9 @@ export type CreateAgentConversationRequestPayload = z.infer<
   typeof createAgentConversationRequestSchema
 >;
 export type DesktopProjectRegistrationPayload = z.infer<typeof desktopProjectRegistrationSchema>;
-export type DesktopCapabilityBridgeInfoPayload = z.infer<
-  typeof desktopCapabilityBridgeInfoSchema
->;
+export type DesktopCapabilityBridgeInfoPayload = z.infer<typeof desktopCapabilityBridgeInfoSchema>;
 export type DesktopProjectSelectionPayload = z.infer<typeof desktopProjectSelectionSchema>;
-export type DesktopProjectActionResultPayload = z.infer<
-  typeof desktopProjectActionResultSchema
->;
+export type DesktopProjectActionResultPayload = z.infer<typeof desktopProjectActionResultSchema>;
 export type UpdateConversationAgentSettingsRequestPayload = z.infer<
   typeof updateConversationAgentSettingsRequestSchema
 >;
@@ -849,9 +840,7 @@ export type ClaudeCodeDiscoverySummaryPayload = z.infer<typeof claudeCodeDiscove
 export type CollaborationAgentRosterEntryPayload = z.infer<
   typeof collaborationAgentRosterEntrySchema
 >;
-export type CollaborationMentionMessagePayload = z.infer<
-  typeof collaborationMentionMessageSchema
->;
+export type CollaborationMentionMessagePayload = z.infer<typeof collaborationMentionMessageSchema>;
 export type CollaborationTaskPayload = z.infer<typeof collaborationTaskSchema>;
 export type CollaborationUserQuestionPayload = z.infer<typeof collaborationUserQuestionSchema>;
 export type CollaborationHeartbeatPayload = z.infer<typeof collaborationHeartbeatSchema>;

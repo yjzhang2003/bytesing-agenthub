@@ -13,6 +13,16 @@ export interface WebControlPlaneAuthOptions {
   readonly baseUrl: string;
 }
 
+export interface WebSupabaseAuthClient {
+  readonly auth: {
+    readonly signInWithOAuth: (input: {
+      readonly provider: "github";
+      readonly options: { readonly redirectTo: string };
+    }) => Promise<{ readonly error: { readonly message: string } | null }>;
+    readonly signOut: () => Promise<{ readonly error: { readonly message: string } | null }>;
+  };
+}
+
 export class AuthenticationRequiredError extends Error {
   constructor(message = "Authentication is required to access AgentHub.") {
     super(message);
@@ -22,6 +32,12 @@ export class AuthenticationRequiredError extends Error {
 
 export function readWebAuthMode(env: ImportMetaEnv = import.meta.env): WebAuthMode {
   return env.VITE_AGENTHUB_AUTH_MODE === "supabase" ? "supabase" : "local-demo";
+}
+
+export function defaultWebOAuthRedirectTo(
+  location: Pick<Location, "origin"> = window.location,
+): string {
+  return `${location.origin}/auth/callback`;
 }
 
 export function sessionFromSupabase(session: Session | null): WebAuthSession | null {
@@ -57,4 +73,26 @@ export function resolveWebControlPlaneClientOptions(input: {
     accessToken: env.VITE_AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
     baseUrl,
   };
+}
+
+export async function signInWithGitHub(input: {
+  readonly redirectTo: string;
+  readonly supabase: Pick<WebSupabaseAuthClient, "auth">;
+}): Promise<void> {
+  const { error } = await input.supabase.auth.signInWithOAuth({
+    provider: "github",
+    options: { redirectTo: input.redirectTo },
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function signOutOfWebAuth(
+  supabase: Pick<WebSupabaseAuthClient, "auth">,
+): Promise<void> {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw new Error(error.message);
+  }
 }

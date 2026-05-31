@@ -52,6 +52,12 @@ struct AgentHubStrings {
         case filesChanged(Int)
         case goal
         case language
+        case authError(String)
+        case continueWithGitHub
+        case loginDescription
+        case loginTitle
+        case signOut
+        case signingIn
         case participants
         case pending
         case permission
@@ -85,6 +91,12 @@ struct AgentHubStrings {
             case .filesChanged(let count): return "\(count) files changed"
             case .goal: return "Goal"
             case .language: return "Language"
+            case .authError(let value): return "Sign-in failed: \(value)"
+            case .continueWithGitHub: return "Continue with GitHub"
+            case .loginDescription: return "Use your GitHub account to access AgentHub workspaces."
+            case .loginTitle: return "Sign in to AgentHub"
+            case .signOut: return "Sign out"
+            case .signingIn: return "Signing in"
             case .participants: return "Participants"
             case .pending: return "Pending"
             case .permission: return "Permission"
@@ -144,6 +156,12 @@ struct AgentHubStrings {
             case .filesChanged(let count): return "\(count) 个文件已更改"
             case .goal: return "目标"
             case .language: return "语言"
+            case .authError(let value): return "登录失败：\(value)"
+            case .continueWithGitHub: return "使用 GitHub 继续"
+            case .loginDescription: return "使用你的 GitHub 账户访问 AgentHub 工作区。"
+            case .loginTitle: return "登录 AgentHub"
+            case .signOut: return "退出登录"
+            case .signingIn: return "登录中"
             case .participants: return "参与者"
             case .pending: return "待处理"
             case .permission: return "权限"
