@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format:check:changed": "node scripts/check-format-changed.mjs",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "lint": "eslint .",
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:claude-code:fake": "node scripts/smoke-claude-code-fake.mjs",

@@ -3,9 +3,6 @@ WORKDIR /app
 RUN corepack enable
 
 FROM base AS deps
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends git \
-  && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY services/control-plane/package.json services/control-plane/package.json
