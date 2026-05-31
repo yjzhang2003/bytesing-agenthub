@@ -21,7 +21,8 @@ ENV AGENTHUB_CONTROL_PLANE_ENTRY=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY --from=deps /app/services/control-plane/node_modules ./services/control-plane/node_modules
-COPY --from=build /app/packages/contracts ./packages/contracts
-COPY --from=build /app/services/control-plane/dist ./services/control-plane/dist
+COPY --from=build /app/packages/contracts/package.json ./packages/contracts/package.json
+COPY --from=build /app/dist/packages/contracts/src ./packages/contracts/dist
+COPY --from=build /app/dist/services/control-plane/src ./services/control-plane/dist
 COPY --from=build /app/services/control-plane/package.json ./services/control-plane/package.json
 CMD ["node", "services/control-plane/dist/index.js"]
