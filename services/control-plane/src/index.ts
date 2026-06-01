@@ -40,9 +40,9 @@ if (process.env.AGENTHUB_CONTROL_PLANE_ENTRY === "1") {
     localUserId: config.localUserId,
     providerMode: config.providerMode,
   });
-  server.listen(config.port, "127.0.0.1", () => {
+  server.listen(config.port, config.host, () => {
     console.log(
-      `[control-plane] listening on http://127.0.0.1:${config.port} auth=${config.authMode}`,
+      `[control-plane] listening on http://${config.host}:${config.port} auth=${config.authMode}`,
     );
   });
 }

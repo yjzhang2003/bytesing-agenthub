@@ -6,6 +6,7 @@ import {
 
 export interface ControlPlaneConfig {
   readonly authMode: AgentHubAuthMode;
+  readonly host: string;
   readonly jwtSecret: string;
   readonly localAuthToken: string;
   readonly localUserId: string;
@@ -24,11 +25,12 @@ export function readControlPlaneConfig(env: NodeJS.ProcessEnv = process.env): Co
 
   return {
     authMode,
+    host: env.PORT ? "0.0.0.0" : "127.0.0.1",
     jwtSecret: jwtSecret || "dev-only-secret",
     localAuthToken: env.AGENTHUB_LOCAL_AUTH_TOKEN ?? agentHubLocalDefaults.authToken,
     localUserId: env.AGENTHUB_LOCAL_USER_ID ?? agentHubLocalDefaults.userId,
     port: Number.parseInt(
-      env.CONTROL_PLANE_PORT ?? String(agentHubLocalDefaults.controlPlanePort),
+      env.PORT ?? env.CONTROL_PLANE_PORT ?? String(agentHubLocalDefaults.controlPlanePort),
       10,
     ),
     providerMode,

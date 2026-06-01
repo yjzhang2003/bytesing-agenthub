@@ -24,4 +24,14 @@ describe("readControlPlaneConfig", () => {
     expect(config.authMode).toBe("supabase");
     expect(config.jwtSecret).toBe("secret");
   });
+
+  it("uses hosted platform network settings when PORT is provided", () => {
+    const config = readControlPlaneConfig({
+      CONTROL_PLANE_PORT: "5310",
+      PORT: "10000",
+    });
+
+    expect(config.host).toBe("0.0.0.0");
+    expect(config.port).toBe(10000);
+  });
 });
