@@ -2,6 +2,8 @@ import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { Session } from "@supabase/supabase-js";
 
 export type WebAuthMode = "local-demo" | "supabase";
+export type WebEntryView = "homepage" | "login" | "auth-callback" | "workbench";
+export type WebAuthErrorKind = "session-required" | "control-plane" | "oauth";
 
 export interface WebAuthSession {
   readonly accessToken: string;
@@ -28,6 +30,42 @@ export class AuthenticationRequiredError extends Error {
     super(message);
     this.name = "AuthenticationRequiredError";
   }
+}
+
+export function webPathFromLocation(
+  location: Pick<Location, "pathname" | "search" | "hash"> = window.location,
+): string {
+  return location.pathname || "/";
+}
+
+export function resolveWebEntryView(input: {
+  readonly authenticated: boolean;
+  readonly pathname: string;
+}): WebEntryView {
+  if (input.pathname === "/auth/callback") {
+    return "auth-callback";
+  }
+  if (input.authenticated) {
+    return "workbench";
+  }
+  if (input.pathname === "/login") {
+    return "login";
+  }
+  return "homepage";
+}
+
+export function classifyWebAuthError(error: unknown): WebAuthErrorKind {
+  if (error instanceof AuthenticationRequiredError) {
+    return "session-required";
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  if (/authentication is required/i.test(message)) {
+    return "session-required";
+  }
+  if (/control plane/i.test(message)) {
+    return "control-plane";
+  }
+  return "oauth";
 }
 
 export function readWebAuthMode(env: ImportMetaEnv = import.meta.env): WebAuthMode {

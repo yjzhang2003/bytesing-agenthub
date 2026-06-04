@@ -1,6 +1,37 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AgentHubLoginPage } from "../src/index.js";
+import { AgentHubLoginPage, AgentHubProductHomepage } from "../src/index.js";
+
+describe("AgentHubProductHomepage", () => {
+  it("renders a public English product homepage with product evidence and sign-in paths", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubProductHomepage locale="en-US" onOpenLogin={() => undefined} />,
+    );
+
+    expect(html).toContain("AgentHub");
+    expect(html).toContain("Local-first AI agent workspace");
+    expect(html).toContain("Coordinate AI agents around your real workspace");
+    expect(html).toContain("Sign in");
+    expect(html).toContain("Open login");
+    expect(html).toContain("Runtime");
+    expect(html).toContain("Permissions");
+    expect(html).toContain("Artifacts");
+    expect(html).not.toContain("cloud runtime execution");
+    expect(html).not.toContain("GitHub pull request workflows");
+  });
+
+  it("renders Simplified Chinese homepage chrome while preserving source values", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubProductHomepage locale="zh-CN" onOpenLogin={() => undefined} />,
+    );
+
+    expect(html).toContain("本地优先的 AI 智能体工作区");
+    expect(html).toContain("围绕真实工作区协同 AI 智能体");
+    expect(html).toContain("登录");
+    expect(html).toContain("GitHub");
+    expect(html).toContain("Runtime");
+  });
+});
 
 describe("AgentHubLoginPage", () => {
   it("renders English GitHub login chrome without private workbench data", () => {
@@ -47,5 +78,31 @@ describe("AgentHubLoginPage", () => {
 
     expect(html).toContain("Signing in");
     expect(html).toContain("disabled");
+  });
+
+  it("renders callback processing and configuration states distinctly", () => {
+    const callback = renderToStaticMarkup(
+      <AgentHubLoginPage
+        authState={{ status: "callback" }}
+        locale="en-US"
+        onOpenHomepage={() => undefined}
+        onSignInWithGitHub={() => undefined}
+      />,
+    );
+    const misconfigured = renderToStaticMarkup(
+      <AgentHubLoginPage
+        authState={{ status: "configuration-error", message: "Missing VITE_SUPABASE_URL" }}
+        locale="en-US"
+        onOpenHomepage={() => undefined}
+        onSignInWithGitHub={() => undefined}
+      />,
+    );
+
+    expect(callback).toContain("Completing sign-in");
+    expect(callback).not.toContain("Sign-in failed");
+    expect(misconfigured).toContain("Authentication is not configured");
+    expect(misconfigured).toContain("Missing VITE_SUPABASE_URL");
+    expect(misconfigured).toContain("disabled");
+    expect(misconfigured).toContain("Back to homepage");
   });
 });

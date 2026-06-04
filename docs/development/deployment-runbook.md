@@ -65,6 +65,11 @@ VITE_SUPABASE_URL=https://ymzmsdwxmgmwxwtexvow.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_f1y1Jdh3IZYu0WCCq8wzSQ_yomvF0ff
 ```
 
+Vercel must serve the SPA shell for browser-owned routes such as `/login` and `/auth/callback`.
+The web project keeps this fallback in `apps/web/vercel.json`; direct requests to
+`https://agenthub-staging.vercel.app/auth/callback` should return the app shell rather than a
+Vercel `404`.
+
 Staging and production Control Plane:
 
 ```text
@@ -73,6 +78,11 @@ SUPABASE_JWT_SECRET=<supabase-jwt-secret>
 CONTROL_PLANE_PORT=5310
 AGENTHUB_PROVIDER_MODE=claude-code
 ```
+
+The Control Plane URL configured in Vercel must match the live Render service hostname. Verify
+`${VITE_CONTROL_PLANE_URL}/health` from the public internet; it should return the AgentHub Control
+Plane health payload. A Render routing response such as `x-render-routing: no-server` means the URL
+or hostname binding is stale even if the latest Render build succeeded.
 
 Supabase GitHub Auth:
 
@@ -128,12 +138,17 @@ CSC_KEY_PASSWORD=<certificate-password>
 Staging smoke:
 
 1. Open the hosted Web URL.
-2. Sign in through Supabase.
-3. Confirm private workbench data does not load before authentication.
-4. Launch Desktop from the packaged artifact.
-5. Confirm Desktop loads the configured Web shell.
-6. Confirm Connections can check Claude Code.
-7. Start one local run and verify output returns through Control Plane.
+2. Confirm the unauthenticated root renders the public product homepage rather than the workbench or
+   the bare login card.
+3. Open `/login` and confirm the dedicated login page is reachable.
+4. Open `/auth/callback` directly and confirm Vercel serves the app shell rather than `404`.
+5. Confirm `${VITE_CONTROL_PLANE_URL}/health` returns the Control Plane health payload.
+6. Sign in through Supabase.
+7. Confirm private workbench data does not load before authentication.
+8. Launch Desktop from the packaged artifact.
+9. Confirm Desktop loads the configured Web shell.
+10. Confirm Connections can check Claude Code.
+11. Start one local run and verify output returns through Control Plane.
 
 Local release build smoke:
 

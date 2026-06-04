@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import {
   AgentHubButton,
   AgentHubLoginPage,
+  AgentHubProductHomepage,
   AgentHubWorkbench,
   createAgentHubI18n,
 } from "@agenthub/ui";
@@ -18,10 +19,13 @@ import {
 } from "./control-plane-client.js";
 import {
   AuthenticationRequiredError,
+  classifyWebAuthError,
   defaultWebOAuthRedirectTo,
   readWebAuthMode,
+  resolveWebEntryView,
   signInWithGitHub,
   signOutOfWebAuth,
+  webPathFromLocation,
 } from "./auth-session.js";
 import { notifyForAgentHubEvent, requestAgentHubNotificationPermission } from "./notifications.js";
 import { createAgentHubDesktopProjectActions } from "./desktop-api.js";
@@ -258,9 +262,19 @@ function AgentHubWebApp(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [authenticating, setAuthenticating] = React.useState(false);
+  const [currentPath, setCurrentPath] = React.useState(() => webPathFromLocation());
   const authMode = React.useMemo(() => readWebAuthMode(), []);
   const supabase = React.useMemo(() => createWebSupabaseClient(), []);
   const desktopAuthActions = React.useMemo(() => createAgentHubDesktopProjectActions(), []);
+  const entryView = resolveWebEntryView({
+    authenticated: Boolean(client),
+    pathname: currentPath,
+  });
+
+  const navigateTo = React.useCallback((path: string) => {
+    window.history.pushState(null, "", path);
+    setCurrentPath(path);
+  }, []);
 
   const clearAuthenticatedState = React.useCallback((message: string | null = null) => {
     setClient(null);
@@ -285,19 +299,26 @@ function AgentHubWebApp(): React.ReactElement {
           onAuthenticationFailure: handleAuthenticationFailure,
         }),
       );
+      if (currentPath === "/" || currentPath === "/login" || currentPath === "/auth/callback") {
+        window.history.replaceState(null, "", "/");
+        setCurrentPath("/");
+      }
     } catch (caught) {
+      const errorKind = classifyWebAuthError(caught);
       setClient(null);
-      setError(
-        caught instanceof AuthenticationRequiredError
-          ? "Sign in to access AgentHub."
-          : caught instanceof Error
-            ? caught.message
-            : "Unable to initialize AgentHub.",
-      );
+      if (caught instanceof AuthenticationRequiredError && currentPath !== "/auth/callback") {
+        setError(null);
+      } else if (errorKind === "session-required" && currentPath === "/auth/callback") {
+        setError("GitHub sign-in could not be completed. Try again.");
+      } else if (errorKind === "control-plane") {
+        setError("Signed in, but the Control Plane is unreachable.");
+      } else {
+        setError(caught instanceof Error ? caught.message : "Unable to initialize AgentHub.");
+      }
     } finally {
       setLoading(false);
     }
-  }, [handleAuthenticationFailure]);
+  }, [currentPath, handleAuthenticationFailure]);
 
   const signIn = React.useCallback(async () => {
     if (!supabase) {
@@ -332,17 +353,31 @@ function AgentHubWebApp(): React.ReactElement {
     void initializeClient();
   }, [initializeClient]);
 
+  React.useEffect(() => {
+    const handlePopState = () => setCurrentPath(webPathFromLocation());
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   if (!client) {
     if (authMode === "supabase") {
+      if (entryView === "homepage") {
+        return <AgentHubProductHomepage onOpenLogin={() => navigateTo("/login")} />;
+      }
       return (
         <AgentHubLoginPage
           authState={
-            authenticating
-              ? { status: "authenticating" }
-              : error
-                ? { status: "error", message: error }
-                : { status: "unauthenticated" }
+            !supabase
+              ? { status: "configuration-error", message: "Missing Supabase web configuration." }
+              : currentPath === "/auth/callback" && loading
+                ? { status: "callback" }
+                : authenticating
+                  ? { status: "authenticating" }
+                  : error
+                    ? { status: "error", message: error }
+                    : { status: "unauthenticated" }
           }
+          onOpenHomepage={() => navigateTo("/")}
           onRetry={() => void initializeClient()}
           onSignInWithGitHub={() => void signIn()}
         />

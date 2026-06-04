@@ -99,6 +99,9 @@ export const componentSystemCss = `
   margin: 0;
   color: var(--agenthub-text-secondary);
 }
+.agenthub-auth-copy small {
+  color: var(--agenthub-text-muted);
+}
 .agenthub-auth-error {
   display: grid;
   gap: 8px;
@@ -118,6 +121,181 @@ export const componentSystemCss = `
   top: 10px;
   right: 10px;
   z-index: 20;
+}
+.agenthub-home-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: clamp(28px, 5vw, 58px);
+  padding: clamp(18px, 4vw, 46px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(244, 244, 241, .72)),
+    var(--agenthub-bg);
+  color: var(--agenthub-text);
+}
+.agenthub-home-nav {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+}
+.agenthub-home-mark {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+  font-weight: 800;
+}
+.agenthub-home-nav-links {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+}
+.agenthub-home-nav a,
+.agenthub-home-actions a {
+  color: var(--agenthub-text-secondary);
+  text-decoration: none;
+}
+.agenthub-home-nav a:hover,
+.agenthub-home-nav a:focus-visible,
+.agenthub-home-actions a:hover,
+.agenthub-home-actions a:focus-visible {
+  color: var(--agenthub-text);
+}
+.agenthub-home-hero {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, .98fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 64px);
+}
+.agenthub-home-copy {
+  display: grid;
+  gap: 18px;
+}
+.agenthub-home-kicker {
+  margin: 0;
+  color: var(--agenthub-text-muted);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.agenthub-home-copy h1 {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(34px, 6vw, 68px);
+  line-height: .98;
+  letter-spacing: 0;
+}
+.agenthub-home-copy > p:not(.agenthub-home-kicker) {
+  max-width: 620px;
+  margin: 0;
+  color: var(--agenthub-text-secondary);
+  font-size: clamp(15px, 2vw, 19px);
+}
+.agenthub-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.agenthub-home-product {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--agenthub-surface);
+  box-shadow: 0 18px 44px rgba(23, 24, 23, .10);
+}
+.agenthub-home-product-header {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--agenthub-border);
+  color: var(--agenthub-text-muted);
+}
+.agenthub-home-product-header strong {
+  color: var(--agenthub-text);
+}
+.agenthub-home-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.agenthub-home-product-cell {
+  min-height: 116px;
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  padding: 12px;
+  background: var(--agenthub-surface-2);
+}
+.agenthub-home-product-cell strong {
+  overflow-wrap: anywhere;
+}
+.agenthub-home-product-cell span {
+  color: var(--agenthub-text-secondary);
+  overflow-wrap: anywhere;
+}
+.agenthub-home-features {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--agenthub-border);
+  padding-top: 28px;
+}
+.agenthub-home-features h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 32px);
+}
+.agenthub-home-features ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agenthub-home-features li {
+  border-left: 2px solid var(--agenthub-accent);
+  padding: 4px 0 4px 12px;
+  color: var(--agenthub-text-secondary);
+}
+.agenthub-home-footer {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  color: var(--agenthub-text-muted);
+  font-size: var(--agenthub-type-sm);
+}
+@media (max-width: 760px) {
+  .agenthub-home-shell {
+    gap: 30px;
+  }
+  .agenthub-home-nav {
+    grid-template-columns: auto 1fr;
+  }
+  .agenthub-home-nav-links {
+    display: none;
+  }
+  .agenthub-home-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-home-product-grid,
+  .agenthub-home-features ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .agenthub-icon-button {
   width: 32px;

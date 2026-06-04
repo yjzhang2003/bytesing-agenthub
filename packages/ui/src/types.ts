@@ -20,12 +20,20 @@ export type WorkbenchLayoutMode = "wide" | "standard" | "narrow" | "mobile-web";
 export type AuthViewState =
   | { readonly status: "unauthenticated" }
   | { readonly status: "authenticating" }
+  | { readonly status: "callback" }
+  | { readonly status: "configuration-error"; readonly message: string }
   | { readonly status: "authenticated"; readonly userLabel?: string | undefined }
   | { readonly status: "error"; readonly message: string };
+
+export interface ProductHomepageProps {
+  readonly locale?: "en-US" | "zh-CN" | string | undefined;
+  readonly onOpenLogin: () => void;
+}
 
 export interface LoginSurfaceProps {
   readonly authState: AuthViewState;
   readonly locale?: "en-US" | "zh-CN" | string | undefined;
+  readonly onOpenHomepage?: (() => void) | undefined;
   readonly onRetry?: (() => void) | undefined;
   readonly onSignInWithGitHub: () => void;
 }
