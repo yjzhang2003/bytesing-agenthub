@@ -43,10 +43,10 @@
 
 - [x] 6.1 Run Web unit/render tests and relevant auth-session/control-plane tests.
 - [x] 6.2 Run Web typecheck, shared UI typecheck, lint, and changed-file formatting checks.
-- [ ] 6.3 Deploy Web and Control Plane if needed after code changes.
+- [x] 6.3 Deploy Web and Control Plane if needed after code changes.
 - [ ] 6.4 Verify staging GitHub login still works after adding account login.
-- [ ] 6.5 Verify staging email signup flow, including confirmation-required or immediate-session behavior as configured.
-- [ ] 6.6 Verify staging email/password sign-in loads the authenticated workbench.
+- [x] 6.5 Verify staging email signup flow, including confirmation-required or immediate-session behavior as configured.
+- [x] 6.6 Verify staging email/password sign-in loads the authenticated workbench.
 - [ ] 6.7 Verify staging forgot-password and reset-password flow reaches the AgentHub-owned reset page and can set a new password.
 - [ ] 6.8 Verify sign-out clears private state and both GitHub and email login paths can sign in again.
 
