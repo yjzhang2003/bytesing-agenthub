@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { agentHubLocalDefaults } from "@agenthub/contracts";
 import { verifySupabaseJwt } from "../src/auth.js";
@@ -14,16 +14,68 @@ function signTestJwt(userId: string, secret = "test-secret"): string {
   return `${header}.${payload}.${signature}`;
 }
 
+function signTestEs256Jwt(input: {
+  readonly issuer: string;
+  readonly keyId: string;
+  readonly userId: string;
+}): { readonly jwk: JsonWebKey; readonly token: string } {
+  const { privateKey, publicKey } = generateKeyPairSync("ec", {
+    namedCurve: "P-256",
+  });
+  const header = Buffer.from(
+    JSON.stringify({ alg: "ES256", kid: input.keyId, typ: "JWT" }),
+  ).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      aud: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 60,
+      iss: input.issuer,
+      sub: input.userId,
+    }),
+  ).toString("base64url");
+  const signature = sign("sha256", Buffer.from(`${header}.${payload}`), {
+    dsaEncoding: "ieee-p1363",
+    key: privateKey,
+  }).toString("base64url");
+  return {
+    jwk: publicKey.export({ format: "jwk" }),
+    token: `${header}.${payload}.${signature}`,
+  };
+}
+
 describe("control plane auth", () => {
-  it("verifies a Supabase-style HS256 JWT", () => {
-    const auth = verifySupabaseJwt(signTestJwt("user_1"), "test-secret");
+  it("verifies a Supabase-style HS256 JWT", async () => {
+    const auth = await verifySupabaseJwt(signTestJwt("user_1"), {
+      jwtSecret: "test-secret",
+    });
     expect(auth.userId).toBe("user_1");
   });
 
-  it("rejects invalid JWT signatures", () => {
-    expect(() => verifySupabaseJwt(signTestJwt("user_1"), "wrong-secret")).toThrow(
-      "Invalid JWT signature",
-    );
+  it("verifies Supabase ES256 JWTs from the project JWKS", async () => {
+    const issuer = "https://project-ref.supabase.co/auth/v1";
+    const signed = signTestEs256Jwt({
+      issuer,
+      keyId: "staging-key",
+      userId: "github_user_1",
+    });
+
+    const auth = await verifySupabaseJwt(signed.token, {
+      fetchJwks: async (url) => {
+        expect(url).toBe(`${issuer}/.well-known/jwks.json`);
+        return { keys: [{ ...signed.jwk, alg: "ES256", kid: "staging-key", use: "sig" }] };
+      },
+      jwtSecret: "unused-for-es256",
+    });
+
+    expect(auth.userId).toBe("github_user_1");
+  });
+
+  it("rejects invalid JWT signatures", async () => {
+    await expect(
+      verifySupabaseJwt(signTestJwt("user_1"), {
+        jwtSecret: "wrong-secret",
+      }),
+    ).rejects.toThrow("Invalid JWT signature");
   });
 });
 

@@ -50,11 +50,11 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
   response.end(JSON.stringify(body));
 }
 
-function authenticate(
+async function authenticate(
   request: IncomingMessage,
   options: ControlPlaneServerOptions,
   url?: URL,
-): AuthContext {
+): Promise<AuthContext> {
   const token = request.headers.authorization
     ? parseBearerToken(request.headers.authorization)
     : (url?.searchParams.get("access_token") ?? "");
@@ -72,7 +72,7 @@ function authenticate(
       claims: { mode: "local-demo" },
     };
   }
-  return verifySupabaseJwt(token, options.jwtSecret);
+  return verifySupabaseJwt(token, { jwtSecret: options.jwtSecret });
 }
 
 export function createControlPlaneServer(options: ControlPlaneServerOptions) {
@@ -105,7 +105,7 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
         return;
       }
 
-      const auth = authenticate(request, options, url);
+      const auth = await authenticate(request, options, url);
 
       if (request.method === "GET" && url.pathname === agentHubApiPaths.events) {
         response.writeHead(200, {
@@ -212,7 +212,10 @@ export function createControlPlaneServer(options: ControlPlaneServerOptions) {
 
       const activeConversationMatch = url.pathname.match(/^\/conversations\/([^/]+)\/active$/);
       if (request.method === "POST" && activeConversationMatch?.[1]) {
-        const conversation = registry.setActiveConversation(auth.userId, activeConversationMatch[1]);
+        const conversation = registry.setActiveConversation(
+          auth.userId,
+          activeConversationMatch[1],
+        );
         sendJson(response, 200, { conversation });
         return;
       }
