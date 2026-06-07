@@ -51,12 +51,12 @@ describe("control plane auth", () => {
     expect(auth.userId).toBe("user_1");
   });
 
-  it("verifies Supabase ES256 JWTs from the project JWKS", async () => {
+  it("verifies provider-agnostic Supabase ES256 JWTs from the project JWKS", async () => {
     const issuer = "https://project-ref.supabase.co/auth/v1";
     const signed = signTestEs256Jwt({
       issuer,
       keyId: "staging-key",
-      userId: "github_user_1",
+      userId: "email_user_1",
     });
 
     const auth = await verifySupabaseJwt(signed.token, {
@@ -67,7 +67,7 @@ describe("control plane auth", () => {
       jwtSecret: "unused-for-es256",
     });
 
-    expect(auth.userId).toBe("github_user_1");
+    expect(auth.userId).toBe("email_user_1");
   });
 
   it("rejects invalid JWT signatures", async () => {

@@ -102,6 +102,70 @@ export const componentSystemCss = `
 .agenthub-auth-copy small {
   color: var(--agenthub-text-muted);
 }
+.agenthub-auth-form {
+  display: grid;
+  gap: 12px;
+}
+.agenthub-auth-field {
+  display: grid;
+  gap: 6px;
+  color: var(--agenthub-text-secondary);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 650;
+}
+.agenthub-auth-field input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: var(--agenthub-surface);
+  color: var(--agenthub-text);
+  font: inherit;
+  padding: 8px 10px;
+}
+.agenthub-auth-field input:focus {
+  border-color: var(--agenthub-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--agenthub-accent) 28%, transparent);
+  outline: 0;
+}
+.agenthub-auth-field input:disabled {
+  color: var(--agenthub-text-muted);
+  background: var(--agenthub-surface-2);
+}
+.agenthub-auth-mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+.agenthub-auth-mode-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--agenthub-text-secondary);
+  font: inherit;
+  font-size: var(--agenthub-type-sm);
+  padding: 0;
+  cursor: pointer;
+}
+.agenthub-auth-mode-actions button:hover,
+.agenthub-auth-mode-actions button:focus-visible {
+  color: var(--agenthub-text);
+  text-decoration: underline;
+}
+.agenthub-auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  color: var(--agenthub-text-muted);
+  font-size: var(--agenthub-type-sm);
+}
+.agenthub-auth-divider::before,
+.agenthub-auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--agenthub-border);
+}
 .agenthub-auth-error {
   display: grid;
   gap: 8px;
@@ -115,6 +179,13 @@ export const componentSystemCss = `
   color: inherit;
   font-family: var(--agenthub-mono);
   overflow-wrap: anywhere;
+}
+.agenthub-auth-success {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--agenthub-status) 38%, var(--agenthub-border));
+  border-radius: var(--agenthub-radius);
+  color: var(--agenthub-status);
+  background: color-mix(in srgb, var(--agenthub-status) 8%, var(--agenthub-surface));
 }
 .agenthub-web-auth-actions {
   position: fixed;

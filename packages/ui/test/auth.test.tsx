@@ -44,6 +44,10 @@ describe("AgentHubLoginPage", () => {
     );
 
     expect(html).toContain("Sign in to AgentHub");
+    expect(html).toContain("Email");
+    expect(html).toContain("Password");
+    expect(html).toContain("Create an account");
+    expect(html).toContain("Forgot password?");
     expect(html).toContain("Continue with GitHub");
     expect(html).toContain("GitHub");
     expect(html).not.toContain("Conversation navigation");
@@ -61,6 +65,8 @@ describe("AgentHubLoginPage", () => {
     );
 
     expect(html).toContain("登录 AgentHub");
+    expect(html).toContain("邮箱");
+    expect(html).toContain("密码");
     expect(html).toContain("使用 GitHub 继续");
     expect(html).toContain("GitHub");
     expect(html).toContain("redirect_uri_mismatch");
@@ -104,5 +110,22 @@ describe("AgentHubLoginPage", () => {
     expect(misconfigured).toContain("Missing VITE_SUPABASE_URL");
     expect(misconfigured).toContain("disabled");
     expect(misconfigured).toContain("Back to homepage");
+  });
+
+  it("renders reset-password mode from a hosted recovery route", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubLoginPage
+        authState={{ status: "unauthenticated" }}
+        initialMode="reset-password"
+        locale="en-US"
+        onSignInWithGitHub={() => undefined}
+        onUpdatePassword={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Set a new password");
+    expect(html).toContain("New password");
+    expect(html).toContain("Update password");
+    expect(html).not.toContain("Conversation navigation");
   });
 });

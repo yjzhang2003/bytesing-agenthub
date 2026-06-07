@@ -12,6 +12,9 @@ describe("web auth routing", () => {
     expect(resolveWebEntryView({ authenticated: false, pathname: "/auth/callback" })).toBe(
       "auth-callback",
     );
+    expect(resolveWebEntryView({ authenticated: false, pathname: "/auth/reset-password" })).toBe(
+      "auth-reset-password",
+    );
   });
 
   it("routes signed-in users away from public auth pages into the workbench", () => {
@@ -19,6 +22,9 @@ describe("web auth routing", () => {
     expect(resolveWebEntryView({ authenticated: true, pathname: "/login" })).toBe("workbench");
     expect(resolveWebEntryView({ authenticated: true, pathname: "/auth/callback" })).toBe(
       "auth-callback",
+    );
+    expect(resolveWebEntryView({ authenticated: true, pathname: "/auth/reset-password" })).toBe(
+      "workbench",
     );
   });
 
@@ -30,6 +36,13 @@ describe("web auth routing", () => {
         search: "?code=abc",
       }),
     ).toBe("/auth/callback");
+    expect(
+      webPathFromLocation({
+        hash: "#type=recovery",
+        pathname: "/auth/reset-password",
+        search: "?code=abc",
+      }),
+    ).toBe("/auth/reset-password");
   });
 
   it("distinguishes missing sessions from post-login Control Plane failures", () => {

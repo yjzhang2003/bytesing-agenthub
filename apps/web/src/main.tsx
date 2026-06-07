@@ -19,12 +19,18 @@ import {
 } from "./control-plane-client.js";
 import {
   AuthenticationRequiredError,
+  defaultWebEmailAuthRedirectTo,
   classifyWebAuthError,
   defaultWebOAuthRedirectTo,
+  defaultWebPasswordResetRedirectTo,
   readWebAuthMode,
+  requestEmailPasswordReset,
   resolveWebEntryView,
+  signInWithEmailPassword,
   signInWithGitHub,
   signOutOfWebAuth,
+  signUpWithEmailPassword,
+  updateEmailPassword,
   webPathFromLocation,
 } from "./auth-session.js";
 import { notifyForAgentHubEvent, requestAgentHubNotificationPermission } from "./notifications.js";
@@ -295,7 +301,12 @@ function AgentHubWebApp(): React.ReactElement {
           onAuthenticationFailure: handleAuthenticationFailure,
         }),
       );
-      if (currentPath === "/" || currentPath === "/login" || currentPath === "/auth/callback") {
+      if (
+        currentPath === "/" ||
+        currentPath === "/login" ||
+        currentPath === "/auth/callback" ||
+        currentPath === "/auth/reset-password"
+      ) {
         window.history.replaceState(null, "", "/");
         setCurrentPath("/");
       }
@@ -338,6 +349,73 @@ function AgentHubWebApp(): React.ReactElement {
     }
   }, [desktopAuthActions, supabase]);
 
+  const signInWithEmail = React.useCallback(
+    async (input: { readonly email: string; readonly password: string }) => {
+      if (!supabase) {
+        setError("Supabase is not configured.");
+        return;
+      }
+      setError(null);
+      await signInWithEmailPassword({
+        email: input.email,
+        password: input.password,
+        supabase,
+      });
+      await initializeClient();
+    },
+    [initializeClient, supabase],
+  );
+
+  const signUpWithEmail = React.useCallback(
+    async (input: { readonly email: string; readonly password: string }) => {
+      if (!supabase) {
+        throw new Error("Supabase is not configured.");
+      }
+      setError(null);
+      const result = await signUpWithEmailPassword({
+        email: input.email,
+        password: input.password,
+        redirectTo: defaultWebEmailAuthRedirectTo(),
+        supabase,
+      });
+      if (result.status === "signed-in") {
+        await initializeClient();
+      }
+      return result;
+    },
+    [initializeClient, supabase],
+  );
+
+  const requestPasswordReset = React.useCallback(
+    async (input: { readonly email: string }) => {
+      if (!supabase) {
+        throw new Error("Supabase is not configured.");
+      }
+      setError(null);
+      await requestEmailPasswordReset({
+        email: input.email,
+        redirectTo: defaultWebPasswordResetRedirectTo(),
+        supabase,
+      });
+    },
+    [supabase],
+  );
+
+  const updatePassword = React.useCallback(
+    async (input: { readonly password: string }) => {
+      if (!supabase) {
+        throw new Error("Supabase is not configured.");
+      }
+      setError(null);
+      await updateEmailPassword({
+        password: input.password,
+        supabase,
+      });
+      await initializeClient();
+    },
+    [initializeClient, supabase],
+  );
+
   const signOut = React.useCallback(async () => {
     if (supabase) {
       await signOutOfWebAuth(supabase);
@@ -374,8 +452,13 @@ function AgentHubWebApp(): React.ReactElement {
                     : { status: "unauthenticated" }
           }
           onOpenHomepage={() => navigateTo("/")}
+          initialMode={entryView === "auth-reset-password" ? "reset-password" : "sign-in"}
+          onRequestPasswordReset={requestPasswordReset}
           onRetry={() => void initializeClient()}
+          onSignInWithEmail={signInWithEmail}
           onSignInWithGitHub={() => void signIn()}
+          onSignUpWithEmail={signUpWithEmail}
+          onUpdatePassword={updatePassword}
         />
       );
     }

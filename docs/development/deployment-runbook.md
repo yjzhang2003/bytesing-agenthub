@@ -26,11 +26,12 @@ Initial staging URLs:
 
 ```text
 Web: https://agenthub-staging.vercel.app
-Control Plane: https://agenthub-control-plane-staging.onrender.com
+Control Plane: https://bytesing-agenthub.onrender.com
 Supabase: https://ymzmsdwxmgmwxwtexvow.supabase.co
 Desktop callback: agenthub://auth/callback
 iOS callback: agenthub-ios://auth/callback
 Local Web callback: http://127.0.0.1:5173/auth/callback
+Web password reset: https://agenthub-staging.vercel.app/auth/reset-password
 ```
 
 Secrets and non-committed values:
@@ -60,14 +61,15 @@ Staging and production Web:
 
 ```text
 VITE_AGENTHUB_AUTH_MODE=supabase
-VITE_CONTROL_PLANE_URL=https://agenthub-control-plane-staging.onrender.com
+VITE_CONTROL_PLANE_URL=https://bytesing-agenthub.onrender.com
 VITE_SUPABASE_URL=https://ymzmsdwxmgmwxwtexvow.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_f1y1Jdh3IZYu0WCCq8wzSQ_yomvF0ff
 ```
 
-Vercel must serve the SPA shell for browser-owned routes such as `/login` and `/auth/callback`.
-The web project keeps this fallback in `apps/web/vercel.json`; direct requests to
-`https://agenthub-staging.vercel.app/auth/callback` should return the app shell rather than a
+Vercel must serve the SPA shell for browser-owned routes such as `/login`, `/auth/callback`, and
+`/auth/reset-password`. The web project keeps this fallback in `apps/web/vercel.json`; direct
+requests to `https://agenthub-staging.vercel.app/auth/callback` and
+`https://agenthub-staging.vercel.app/auth/reset-password` should return the app shell rather than a
 Vercel `404`.
 
 Staging and production Control Plane:
@@ -97,6 +99,25 @@ Supabase GitHub Auth:
   `http://127.0.0.1:5173/auth/callback`.
 - Keep provider names such as `github` and callback URLs unchanged in diagnostics so redirect mismatches can be copied directly into Supabase or GitHub OAuth settings.
 
+Supabase Email Auth:
+
+- Enable the Email provider in Supabase Auth for staging.
+- Confirm the password policy matches the Web client minimum of 8 characters or is stricter with
+  copy updated before release.
+- Decide whether staging requires email confirmation. The Web UI supports both immediate-session
+  signup and confirmation-required signup.
+- Add hosted Web email redirect URLs to the Supabase allowed redirect URLs:
+  `https://agenthub-staging.vercel.app/auth/callback` and
+  `https://agenthub-staging.vercel.app/auth/reset-password`.
+- Add local Web email redirect URLs for development smoke:
+  `http://127.0.0.1:5173/auth/callback` and
+  `http://127.0.0.1:5173/auth/reset-password`.
+- Password recovery emails must redirect to the AgentHub-owned reset page, not a Supabase-hosted
+  password form.
+- Rollback for email auth is to hide or revert the Web email/password controls while leaving GitHub
+  OAuth unchanged. If staging users have already been created, keep Supabase Email Auth configured
+  unless the project owner intentionally disables those accounts.
+
 Current staging Supabase status:
 
 - Project ref `ymzmsdwxmgmwxwtexvow` is linked through Supabase CLI.
@@ -108,7 +129,7 @@ Current staging Supabase status:
 Desktop release repository variables:
 
 ```text
-AGENTHUB_CONTROL_PLANE_URL=https://agenthub-control-plane-staging.onrender.com
+AGENTHUB_CONTROL_PLANE_URL=https://bytesing-agenthub.onrender.com
 AGENTHUB_WEB_URL=https://agenthub-staging.vercel.app
 ```
 
@@ -141,23 +162,31 @@ Staging smoke:
 2. Confirm the unauthenticated root renders the public product homepage rather than the workbench or
    the bare login card.
 3. Open `/login` and confirm the dedicated login page is reachable.
-4. Open `/auth/callback` directly and confirm Vercel serves the app shell rather than `404`.
+4. Open `/auth/callback` and `/auth/reset-password` directly and confirm Vercel serves the app shell
+   rather than `404`.
 5. Confirm `${VITE_CONTROL_PLANE_URL}/health` returns the Control Plane health payload.
-6. Sign in through Supabase.
-7. Confirm private workbench data does not load before authentication.
-8. Launch Desktop from the packaged artifact.
-9. Confirm Desktop loads the configured Web shell.
-10. Confirm Connections can check Claude Code.
-11. Start one local run and verify output returns through Control Plane.
+6. Confirm private workbench data does not load before authentication.
+7. Sign in through Supabase GitHub OAuth.
+8. Create an email/password AgentHub account and note whether staging returns an immediate session or
+   confirmation-required state.
+9. Sign out, then sign in with the email/password account and confirm the authenticated workbench
+   loads.
+10. Request a password reset and confirm the email link returns to `/auth/reset-password` where the
+    password can be updated.
+11. Sign out again and verify both GitHub and email/password login paths can re-enter the workbench.
+12. Launch Desktop from the packaged artifact.
+13. Confirm Desktop loads the configured Web shell.
+14. Confirm Connections can check Claude Code.
+15. Start one local run and verify output returns through Control Plane.
 
 Current staging evidence:
 
 - 2026-06-06: `https://agenthub-staging.vercel.app/auth/callback` returns the Vercel
   app shell with HTTP 200.
-- 2026-06-06: `https://agenthub-control-plane-staging.onrender.com/health` returns
-  Render routing `404` with `x-render-routing: no-server`; staging remains blocked until
-  Vercel points to a live Render Control Plane hostname whose `/health` endpoint returns
-  the AgentHub payload.
+- 2026-06-06: `https://agenthub-control-plane-staging.onrender.com/health` returned Render routing
+  `404` with `x-render-routing: no-server`; this hostname is stale.
+- 2026-06-06: `https://bytesing-agenthub.onrender.com/health` returns the AgentHub Control Plane
+  health payload and is the staging Control Plane URL Vercel should use.
 
 Local release build smoke:
 

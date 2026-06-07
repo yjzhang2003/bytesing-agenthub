@@ -21,9 +21,15 @@ export type AuthViewState =
   | { readonly status: "unauthenticated" }
   | { readonly status: "authenticating" }
   | { readonly status: "callback" }
+  | { readonly status: "success"; readonly message: string }
   | { readonly status: "configuration-error"; readonly message: string }
   | { readonly status: "authenticated"; readonly userLabel?: string | undefined }
   | { readonly status: "error"; readonly message: string };
+export type AuthFormMode = "sign-in" | "signup" | "forgot-password" | "reset-password";
+
+export type EmailSignupViewResult =
+  | { readonly status: "signed-in" }
+  | { readonly status: "confirmation-required"; readonly email: string };
 
 export interface ProductHomepageProps {
   readonly locale?: "en-US" | "zh-CN" | string | undefined;
@@ -32,10 +38,26 @@ export interface ProductHomepageProps {
 
 export interface LoginSurfaceProps {
   readonly authState: AuthViewState;
+  readonly initialMode?: AuthFormMode | undefined;
   readonly locale?: "en-US" | "zh-CN" | string | undefined;
   readonly onOpenHomepage?: (() => void) | undefined;
   readonly onRetry?: (() => void) | undefined;
+  readonly onRequestPasswordReset?:
+    | ((input: { readonly email: string }) => Promise<void> | void)
+    | undefined;
+  readonly onSignInWithEmail?:
+    | ((input: { readonly email: string; readonly password: string }) => Promise<void> | void)
+    | undefined;
   readonly onSignInWithGitHub: () => void;
+  readonly onSignUpWithEmail?:
+    | ((input: {
+        readonly email: string;
+        readonly password: string;
+      }) => Promise<EmailSignupViewResult> | EmailSignupViewResult)
+    | undefined;
+  readonly onUpdatePassword?:
+    | ((input: { readonly password: string }) => Promise<void> | void)
+    | undefined;
 }
 
 export type WorkbenchVisualState =
