@@ -25,6 +25,7 @@ import {
   defaultWebPasswordResetRedirectTo,
   readWebAuthMode,
   requestEmailPasswordReset,
+  resolvePublicWebLocale,
   resolveWebEntryView,
   signInWithEmailPassword,
   signInWithGitHub,
@@ -266,6 +267,7 @@ function AgentHubWebApp(): React.ReactElement {
   const [authenticating, setAuthenticating] = React.useState(false);
   const [currentPath, setCurrentPath] = React.useState(() => webPathFromLocation());
   const authMode = React.useMemo(() => readWebAuthMode(), []);
+  const publicLocale = React.useMemo(() => resolvePublicWebLocale(), []);
   const supabase = React.useMemo(() => createWebSupabaseClient(), []);
   const desktopAuthActions = React.useMemo(() => createAgentHubDesktopProjectActions(), []);
   const entryView = resolveWebEntryView({
@@ -436,7 +438,12 @@ function AgentHubWebApp(): React.ReactElement {
   if (!client) {
     if (authMode === "supabase") {
       if (entryView === "homepage") {
-        return <AgentHubProductHomepage onOpenLogin={() => navigateTo("/login")} />;
+        return (
+          <AgentHubProductHomepage
+            locale={publicLocale}
+            onOpenLogin={() => navigateTo("/login")}
+          />
+        );
       }
       return (
         <AgentHubLoginPage
@@ -451,6 +458,7 @@ function AgentHubWebApp(): React.ReactElement {
                     ? { status: "error", message: error }
                     : { status: "unauthenticated" }
           }
+          locale={publicLocale}
           onOpenHomepage={() => navigateTo("/")}
           initialMode={entryView === "auth-reset-password" ? "reset-password" : "sign-in"}
           onRequestPasswordReset={requestPasswordReset}

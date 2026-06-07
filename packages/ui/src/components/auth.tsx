@@ -35,6 +35,7 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
   return (
     <AgentHubThemeProvider mode="light">
       <main className="agenthub-home-shell">
+        <span className="agenthub-home-motion" aria-hidden="true" />
         <nav className="agenthub-home-nav" aria-label="AgentHub">
           <span className="agenthub-home-mark" aria-hidden="true">
             AH

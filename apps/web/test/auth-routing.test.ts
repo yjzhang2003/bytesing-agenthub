@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyWebAuthError,
+  resolvePublicWebLocale,
   resolveWebEntryView,
   webPathFromLocation,
 } from "../src/auth-session.js";
@@ -53,5 +54,26 @@ describe("web auth routing", () => {
       "control-plane",
     );
     expect(classifyWebAuthError(new Error("provider disabled"))).toBe("oauth");
+  });
+
+  it("resolves public web locale from supported storage values with a Chinese homepage default", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+    };
+
+    expect(resolvePublicWebLocale(storage)).toBe("zh-CN");
+
+    values.set("agenthub.locale", "en-US");
+    expect(resolvePublicWebLocale(storage)).toBe("en-US");
+
+    values.set("agenthub.locale", "en_US");
+    expect(resolvePublicWebLocale(storage)).toBe("en-US");
+
+    values.set("agenthub.locale", "fr-FR");
+    expect(resolvePublicWebLocale(storage)).toBe("zh-CN");
+
+    values.set("agenthub.locale", "zh");
+    expect(resolvePublicWebLocale(storage)).toBe("zh-CN");
   });
 });

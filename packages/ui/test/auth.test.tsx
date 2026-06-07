@@ -9,8 +9,8 @@ describe("AgentHubProductHomepage", () => {
     );
 
     expect(html).toContain("AgentHub");
-    expect(html).toContain("Local-first AI agent workspace");
-    expect(html).toContain("Coordinate AI agents around your real workspace");
+    expect(html).toContain("AI agent workspace");
+    expect(html).toContain("Coordinate agents around your workspace");
     expect(html).toContain("Sign in");
     expect(html).toContain("Open login");
     expect(html).toContain("Runtime");
@@ -25,11 +25,27 @@ describe("AgentHubProductHomepage", () => {
       <AgentHubProductHomepage locale="zh-CN" onOpenLogin={() => undefined} />,
     );
 
-    expect(html).toContain("本地优先的 AI 智能体工作区");
-    expect(html).toContain("围绕真实工作区协同 AI 智能体");
+    expect(html).toContain("AI 智能体工作区");
+    expect(html).toContain("让智能体围绕本地项目协作");
     expect(html).toContain("登录");
     expect(html).toContain("GitHub");
-    expect(html).toContain("Runtime");
+    expect(html).toContain("运行时");
+    expect(html).toContain("权限");
+    expect(html).toContain("产物");
+    expect(html).toContain("Local Runtime");
+    expect(html).not.toContain("Permissions");
+    expect(html).not.toContain("Artifacts");
+  });
+
+  it("includes restrained homepage motion styles with reduced-motion handling", () => {
+    const html = renderToStaticMarkup(
+      <AgentHubProductHomepage locale="zh-CN" onOpenLogin={() => undefined} />,
+    );
+
+    expect(html).toContain("agenthub-home-motion");
+    expect(html).toContain("@keyframes agenthub-home-drift");
+    expect(html).toContain("prefers-reduced-motion: reduce");
+    expect(html).toContain(".agenthub-home-shell::before");
   });
 });
 

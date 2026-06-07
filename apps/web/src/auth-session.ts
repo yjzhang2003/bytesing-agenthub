@@ -1,4 +1,5 @@
 import { agentHubLocalDefaults } from "@agenthub/contracts";
+import { AGENTHUB_LOCALE_STORAGE_KEY, type AgentHubLocale } from "@agenthub/ui";
 import type { Session } from "@supabase/supabase-js";
 
 export type WebAuthMode = "local-demo" | "supabase";
@@ -100,6 +101,20 @@ export function classifyWebAuthError(error: unknown): WebAuthErrorKind {
 
 export function readWebAuthMode(env: ImportMetaEnv = import.meta.env): WebAuthMode {
   return env.VITE_AGENTHUB_AUTH_MODE === "supabase" ? "supabase" : "local-demo";
+}
+
+export function resolvePublicWebLocale(
+  storage: Pick<Storage, "getItem"> = window.localStorage,
+): AgentHubLocale {
+  const normalizedValue = storage
+    .getItem(AGENTHUB_LOCALE_STORAGE_KEY)
+    ?.trim()
+    .toLowerCase()
+    .replace("_", "-");
+  if (normalizedValue === "en" || normalizedValue === "en-us") {
+    return "en-US";
+  }
+  return "zh-CN";
 }
 
 export function defaultWebOAuthRedirectTo(
