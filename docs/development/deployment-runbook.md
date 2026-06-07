@@ -150,6 +150,15 @@ Staging smoke:
 10. Confirm Connections can check Claude Code.
 11. Start one local run and verify output returns through Control Plane.
 
+Current staging evidence:
+
+- 2026-06-06: `https://agenthub-staging.vercel.app/auth/callback` returns the Vercel
+  app shell with HTTP 200.
+- 2026-06-06: `https://agenthub-control-plane-staging.onrender.com/health` returns
+  Render routing `404` with `x-render-routing: no-server`; staging remains blocked until
+  Vercel points to a live Render Control Plane hostname whose `/health` endpoint returns
+  the AgentHub payload.
+
 Local release build smoke:
 
 ```bash

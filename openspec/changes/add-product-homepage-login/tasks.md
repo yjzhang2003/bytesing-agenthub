@@ -45,7 +45,7 @@
 - [x] 6.1 Add unit or render tests for unauthenticated homepage, unauthenticated login, signed-in root redirect, signed-in login redirect, callback processing, auth failure, retry, and missing configuration states.
 - [x] 6.2 Run web typecheck and relevant test suites for auth-session, app-state, desktop API integration boundaries, and shared UI localization.
 - [x] 6.3 Run browser verification against the local web app for desktop homepage, mobile homepage, desktop login, mobile login, pending/callback state, and auth error state.
-- [ ] 6.4 Verify `https://agenthub-staging.vercel.app/auth/callback` returns the SPA shell, not Vercel 404.
+- [x] 6.4 Verify `https://agenthub-staging.vercel.app/auth/callback` returns the SPA shell, not Vercel 404.
 - [ ] 6.5 Verify the deployed `VITE_CONTROL_PLANE_URL` value matches the live Render service hostname and `${VITE_CONTROL_PLANE_URL}/health` returns the AgentHub health payload.
 - [ ] 6.6 After deployment, verify the staging homepage no longer renders the bare login card and the login page remains reachable and usable.
 - [x] 6.7 Document any required Supabase/GitHub redirect URL updates if route separation changes callback URLs.

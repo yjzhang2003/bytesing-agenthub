@@ -43,7 +43,7 @@ function eventRequiresSnapshotRefresh(type: string): boolean {
   return type.startsWith("collaboration.");
 }
 
-function AgentHubConnectedApp(props: {
+export function AgentHubConnectedApp(props: {
   readonly client: WebControlPlaneClient;
   readonly onAuthenticationFailure?: (() => void) | undefined;
   readonly onSignOut?: (() => void) | undefined;
@@ -97,10 +97,6 @@ function AgentHubConnectedApp(props: {
     });
     stream.onerror = () => {
       stream.close();
-      if (onAuthenticationFailure) {
-        onAuthenticationFailure();
-        return;
-      }
       setError("Control Plane event stream disconnected");
     };
     return () => stream.close();
