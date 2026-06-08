@@ -63,16 +63,23 @@ export const componentSystemCss = `
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--agenthub-bg);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(40, 115, 72, .07), transparent 34%),
+    linear-gradient(90deg, rgba(32, 36, 44, .035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 36, 44, .03) 1px, transparent 1px),
+    #f7f8fa;
+  background-size: auto, 76px 76px, 76px 76px, auto;
 }
 .agenthub-auth-panel {
-  width: min(420px, 100%);
+  width: min(440px, 100%);
   display: grid;
-  gap: 18px;
-  padding: 28px;
-  border: 1px solid var(--agenthub-border);
-  border-radius: var(--agenthub-radius);
-  background: var(--agenthub-surface);
+  gap: 16px;
+  padding: 30px;
+  border: 1px solid rgba(185, 187, 180, .72);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 22px 70px rgba(23, 24, 23, .10);
+  backdrop-filter: blur(14px);
 }
 .agenthub-auth-brand {
   width: 38px;
@@ -91,7 +98,7 @@ export const componentSystemCss = `
 }
 .agenthub-auth-copy h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -115,10 +122,10 @@ export const componentSystemCss = `
 }
 .agenthub-auth-field input {
   width: 100%;
-  min-height: 38px;
+  min-height: 40px;
   border: 1px solid var(--agenthub-border);
   border-radius: var(--agenthub-radius);
-  background: var(--agenthub-surface);
+  background: rgba(255, 255, 255, .78);
   color: var(--agenthub-text);
   font: inherit;
   padding: 8px 10px;
@@ -199,12 +206,13 @@ export const componentSystemCss = `
   isolation: isolate;
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto;
   gap: clamp(28px, 5vw, 58px);
   padding: clamp(18px, 4vw, 46px);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(244, 244, 241, .72)),
-    var(--agenthub-bg);
+    radial-gradient(circle at 78% 18%, rgba(40, 115, 72, .08), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(247, 248, 250, .78)),
+    #f7f8fa;
   color: var(--agenthub-text);
 }
 .agenthub-home-shell::before {
@@ -224,8 +232,8 @@ export const componentSystemCss = `
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(115deg, transparent 12%, rgba(40, 115, 72, .08) 34%, transparent 56%),
-    linear-gradient(25deg, transparent 18%, rgba(32, 36, 44, .06) 46%, transparent 72%);
+    linear-gradient(115deg, transparent 16%, rgba(40, 115, 72, .055) 42%, transparent 62%),
+    linear-gradient(25deg, transparent 20%, rgba(32, 36, 44, .04) 50%, transparent 74%);
   background-size: 160% 160%, 140% 140%;
   animation: agenthub-home-shift 18s ease-in-out infinite alternate;
 }
@@ -240,6 +248,13 @@ export const componentSystemCss = `
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
+}
+.agenthub-home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 750;
 }
 .agenthub-home-mark {
   width: 38px;
@@ -261,11 +276,34 @@ export const componentSystemCss = `
   color: var(--agenthub-text-secondary);
   text-decoration: none;
 }
+.agenthub-home-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.agenthub-home-github-link {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--agenthub-border);
+  border-radius: var(--agenthub-radius);
+  background: rgba(255, 255, 255, .72);
+  color: var(--agenthub-text);
+  font-size: var(--agenthub-type-sm);
+  font-weight: 650;
+  padding: 0 10px;
+}
 .agenthub-home-nav a:hover,
 .agenthub-home-nav a:focus-visible,
 .agenthub-home-actions a:hover,
-.agenthub-home-actions a:focus-visible {
+.agenthub-home-actions a:focus-visible,
+.agenthub-home-github-link:hover,
+.agenthub-home-github-link:focus-visible {
   color: var(--agenthub-text);
+  border-color: var(--agenthub-border-strong);
+  background: var(--agenthub-surface);
 }
 .agenthub-home-hero {
   width: min(1120px, 100%);
@@ -277,14 +315,7 @@ export const componentSystemCss = `
 }
 .agenthub-home-copy {
   display: grid;
-  gap: 18px;
-}
-.agenthub-home-kicker {
-  margin: 0;
-  color: var(--agenthub-text-muted);
-  font-size: var(--agenthub-type-sm);
-  font-weight: 750;
-  text-transform: uppercase;
+  gap: 20px;
 }
 .agenthub-home-copy h1 {
   margin: 0;
@@ -307,12 +338,13 @@ export const componentSystemCss = `
 }
 .agenthub-home-product {
   display: grid;
-  gap: 12px;
-  border: 1px solid var(--agenthub-border);
-  border-radius: 8px;
-  padding: 14px;
-  background: var(--agenthub-surface);
-  box-shadow: 0 18px 44px rgba(23, 24, 23, .10);
+  gap: 14px;
+  border: 1px solid rgba(185, 187, 180, .72);
+  border-radius: 10px;
+  padding: 16px;
+  background: rgba(255, 255, 255, .84);
+  box-shadow: 0 22px 64px rgba(23, 24, 23, .11);
+  backdrop-filter: blur(12px);
 }
 .agenthub-home-product-header {
   min-height: 36px;
@@ -326,25 +358,44 @@ export const componentSystemCss = `
 .agenthub-home-product-header strong {
   color: var(--agenthub-text);
 }
-.agenthub-home-product-grid {
+.agenthub-home-preview-thread {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
-.agenthub-home-product-cell {
-  min-height: 116px;
+.agenthub-home-preview-row {
+  position: relative;
+  min-height: 66px;
   display: grid;
-  align-content: space-between;
-  gap: 12px;
+  grid-template-columns: 10px minmax(0, 1fr);
+  column-gap: 10px;
+  align-content: center;
+  row-gap: 3px;
   border: 1px solid var(--agenthub-border);
   border-radius: var(--agenthub-radius);
-  padding: 12px;
-  background: var(--agenthub-surface-2);
+  padding: 10px 12px;
+  background: rgba(248, 248, 246, .82);
+  animation: agenthub-home-row-in 520ms ease both;
 }
-.agenthub-home-product-cell strong {
+.agenthub-home-preview-row:nth-child(2) { animation-delay: 70ms; }
+.agenthub-home-preview-row:nth-child(3) { animation-delay: 140ms; }
+.agenthub-home-preview-row:nth-child(4) { animation-delay: 210ms; }
+.agenthub-home-preview-row:hover {
+  border-color: var(--agenthub-border-strong);
+  background: rgba(255, 255, 255, .92);
+}
+.agenthub-home-preview-dot {
+  grid-row: 1 / span 2;
+  width: 7px;
+  height: 7px;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--agenthub-status);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--agenthub-status) 12%, transparent);
+}
+.agenthub-home-preview-row strong {
   overflow-wrap: anywhere;
 }
-.agenthub-home-product-cell span {
+.agenthub-home-preview-row span:not(.agenthub-home-preview-dot) {
   color: var(--agenthub-text-secondary);
   overflow-wrap: anywhere;
 }
@@ -386,13 +437,19 @@ export const componentSystemCss = `
   .agenthub-home-nav {
     grid-template-columns: auto 1fr;
   }
+  .agenthub-home-brand > span:not(.agenthub-home-mark) {
+    display: none;
+  }
   .agenthub-home-nav-links {
     display: none;
+  }
+  .agenthub-home-nav-actions {
+    justify-self: end;
+    min-width: 0;
   }
   .agenthub-home-hero {
     grid-template-columns: minmax(0, 1fr);
   }
-  .agenthub-home-product-grid,
   .agenthub-home-features ul {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -795,11 +852,22 @@ export const componentSystemCss = `
   from { background-position: 0% 42%, 100% 56%; }
   to { background-position: 100% 58%, 0% 44%; }
 }
+@keyframes agenthub-home-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .agenthub-loading-spinner::before,
   .agenthub-loading-skeleton > span,
   .agenthub-home-shell::before,
-  .agenthub-home-motion {
+  .agenthub-home-motion,
+  .agenthub-home-preview-row {
     animation: none;
   }
 }

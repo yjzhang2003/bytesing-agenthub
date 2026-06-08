@@ -32,6 +32,7 @@ export type EmailSignupViewResult =
   | { readonly status: "confirmation-required"; readonly email: string };
 
 export interface ProductHomepageProps {
+  readonly githubUrl?: string | undefined;
   readonly locale?: "en-US" | "zh-CN" | string | undefined;
   readonly onOpenLogin: () => void;
 }

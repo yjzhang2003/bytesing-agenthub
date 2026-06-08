@@ -3,32 +3,35 @@ import type { AuthFormMode, LoginSurfaceProps, ProductHomepageProps } from "../t
 import { AgentHubButton, AgentHubThemeProvider } from "./system.js";
 import { createAgentHubI18n, type AgentHubLocale } from "../i18n.js";
 
+const AGENTHUB_GITHUB_URL = "https://github.com/yjzhang2003/bytesing-agenthub";
+
 function normalizeLoginLocale(locale: LoginSurfaceProps["locale"]): AgentHubLocale {
   return locale === "zh-CN" || locale === "zh" ? "zh-CN" : "en-US";
 }
 
 export function AgentHubProductHomepage(props: ProductHomepageProps): React.ReactElement {
   const i18n = createAgentHubI18n(normalizeLoginLocale(props.locale));
-  const evidence = [
+  const githubUrl = props.githubUrl ?? AGENTHUB_GITHUB_URL;
+  const previewRows = [
     {
-      key: "runtime",
-      title: i18n.t("homepage.runtimeCard"),
-      detail: i18n.t("homepage.runtimeCardDetail"),
+      key: "workspace",
+      title: i18n.t("homepage.previewWorkspace"),
+      detail: i18n.t("homepage.previewWorkspaceDetail"),
     },
     {
-      key: "permissions",
-      title: i18n.t("homepage.permissionCard"),
-      detail: i18n.t("homepage.permissionCardDetail"),
+      key: "permission",
+      title: i18n.t("homepage.previewPermission"),
+      detail: i18n.t("homepage.previewPermissionDetail"),
     },
     {
-      key: "artifacts",
-      title: i18n.t("homepage.artifactCard"),
-      detail: i18n.t("homepage.artifactCardDetail"),
+      key: "plan",
+      title: i18n.t("homepage.previewPlan"),
+      detail: i18n.t("homepage.previewPlanDetail"),
     },
     {
-      key: "agent",
-      title: i18n.t("homepage.agentCard"),
-      detail: i18n.t("homepage.agentCardDetail"),
+      key: "diff",
+      title: i18n.t("homepage.previewDiff"),
+      detail: i18n.t("homepage.previewDiffDetail"),
     },
   ] as const;
 
@@ -37,55 +40,58 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
       <main className="agenthub-home-shell">
         <span className="agenthub-home-motion" aria-hidden="true" />
         <nav className="agenthub-home-nav" aria-label="AgentHub">
-          <span className="agenthub-home-mark" aria-hidden="true">
-            AH
-          </span>
+          <div className="agenthub-home-brand">
+            <span className="agenthub-home-mark" aria-hidden="true">
+              AH
+            </span>
+            <span>AgentHub</span>
+          </div>
           <div className="agenthub-home-nav-links">
             <a href="#product">{i18n.t("homepage.navProduct")}</a>
             <a href="#control">{i18n.t("homepage.navSecurity")}</a>
           </div>
-          <AgentHubButton kind="default" onClick={props.onOpenLogin} size="small">
-            {i18n.t("homepage.openLogin")}
-          </AgentHubButton>
+          <div className="agenthub-home-nav-actions">
+            <a
+              className="agenthub-home-github-link"
+              href={githubUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {i18n.t("homepage.githubCta")}
+            </a>
+            <AgentHubButton kind="default" onClick={props.onOpenLogin} size="small">
+              {i18n.t("homepage.openLogin")}
+            </AgentHubButton>
+          </div>
         </nav>
 
         <section className="agenthub-home-hero" id="product">
           <div className="agenthub-home-copy">
-            <p className="agenthub-home-kicker">{i18n.t("homepage.category")}</p>
             <h1>{i18n.t("homepage.title")}</h1>
             <p>{i18n.t("homepage.description")}</p>
             <div className="agenthub-home-actions">
               <AgentHubButton kind="primary" onClick={props.onOpenLogin} size="large">
                 {i18n.t("homepage.primaryCta")}
               </AgentHubButton>
-              <a href="#workflow">{i18n.t("homepage.secondaryCta")}</a>
             </div>
             <small className="agenthub-home-provider">{i18n.t("homepage.providerNote")}</small>
           </div>
 
-          <div className="agenthub-home-product" aria-label="AgentHub product workflow">
+          <div className="agenthub-home-product" aria-label="AgentHub product preview">
             <div className="agenthub-home-product-header">
               <span>AgentHub</span>
-              <strong>Workspace</strong>
+              <strong>{i18n.t("homepage.previewStatus")}</strong>
             </div>
-            <div className="agenthub-home-product-grid">
-              {evidence.map((item) => (
-                <article className="agenthub-home-product-cell" data-cell={item.key} key={item.key}>
+            <div className="agenthub-home-preview-thread">
+              {previewRows.map((item) => (
+                <article className="agenthub-home-preview-row" data-row={item.key} key={item.key}>
+                  <span className="agenthub-home-preview-dot" aria-hidden="true" />
                   <strong>{item.title}</strong>
                   <span>{item.detail}</span>
                 </article>
               ))}
             </div>
           </div>
-        </section>
-
-        <section className="agenthub-home-features" id="workflow">
-          <h2>{i18n.t("homepage.featuresTitle")}</h2>
-          <ul>
-            <li>{i18n.t("homepage.featureRuntime")}</li>
-            <li>{i18n.t("homepage.featurePermissions")}</li>
-            <li>{i18n.t("homepage.featureArtifacts")}</li>
-          </ul>
         </section>
 
         <footer className="agenthub-home-footer" id="control">
