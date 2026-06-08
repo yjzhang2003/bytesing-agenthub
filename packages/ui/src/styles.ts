@@ -207,10 +207,11 @@ export const componentSystemCss = `
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: clamp(28px, 5vw, 58px);
+  gap: clamp(24px, 4vw, 44px);
   padding: clamp(18px, 4vw, 46px);
   background:
-    radial-gradient(circle at 78% 18%, rgba(40, 115, 72, .08), transparent 28%),
+    radial-gradient(circle at 70% 20%, rgba(180, 151, 207, .12), transparent 30%),
+    radial-gradient(circle at 18% 78%, rgba(40, 115, 72, .08), transparent 30%),
     linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(247, 248, 250, .78)),
     #f7f8fa;
   color: var(--agenthub-text);
@@ -219,12 +220,27 @@ export const componentSystemCss = `
   content: "";
   position: absolute;
   inset: -24% -8%;
-  z-index: -2;
+  z-index: -4;
   background:
     linear-gradient(90deg, rgba(32, 36, 44, .045) 1px, transparent 1px),
     linear-gradient(180deg, rgba(32, 36, 44, .035) 1px, transparent 1px);
   background-size: 72px 72px;
   animation: agenthub-home-drift 28s linear infinite;
+}
+.agenthub-home-pixel-field {
+  position: absolute;
+  inset: -6%;
+  z-index: -3;
+  opacity: .42;
+  pointer-events: auto;
+}
+.agenthub-home-pixel-field canvas {
+  opacity: .9;
+}
+.agenthub-pixel-blast {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 .agenthub-home-motion {
   position: absolute;
@@ -237,7 +253,7 @@ export const componentSystemCss = `
   background-size: 160% 160%, 140% 140%;
   animation: agenthub-home-shift 18s ease-in-out infinite alternate;
 }
-.agenthub-home-shell > :not(.agenthub-home-motion) {
+.agenthub-home-shell > :not(.agenthub-home-motion):not(.agenthub-home-pixel-field) {
   position: relative;
   z-index: 1;
 }
@@ -309,9 +325,10 @@ export const componentSystemCss = `
   width: min(1120px, 100%);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(320px, .98fr);
+  grid-template-columns: minmax(0, 860px);
   align-items: center;
-  gap: clamp(28px, 5vw, 64px);
+  justify-content: start;
+  gap: 0;
 }
 .agenthub-home-copy {
   display: grid;
@@ -319,10 +336,11 @@ export const componentSystemCss = `
 }
 .agenthub-home-copy h1 {
   margin: 0;
-  max-width: 760px;
-  font-size: clamp(34px, 6vw, 68px);
+  max-width: 820px;
+  font-size: clamp(34px, 5.5vw, 64px);
   line-height: .98;
   letter-spacing: 0;
+  text-wrap: balance;
 }
 .agenthub-home-copy > p:not(.agenthub-home-kicker) {
   max-width: 620px;
@@ -335,69 +353,6 @@ export const componentSystemCss = `
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-}
-.agenthub-home-product {
-  display: grid;
-  gap: 14px;
-  border: 1px solid rgba(185, 187, 180, .72);
-  border-radius: 10px;
-  padding: 16px;
-  background: rgba(255, 255, 255, .84);
-  box-shadow: 0 22px 64px rgba(23, 24, 23, .11);
-  backdrop-filter: blur(12px);
-}
-.agenthub-home-product-header {
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--agenthub-border);
-  color: var(--agenthub-text-muted);
-}
-.agenthub-home-product-header strong {
-  color: var(--agenthub-text);
-}
-.agenthub-home-preview-thread {
-  display: grid;
-  gap: 8px;
-}
-.agenthub-home-preview-row {
-  position: relative;
-  min-height: 66px;
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  column-gap: 10px;
-  align-content: center;
-  row-gap: 3px;
-  border: 1px solid var(--agenthub-border);
-  border-radius: var(--agenthub-radius);
-  padding: 10px 12px;
-  background: rgba(248, 248, 246, .82);
-  animation: agenthub-home-row-in 520ms ease both;
-}
-.agenthub-home-preview-row:nth-child(2) { animation-delay: 70ms; }
-.agenthub-home-preview-row:nth-child(3) { animation-delay: 140ms; }
-.agenthub-home-preview-row:nth-child(4) { animation-delay: 210ms; }
-.agenthub-home-preview-row:hover {
-  border-color: var(--agenthub-border-strong);
-  background: rgba(255, 255, 255, .92);
-}
-.agenthub-home-preview-dot {
-  grid-row: 1 / span 2;
-  width: 7px;
-  height: 7px;
-  align-self: center;
-  border-radius: 999px;
-  background: var(--agenthub-status);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--agenthub-status) 12%, transparent);
-}
-.agenthub-home-preview-row strong {
-  overflow-wrap: anywhere;
-}
-.agenthub-home-preview-row span:not(.agenthub-home-preview-dot) {
-  color: var(--agenthub-text-secondary);
-  overflow-wrap: anywhere;
 }
 .agenthub-home-features {
   width: min(1120px, 100%);
@@ -449,6 +404,10 @@ export const componentSystemCss = `
   }
   .agenthub-home-hero {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-home-pixel-field {
+    inset: -10% -28%;
+    opacity: .34;
   }
   .agenthub-home-features ul {
     grid-template-columns: minmax(0, 1fr);
@@ -852,23 +811,15 @@ export const componentSystemCss = `
   from { background-position: 0% 42%, 100% 56%; }
   to { background-position: 100% 58%, 0% 44%; }
 }
-@keyframes agenthub-home-row-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .agenthub-loading-spinner::before,
   .agenthub-loading-skeleton > span,
   .agenthub-home-shell::before,
-  .agenthub-home-motion,
-  .agenthub-home-preview-row {
+  .agenthub-home-motion {
     animation: none;
+  }
+  .agenthub-home-pixel-field {
+    display: none;
   }
 }
 `;

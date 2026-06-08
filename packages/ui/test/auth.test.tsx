@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AgentHubLoginPage, AgentHubProductHomepage } from "../src/index.js";
 
 describe("AgentHubProductHomepage", () => {
-  it("renders a public English product homepage with an experiential preview and sign-in paths", () => {
+  it("renders a public English product homepage with a PixelBlast background and sign-in paths", () => {
     const html = renderToStaticMarkup(
       <AgentHubProductHomepage locale="en-US" onOpenLogin={() => undefined} />,
     );
@@ -14,10 +14,11 @@ describe("AgentHubProductHomepage", () => {
     expect(html).toContain("Open login");
     expect(html).toContain("GitHub");
     expect(html).toContain("https://github.com/yjzhang2003/bytesing-agenthub");
-    expect(html).toContain("Local workspace");
-    expect(html).toContain("Permission review");
-    expect(html).toContain("Plan updated");
-    expect(html).toContain("Diff ready");
+    expect(html).toContain("agenthub-pixel-blast");
+    expect(html).not.toContain("Local workspace");
+    expect(html).not.toContain("Permission review");
+    expect(html).not.toContain("Plan updated");
+    expect(html).not.toContain("Diff ready");
     expect(html).not.toContain("View workflow");
     expect(html).not.toContain("cloud runtime execution");
     expect(html).not.toContain("GitHub pull request workflows");
@@ -31,10 +32,11 @@ describe("AgentHubProductHomepage", () => {
     expect(html).toContain("让智能体围绕本地项目协作");
     expect(html).toContain("登录");
     expect(html).toContain("GitHub");
-    expect(html).toContain("本地工作区");
-    expect(html).toContain("正在审阅权限");
-    expect(html).toContain("计划已更新");
-    expect(html).toContain("diff 待查看");
+    expect(html).toContain("agenthub-home-pixel-field");
+    expect(html).not.toContain("本地工作区");
+    expect(html).not.toContain("正在审阅权限");
+    expect(html).not.toContain("计划已更新");
+    expect(html).not.toContain("diff 待查看");
     expect(html).not.toContain("查看流程");
     expect(html).not.toContain("Permissions");
     expect(html).not.toContain("Artifacts");

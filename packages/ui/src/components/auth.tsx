@@ -1,5 +1,6 @@
 import React from "react";
 import type { AuthFormMode, LoginSurfaceProps, ProductHomepageProps } from "../types.js";
+import { PixelBlast } from "./pixel-blast.js";
 import { AgentHubButton, AgentHubThemeProvider } from "./system.js";
 import { createAgentHubI18n, type AgentHubLocale } from "../i18n.js";
 
@@ -12,32 +13,24 @@ function normalizeLoginLocale(locale: LoginSurfaceProps["locale"]): AgentHubLoca
 export function AgentHubProductHomepage(props: ProductHomepageProps): React.ReactElement {
   const i18n = createAgentHubI18n(normalizeLoginLocale(props.locale));
   const githubUrl = props.githubUrl ?? AGENTHUB_GITHUB_URL;
-  const previewRows = [
-    {
-      key: "workspace",
-      title: i18n.t("homepage.previewWorkspace"),
-      detail: i18n.t("homepage.previewWorkspaceDetail"),
-    },
-    {
-      key: "permission",
-      title: i18n.t("homepage.previewPermission"),
-      detail: i18n.t("homepage.previewPermissionDetail"),
-    },
-    {
-      key: "plan",
-      title: i18n.t("homepage.previewPlan"),
-      detail: i18n.t("homepage.previewPlanDetail"),
-    },
-    {
-      key: "diff",
-      title: i18n.t("homepage.previewDiff"),
-      detail: i18n.t("homepage.previewDiffDetail"),
-    },
-  ] as const;
 
   return (
     <AgentHubThemeProvider mode="light">
       <main className="agenthub-home-shell">
+        <PixelBlast
+          className="agenthub-home-pixel-field"
+          color="#b497cf"
+          edgeFade={0.18}
+          patternDensity={1.16}
+          patternScale={2.8}
+          pixelSize={5}
+          pixelSizeJitter={0.42}
+          rippleIntensityScale={1.1}
+          rippleSpeed={0.26}
+          rippleThickness={0.12}
+          speed={0.34}
+          variant="circle"
+        />
         <span className="agenthub-home-motion" aria-hidden="true" />
         <nav className="agenthub-home-nav" aria-label="AgentHub">
           <div className="agenthub-home-brand">
@@ -75,22 +68,6 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
               </AgentHubButton>
             </div>
             <small className="agenthub-home-provider">{i18n.t("homepage.providerNote")}</small>
-          </div>
-
-          <div className="agenthub-home-product" aria-label="AgentHub product preview">
-            <div className="agenthub-home-product-header">
-              <span>AgentHub</span>
-              <strong>{i18n.t("homepage.previewStatus")}</strong>
-            </div>
-            <div className="agenthub-home-preview-thread">
-              {previewRows.map((item) => (
-                <article className="agenthub-home-preview-row" data-row={item.key} key={item.key}>
-                  <span className="agenthub-home-preview-dot" aria-hidden="true" />
-                  <strong>{item.title}</strong>
-                  <span>{item.detail}</span>
-                </article>
-              ))}
-            </div>
           </div>
         </section>
 
