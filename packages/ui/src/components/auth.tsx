@@ -1,13 +1,37 @@
 import React from "react";
 import type { AuthFormMode, LoginSurfaceProps, ProductHomepageProps } from "../types.js";
+import { ASCIIText } from "./ascii-text.js";
+import { BorderGlow } from "./border-glow.js";
 import { PixelBlast } from "./pixel-blast.js";
 import { AgentHubButton, AgentHubThemeProvider } from "./system.js";
 import { createAgentHubI18n, type AgentHubLocale } from "../i18n.js";
 
 const AGENTHUB_GITHUB_URL = "https://github.com/yjzhang2003/bytesing-agenthub";
+const AGENTHUB_LOGO_URL = new URL("../assets/agenthub-logo-cutout.png", import.meta.url).href;
 
 function normalizeLoginLocale(locale: LoginSurfaceProps["locale"]): AgentHubLocale {
   return locale === "zh-CN" || locale === "zh" ? "zh-CN" : "en-US";
+}
+
+function AgentHubLogoMark(props: { readonly className: string }): React.ReactElement {
+  return (
+    <span className={props.className} aria-hidden="true">
+      <img alt="" src={AGENTHUB_LOGO_URL} />
+    </span>
+  );
+}
+
+function GitHubIcon(): React.ReactElement {
+  return (
+    <svg
+      aria-hidden="true"
+      className="agenthub-home-github-icon"
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.1.79-.25.79-.56v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.24 3.35.95.1-.74.4-1.24.73-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.16 1.18.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.2-1.49 3.16-1.18 3.16-1.18.62 1.58.23 2.75.11 3.04.73.8 1.18 1.83 1.18 3.08 0 4.42-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+    </svg>
+  );
 }
 
 export function AgentHubProductHomepage(props: ProductHomepageProps): React.ReactElement {
@@ -34,9 +58,7 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
         <span className="agenthub-home-motion" aria-hidden="true" />
         <nav className="agenthub-home-nav" aria-label="AgentHub">
           <div className="agenthub-home-brand">
-            <span className="agenthub-home-mark" aria-hidden="true">
-              AH
-            </span>
+            <AgentHubLogoMark className="agenthub-home-mark" />
             <span>AgentHub</span>
           </div>
           <div className="agenthub-home-nav-links">
@@ -50,30 +72,26 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
               rel="noreferrer"
               target="_blank"
             >
+              <GitHubIcon />
               {i18n.t("homepage.githubCta")}
             </a>
-            <AgentHubButton kind="default" onClick={props.onOpenLogin} size="small">
-              {i18n.t("homepage.openLogin")}
-            </AgentHubButton>
           </div>
         </nav>
 
         <section className="agenthub-home-hero" id="product">
           <div className="agenthub-home-copy">
-            <h1>{i18n.t("homepage.title")}</h1>
+            <div className="agenthub-home-ascii-wrap">
+              <ASCIIText text="AgentHub" />
+              <h1>{i18n.t("homepage.brandTitle")}</h1>
+            </div>
             <p>{i18n.t("homepage.description")}</p>
             <div className="agenthub-home-actions">
               <AgentHubButton kind="primary" onClick={props.onOpenLogin} size="large">
                 {i18n.t("homepage.primaryCta")}
               </AgentHubButton>
             </div>
-            <small className="agenthub-home-provider">{i18n.t("homepage.providerNote")}</small>
           </div>
         </section>
-
-        <footer className="agenthub-home-footer" id="control">
-          {i18n.t("homepage.footer")}
-        </footer>
       </main>
     </AgentHubThemeProvider>
   );
@@ -224,10 +242,23 @@ export function AgentHubLoginPage(props: LoginSurfaceProps): React.ReactElement 
   return (
     <AgentHubThemeProvider mode="light">
       <main className="agenthub-auth-shell" data-auth-state={props.authState.status}>
-        <section className="agenthub-auth-panel" aria-labelledby="agenthub-auth-title">
-          <div className="agenthub-auth-brand" aria-hidden="true">
-            AH
-          </div>
+        <PixelBlast
+          className="agenthub-auth-pixel-field"
+          color="#b497cf"
+          edgeFade={0.2}
+          patternDensity={1}
+          patternScale={2.7}
+          pixelSize={5}
+          pixelSizeJitter={0.36}
+          rippleIntensityScale={0.85}
+          rippleSpeed={0.22}
+          rippleThickness={0.12}
+          speed={0.24}
+          variant="circle"
+        />
+        <BorderGlow className="agenthub-auth-glow" glowColor="260 78 72" glowIntensity={0.68}>
+          <section className="agenthub-auth-panel" aria-labelledby="agenthub-auth-title">
+          <AgentHubLogoMark className="agenthub-auth-brand" />
           <div className="agenthub-auth-copy">
             <h1 id="agenthub-auth-title">{title}</h1>
             <p>{description}</p>
@@ -362,7 +393,8 @@ export function AgentHubLoginPage(props: LoginSurfaceProps): React.ReactElement 
               {i18n.t("auth.backToHomepage")}
             </AgentHubButton>
           ) : null}
-        </section>
+          </section>
+        </BorderGlow>
       </main>
     </AgentHubThemeProvider>
   );

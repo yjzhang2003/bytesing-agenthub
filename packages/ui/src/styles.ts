@@ -59,9 +59,11 @@ export const componentSystemCss = `
   opacity: .58;
 }
 .agenthub-auth-shell {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
+  overflow: hidden;
   padding: 24px;
   background:
     radial-gradient(circle at 50% 0%, rgba(40, 115, 72, .07), transparent 34%),
@@ -70,27 +72,149 @@ export const componentSystemCss = `
     #f7f8fa;
   background-size: auto, 76px 76px, 76px 76px, auto;
 }
+.agenthub-auth-pixel-field {
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  opacity: .34;
+  pointer-events: none;
+}
+.agenthub-auth-pixel-field canvas {
+  opacity: .86;
+}
 .agenthub-auth-panel {
   width: min(440px, 100%);
   display: grid;
   gap: 16px;
   padding: 30px;
-  border: 1px solid rgba(185, 187, 180, .72);
+  border: 0;
   border-radius: 10px;
-  background: rgba(255, 255, 255, .88);
-  box-shadow: 0 22px 70px rgba(23, 24, 23, .10);
+  background: rgba(255, 255, 255, .90);
   backdrop-filter: blur(14px);
+}
+.agenthub-auth-glow {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+}
+.agenthub-border-glow-card {
+  --agenthub-edge-proximity: 0;
+  --agenthub-cursor-angle: 45deg;
+  --agenthub-edge-sensitivity: 28;
+  --agenthub-color-sensitivity: 48;
+  --agenthub-glow-padding: 34px;
+  --agenthub-cone-spread: 25%;
+  position: relative;
+  display: grid;
+  isolation: isolate;
+  border: 1px solid rgba(190, 196, 214, .42);
+  border-radius: 12px;
+  background: transparent;
+  box-shadow:
+    0 1px 2px rgba(23, 24, 23, .05),
+    0 8px 22px rgba(23, 24, 23, .07),
+    0 28px 72px rgba(23, 24, 23, .12);
+  transform: translate3d(0, 0, 0.01px);
+}
+.agenthub-border-glow-card::before,
+.agenthub-border-glow-card::after,
+.agenthub-border-glow-edge {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: clamp(
+    0,
+    calc((var(--agenthub-edge-proximity) - var(--agenthub-color-sensitivity)) / (100 - var(--agenthub-color-sensitivity))),
+    1
+  );
+  pointer-events: none;
+  transition: opacity 220ms ease-out;
+  z-index: 0;
+}
+.agenthub-border-glow-card::before {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(rgba(255, 255, 255, .9) 0 100%) padding-box,
+    radial-gradient(at 80% 55%, #c084fc 0, transparent 52%) border-box,
+    radial-gradient(at 24% 14%, #38bdf8 0, transparent 48%) border-box,
+    radial-gradient(at 76% 18%, #55b8a7 0, transparent 44%) border-box,
+    radial-gradient(at 18% 86%, #f472b6 0, transparent 48%) border-box,
+    linear-gradient(110deg, #c084fc, #38bdf8, #55b8a7) border-box;
+  mask-image:
+    conic-gradient(
+      from var(--agenthub-cursor-angle) at center,
+      black var(--agenthub-cone-spread),
+      transparent calc(var(--agenthub-cone-spread) + 14%),
+      transparent calc(100% - var(--agenthub-cone-spread) - 14%),
+      black calc(100% - var(--agenthub-cone-spread))
+    );
+}
+.agenthub-border-glow-card::after {
+  background:
+    radial-gradient(at 78% 58%, rgba(192, 132, 252, .68), transparent 48%),
+    radial-gradient(at 22% 22%, rgba(56, 189, 248, .48), transparent 44%),
+    radial-gradient(at 82% 18%, rgba(85, 184, 167, .52), transparent 44%),
+    radial-gradient(at 18% 86%, rgba(244, 114, 182, .42), transparent 48%);
+  mix-blend-mode: soft-light;
+}
+.agenthub-border-glow-edge {
+  inset: calc(var(--agenthub-glow-padding) * -1);
+  opacity: clamp(
+    0,
+    calc((var(--agenthub-edge-proximity) - var(--agenthub-edge-sensitivity)) / (100 - var(--agenthub-edge-sensitivity))),
+    1
+  );
+  mix-blend-mode: plus-lighter;
+  z-index: 0;
+  mask-image:
+    conic-gradient(
+      from var(--agenthub-cursor-angle) at center,
+      black 3%,
+      transparent 11%,
+      transparent 89%,
+      black 97%
+    );
+}
+.agenthub-border-glow-edge::before {
+  content: "";
+  position: absolute;
+  inset: var(--agenthub-glow-padding);
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--agenthub-glow-color, hsl(260deg 78% 72% / 100%)),
+    inset 0 0 8px 0 var(--agenthub-glow-color-40, hsl(260deg 78% 72% / 40%)),
+    inset 0 0 26px 2px var(--agenthub-glow-color-20, hsl(260deg 78% 72% / 20%)),
+    0 0 5px 0 var(--agenthub-glow-color-60, hsl(260deg 78% 72% / 60%)),
+    0 0 22px 0 var(--agenthub-glow-color-40, hsl(260deg 78% 72% / 40%)),
+    0 0 58px 3px var(--agenthub-glow-color-20, hsl(260deg 78% 72% / 20%));
+}
+.agenthub-border-glow-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.agenthub-border-glow-card.agenthub-border-glow-sweep {
+  animation: agenthub-border-glow-proximity 2600ms ease both;
+}
+.agenthub-border-glow-card.agenthub-border-glow-sweep::before,
+.agenthub-border-glow-card.agenthub-border-glow-sweep::after,
+.agenthub-border-glow-card.agenthub-border-glow-sweep > .agenthub-border-glow-edge {
+  animation: agenthub-border-glow-angle 2600ms ease both;
 }
 .agenthub-auth-brand {
   width: 38px;
   height: 38px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid var(--agenthub-border);
-  border-radius: var(--agenthub-radius);
-  background: var(--agenthub-surface-2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--agenthub-text);
   font-weight: 700;
+  overflow: hidden;
 }
 .agenthub-auth-copy {
   display: grid;
@@ -206,7 +330,7 @@ export const componentSystemCss = `
   isolation: isolate;
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   gap: clamp(24px, 4vw, 44px);
   padding: clamp(18px, 4vw, 46px);
   background:
@@ -277,10 +401,18 @@ export const componentSystemCss = `
   height: 38px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid var(--agenthub-border);
-  border-radius: var(--agenthub-radius);
-  background: var(--agenthub-surface);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-weight: 800;
+  overflow: hidden;
+}
+.agenthub-auth-brand img,
+.agenthub-home-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 .agenthub-home-nav-links {
   display: flex;
@@ -311,6 +443,11 @@ export const componentSystemCss = `
   font-weight: 650;
   padding: 0 10px;
 }
+.agenthub-home-github-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
 .agenthub-home-nav a:hover,
 .agenthub-home-nav a:focus-visible,
 .agenthub-home-actions a:hover,
@@ -325,25 +462,72 @@ export const componentSystemCss = `
   width: min(1120px, 100%);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 860px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  justify-content: start;
+  justify-content: center;
   gap: 0;
 }
 .agenthub-home-copy {
   display: grid;
-  gap: 20px;
+  justify-items: center;
+  gap: 22px;
+  text-align: center;
+}
+.agenthub-home-ascii-wrap {
+  position: relative;
+  width: min(100%, 1160px);
+  min-height: clamp(150px, 23vw, 260px);
+  display: grid;
+  place-items: center;
 }
 .agenthub-home-copy h1 {
   margin: 0;
-  max-width: 820px;
-  font-size: clamp(34px, 5.5vw, 64px);
-  line-height: .98;
-  letter-spacing: 0;
-  text-wrap: balance;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.agenthub-ascii-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--agenthub-text);
+  pointer-events: none;
+}
+.agenthub-ascii-text span {
+  display: none;
+}
+.agenthub-ascii-text pre {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max-content;
+  height: max-content;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  transform: translate(-50%, -50%) scaleX(1.18);
+  color: transparent;
+  background-image:
+    linear-gradient(110deg, #16191f 8%, #7e6bc7 44%, #55b8a7 62%, #171a20 92%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-family: var(--agenthub-mono);
+  font-size: clamp(8px, .95vw, 10px);
+  font-weight: 700;
+  line-height: 1;
+  text-align: left;
+  white-space: pre;
+  user-select: none;
+  opacity: .88;
+  filter: drop-shadow(0 16px 34px rgba(23, 24, 23, .10));
 }
 .agenthub-home-copy > p:not(.agenthub-home-kicker) {
-  max-width: 620px;
+  max-width: 560px;
   margin: 0;
   color: var(--agenthub-text-secondary);
   font-size: clamp(15px, 2vw, 19px);
@@ -404,6 +588,9 @@ export const componentSystemCss = `
   }
   .agenthub-home-hero {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-home-ascii-wrap {
+    min-height: 116px;
   }
   .agenthub-home-pixel-field {
     inset: -10% -28%;
@@ -811,6 +998,14 @@ export const componentSystemCss = `
   from { background-position: 0% 42%, 100% 56%; }
   to { background-position: 100% 58%, 0% 44%; }
 }
+@keyframes agenthub-border-glow-proximity {
+  0%, 100% { --agenthub-edge-proximity: 0; }
+  18%, 74% { --agenthub-edge-proximity: 92; }
+}
+@keyframes agenthub-border-glow-angle {
+  0% { --agenthub-cursor-angle: 112deg; }
+  100% { --agenthub-cursor-angle: 465deg; }
+}
 @media (prefers-reduced-motion: reduce) {
   .agenthub-loading-spinner::before,
   .agenthub-loading-skeleton > span,
@@ -818,8 +1013,15 @@ export const componentSystemCss = `
   .agenthub-home-motion {
     animation: none;
   }
-  .agenthub-home-pixel-field {
+  .agenthub-home-pixel-field,
+  .agenthub-auth-pixel-field {
     display: none;
+  }
+  .agenthub-border-glow-card.agenthub-border-glow-sweep,
+  .agenthub-border-glow-card.agenthub-border-glow-sweep::before,
+  .agenthub-border-glow-card.agenthub-border-glow-sweep::after,
+  .agenthub-border-glow-card.agenthub-border-glow-sweep > .agenthub-border-glow-edge {
+    animation: none;
   }
 }
 `;

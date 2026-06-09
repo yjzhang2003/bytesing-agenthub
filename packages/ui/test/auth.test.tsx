@@ -9,12 +9,18 @@ describe("AgentHubProductHomepage", () => {
     );
 
     expect(html).toContain("AgentHub");
-    expect(html).toContain("Coordinate agents around your workspace");
-    expect(html).toContain("Sign in");
-    expect(html).toContain("Open login");
+    expect(html).toContain("Track runs, permissions, and artifacts from one place.");
+    expect(html).toContain("Get Started");
     expect(html).toContain("GitHub");
     expect(html).toContain("https://github.com/yjzhang2003/bytesing-agenthub");
+    expect(html).toContain("agenthub-home-github-icon");
+    expect(html).toContain("agenthub-ascii-text");
     expect(html).toContain("agenthub-pixel-blast");
+    expect(html.match(/Get Started/g)).toHaveLength(1);
+    expect(html).not.toContain("Use GitHub identity.");
+    expect(html).not.toContain("AgentHub coordinates in the cloud while execution stays local.");
+    expect(html).not.toContain("Sign in");
+    expect(html).not.toContain("Open login");
     expect(html).not.toContain("Local workspace");
     expect(html).not.toContain("Permission review");
     expect(html).not.toContain("Plan updated");
@@ -24,15 +30,23 @@ describe("AgentHubProductHomepage", () => {
     expect(html).not.toContain("GitHub pull request workflows");
   });
 
-  it("renders Simplified Chinese homepage chrome while preserving source values and hiding flow CTA", () => {
+  it("renders Simplified Chinese centered brand chrome while preserving source values and hiding flow CTA", () => {
     const html = renderToStaticMarkup(
       <AgentHubProductHomepage locale="zh-CN" onOpenLogin={() => undefined} />,
     );
 
-    expect(html).toContain("让智能体围绕本地项目协作");
-    expect(html).toContain("登录");
+    expect(html).toContain("AgentHub");
+    expect(html).toContain("统一查看运行、权限和产物。");
+    expect(html).toContain("Get Started");
     expect(html).toContain("GitHub");
+    expect(html).toContain("agenthub-home-github-icon");
+    expect(html).toContain("agenthub-ascii-text");
     expect(html).toContain("agenthub-home-pixel-field");
+    expect(html.match(/Get Started/g)).toHaveLength(1);
+    expect(html).not.toContain("使用 GitHub 身份。");
+    expect(html).not.toContain("AgentHub 负责协同，执行留在本地。");
+    expect(html).not.toContain("让智能体围绕本地项目协作");
+    expect(html).not.toContain("登录</button>");
     expect(html).not.toContain("本地工作区");
     expect(html).not.toContain("正在审阅权限");
     expect(html).not.toContain("计划已更新");
@@ -73,6 +87,8 @@ describe("AgentHubLoginPage", () => {
     expect(html).toContain("GitHub");
     expect(html).not.toContain("Conversation navigation");
     expect(html).not.toContain("MVP workbench");
+    expect(html).toContain("agenthub-border-glow-card");
+    expect(html).toContain("agenthub-auth-pixel-field");
   });
 
   it("renders Simplified Chinese login chrome while preserving GitHub provider name", () => {
@@ -93,6 +109,8 @@ describe("AgentHubLoginPage", () => {
     expect(html).toContain("redirect_uri_mismatch");
     expect(html).toContain("重试");
     expect(html).toContain("agenthub-auth-panel");
+    expect(html).toContain("agenthub-auth-glow");
+    expect(html).toContain("agenthub-auth-pixel-field");
     expect(html).not.toContain("agenthub-auth-preview");
     expect(html).not.toContain("本地工作区");
   });
