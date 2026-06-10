@@ -863,7 +863,14 @@ describe("AgentHub component behavior", () => {
   });
 
   it("switches Settings categories and filters the Settings directory", async () => {
-    await render(<AgentHubWorkbench initialCenterView="settings" snapshot={snapshot()} />);
+    const onSignOut = vi.fn();
+    await render(
+      <AgentHubWorkbench
+        initialCenterView="settings"
+        onSignOut={onSignOut}
+        snapshot={snapshot()}
+      />,
+    );
 
     expect(document.querySelector('input[aria-label="Search settings"]')).toBeTruthy();
     expect(document.querySelector(".agenthub-settings-detail")?.textContent).toContain("Language");
@@ -900,6 +907,30 @@ describe("AgentHub component behavior", () => {
     const directoryText = document.querySelector(".agenthub-settings-directory")?.textContent ?? "";
     expect(directoryText).toContain("Notifications");
     expect(directoryText).not.toContain("Shortcuts");
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "");
+      search.dispatchEvent(new InputEvent("input", { bubbles: true }));
+      await settle();
+    });
+
+    const account = Array.from(document.querySelectorAll(".agenthub-settings-category-row")).find(
+      (button) => button.textContent?.includes("Account"),
+    ) as HTMLButtonElement;
+    await act(async () => {
+      account.click();
+      await settle();
+    });
+
+    const signOutButton = document.querySelector(
+      ".agenthub-settings-sign-out",
+    ) as HTMLButtonElement;
+    expect(signOutButton?.textContent).toContain("Sign out");
+    await act(async () => {
+      signOutButton.click();
+      await settle();
+    });
+    expect(onSignOut).toHaveBeenCalledOnce();
   });
 
   it("requests connection checks and shows pending state", async () => {

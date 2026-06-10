@@ -1079,7 +1079,11 @@ describe("@agenthub/ui components", () => {
   it("pins settings to the bottom navigation and renders a real settings page", () => {
     const model = createWorkbenchViewModel(snapshot(), { pendingPermissions: [pendingPermission] });
     const workbench = renderToStaticMarkup(
-      <AgentHubWorkbench initialCenterView="settings" viewModel={model} />,
+      <AgentHubWorkbench
+        initialCenterView="settings"
+        onSignOut={() => undefined}
+        viewModel={model}
+      />,
     );
     const settings = renderToStaticMarkup(
       <SettingsPage
@@ -1097,6 +1101,7 @@ describe("@agenthub/ui components", () => {
         enterToSend
         model={model}
         onSelect={() => undefined}
+        onSignOut={() => undefined}
         onToggleEnterToSend={() => undefined}
         onToggleTheme={() => undefined}
         selectedCategory="account"
@@ -1125,6 +1130,8 @@ describe("@agenthub/ui components", () => {
     expect(workbench).toContain('data-view="settings"');
     expect(workbench).toContain('aria-label="Settings page"');
     expect(settingsAccount).toContain("~/IdeaProjects/agenthub");
+    expect(settingsAccount).toContain("Sign out");
+    expect(settingsAccount).toContain("agenthub-settings-sign-out");
     expect(workbench).toContain("agenthub-agent-directory-sidebar agenthub-settings-directory");
     expect(workbench).toContain("agenthub-agent-contact-row agenthub-settings-category-row");
     expect(workbench).toContain('aria-label="Search settings"');
@@ -2194,7 +2201,11 @@ describe("@agenthub/ui components", () => {
         <AgentHubWorkbench error="Control plane request failed" loading={false} />,
       ),
     ).toContain("Control Plane offline");
-    expect(renderToStaticMarkup(<AgentHubWorkbench loading />)).toContain("Loading AgentHub");
+    const loading = renderToStaticMarkup(<AgentHubWorkbench loading />);
+    expect(loading).toContain("Loading AgentHub");
+    expect(loading).toContain("agenthub-workbench-loading-screen");
+    expect(loading).toContain("agenthub-loading-orbit");
+    expect(loading).toContain('role="status"');
   });
 
   it("renders empty conversation and narrow layout verification surfaces", () => {

@@ -1,10 +1,8 @@
 import { createRoot } from "react-dom/client";
 import {
-  AgentHubButton,
   AgentHubLoginPage,
   AgentHubProductHomepage,
   AgentHubWorkbench,
-  createAgentHubI18n,
 } from "@agenthub/ui";
 import { type WorkbenchSnapshot } from "@agenthub/contracts";
 import {
@@ -107,23 +105,18 @@ export function AgentHubConnectedApp(props: {
     });
     stream.onerror = () => {
       stream.close();
-      setError("Control Plane event stream disconnected");
+      if (!snapshotRef.current) {
+        setError("Control Plane event stream disconnected");
+      }
     };
     return () => stream.close();
   }, [client, loadSnapshot, onAuthenticationFailure]);
 
   return (
-    <>
-      {onSignOut ? (
-        <div className="agenthub-web-auth-actions">
-          <AgentHubButton kind="default" onClick={onSignOut} size="small">
-            {createAgentHubI18n("en-US").t("auth.signOut")}
-          </AgentHubButton>
-        </div>
-      ) : null}
-      <AgentHubWorkbench
+    <AgentHubWorkbench
         error={error}
         loading={loading}
+        onSignOut={onSignOut}
         onRetry={() => void loadSnapshot({ showLoading: true })}
         onSend={(message, target, claudeCode) => {
           const active = snapshot;
@@ -259,7 +252,6 @@ export function AgentHubConnectedApp(props: {
         onRefreshConnections={() => void loadSnapshot()}
         {...(snapshot ? { snapshot } : {})}
       />
-    </>
   );
 }
 

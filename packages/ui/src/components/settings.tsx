@@ -194,6 +194,7 @@ export function SettingsPage(props: {
   readonly onToggleEnterToSend: (enabled: boolean) => void;
   readonly onToggleTheme: () => void;
   readonly onSelect: (selection: InspectorSelection) => void;
+  readonly onSignOut?: (() => void) | undefined;
 }): React.ReactElement {
   const i18n = useAgentHubI18n(props.locale);
   const firstPermission = props.model.inspector.permissions[0];
@@ -290,17 +291,40 @@ export function SettingsPage(props: {
           ) : null}
 
           {selectedCategory === "account" ? (
-            <SettingsGroup title={i18n.t("settings.workspace", { fallback: "Workspace" })}>
-              <SettingsRow
-                code
-                description={props.model.workspace.workspacePathLabel}
-                title={props.model.workspace.workspaceName}
-              />
-              <SettingsRow
-                description={props.model.workspace.branchLabel}
-                title={i18n.t("settings.branch", { fallback: "Branch" })}
-              />
-            </SettingsGroup>
+            <>
+              <SettingsGroup title={i18n.t("settings.workspace", { fallback: "Workspace" })}>
+                <SettingsRow
+                  code
+                  description={props.model.workspace.workspacePathLabel}
+                  title={props.model.workspace.workspaceName}
+                />
+                <SettingsRow
+                  description={props.model.workspace.branchLabel}
+                  title={i18n.t("settings.branch", { fallback: "Branch" })}
+                />
+              </SettingsGroup>
+              {props.onSignOut ? (
+                <SettingsGroup title={i18n.t("settings.session", { fallback: "Session" })}>
+                  <SettingsRow
+                    control={
+                      <AgentHubButton
+                        className="agenthub-settings-sign-out"
+                        htmlType="button"
+                        kind="danger"
+                        onClick={props.onSignOut}
+                        size="small"
+                      >
+                        {i18n.t("auth.signOut")}
+                      </AgentHubButton>
+                    }
+                    description={i18n.t("settings.signOutDescription", {
+                      fallback: "End this session on this device.",
+                    })}
+                    title={i18n.t("auth.signOut")}
+                  />
+                </SettingsGroup>
+              ) : null}
+            </>
           ) : null}
 
           {selectedCategory === "plugins" || selectedCategory === "about" ? (

@@ -83,6 +83,7 @@ describe("AgentHubConnectedApp", () => {
       }),
     );
     const onAuthenticationFailure = vi.fn();
+    const onSignOut = vi.fn();
 
     const container = await render(
       <AgentHubConnectedApp
@@ -93,8 +94,11 @@ describe("AgentHubConnectedApp", () => {
           })
         }
         onAuthenticationFailure={onAuthenticationFailure}
+        onSignOut={onSignOut}
       />,
     );
+
+    expect(container.querySelector(".agenthub-web-auth-actions")).toBeNull();
 
     await act(async () => {
       streams[0]?.onerror?.(new Event("error"));
@@ -102,6 +106,7 @@ describe("AgentHubConnectedApp", () => {
     });
 
     expect(onAuthenticationFailure).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Control Plane event stream disconnected");
+    expect(container.textContent).toContain("MVP workbench");
+    expect(container.textContent).not.toContain("Control Plane event stream disconnected");
   });
 });

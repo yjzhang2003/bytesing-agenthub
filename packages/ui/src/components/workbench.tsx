@@ -97,6 +97,7 @@ export function AgentHubWorkbench(props: {
   readonly onCheckConnections?: (
     targets: readonly ConnectionCheckTargetId[],
   ) => void | Promise<void>;
+  readonly onSignOut?: (() => void) | undefined;
 }): React.ReactElement {
   const [storedLocale, setStoredLocale] = React.useState<AgentHubLocale>(() => {
     if (props.locale) {
@@ -380,14 +381,24 @@ export function AgentHubWorkbench(props: {
             <WorkbenchStyle />
             <section
               aria-label={i18n.t("state.loadingWorkbench", { fallback: "Loading workbench" })}
-              className="agenthub-state-panel"
+              className="agenthub-workbench-loading-screen"
+              role="status"
             >
-              <strong>{i18n.t("state.loadingAgentHub", { fallback: "Loading AgentHub" })}</strong>
-              <p>
-                {i18n.t("state.fetchingSnapshot", {
-                  fallback: "Fetching the latest Control Plane snapshot.",
-                })}
-              </p>
+              <div aria-hidden="true" className="agenthub-loading-orbit">
+                <span className="agenthub-loading-orbit-ring" />
+                <span className="agenthub-loading-orbit-ring" />
+                <span className="agenthub-loading-orbit-core" />
+              </div>
+              <div className="agenthub-workbench-loading-copy">
+                <strong>
+                  {i18n.t("state.loadingAgentHub", { fallback: "Loading AgentHub" })}
+                </strong>
+                <p>
+                  {i18n.t("state.fetchingSnapshot", {
+                    fallback: "Fetching the latest Control Plane snapshot.",
+                  })}
+                </p>
+              </div>
             </section>
           </main>
         </AgentHubThemeProvider>
@@ -750,6 +761,7 @@ export function AgentHubWorkbench(props: {
                   onToggleTheme={() =>
                     setTheme((current) => (current === "dark" ? "light" : "dark"))
                   }
+                  onSignOut={props.onSignOut}
                   selectedCategory={selectedSettingsCategory}
                   theme={theme}
                 />

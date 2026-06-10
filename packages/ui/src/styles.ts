@@ -318,12 +318,6 @@ export const componentSystemCss = `
   color: var(--agenthub-status);
   background: color-mix(in srgb, var(--agenthub-status) 8%, var(--agenthub-surface));
 }
-.agenthub-web-auth-actions {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 20;
-}
 .agenthub-home-shell {
   position: relative;
   overflow: hidden;
@@ -951,6 +945,110 @@ export const componentSystemCss = `
   background-size: 200% 100%;
   animation: agenthub-loading-skeleton 1100ms ease-in-out infinite;
 }
+.agenthub-workbench-loading-screen {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 22px;
+  overflow: hidden;
+  padding: 28px;
+  color: var(--agenthub-text);
+  background:
+    radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--agenthub-accent) 10%, transparent), transparent 31%),
+    radial-gradient(circle at 18% 74%, color-mix(in srgb, var(--agenthub-status) 13%, transparent), transparent 28%),
+    linear-gradient(90deg, color-mix(in srgb, var(--agenthub-text) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in srgb, var(--agenthub-text) 4%, transparent) 1px, transparent 1px),
+    var(--agenthub-bg);
+  background-size: auto, auto, 74px 74px, 74px 74px, auto;
+}
+.agenthub-workbench-loading-screen::before,
+.agenthub-workbench-loading-screen::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+}
+.agenthub-workbench-loading-screen::before {
+  background-image: radial-gradient(color-mix(in srgb, var(--agenthub-accent) 32%, transparent) 1px, transparent 1.5px);
+  background-size: 18px 18px;
+  opacity: .26;
+  animation: agenthub-workbench-loading-drift 26s linear infinite;
+}
+.agenthub-workbench-loading-screen::after {
+  background:
+    linear-gradient(110deg, transparent 18%, color-mix(in srgb, var(--agenthub-accent) 8%, transparent) 46%, transparent 66%),
+    linear-gradient(24deg, transparent 22%, color-mix(in srgb, var(--agenthub-status) 7%, transparent) 52%, transparent 76%);
+  background-size: 160% 160%, 140% 140%;
+  opacity: .72;
+  animation: agenthub-workbench-loading-sheen 16s ease-in-out infinite alternate;
+}
+.agenthub-loading-orbit,
+.agenthub-workbench-loading-copy {
+  position: relative;
+  z-index: 1;
+}
+.agenthub-loading-orbit {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
+.agenthub-loading-orbit-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--agenthub-accent) 36%, transparent);
+  border-radius: inherit;
+  animation: agenthub-loading-orbit 1400ms linear infinite;
+}
+.agenthub-loading-orbit-ring:nth-child(2) {
+  inset: 13px;
+  border-color: color-mix(in srgb, var(--agenthub-status) 42%, transparent);
+  animation-duration: 1900ms;
+  animation-direction: reverse;
+}
+.agenthub-loading-orbit-ring::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--agenthub-accent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--agenthub-accent) 60%, transparent);
+}
+.agenthub-loading-orbit-ring:nth-child(2)::before {
+  background: var(--agenthub-status);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--agenthub-status) 58%, transparent);
+}
+.agenthub-loading-orbit-core {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--agenthub-text);
+  box-shadow:
+    0 0 0 10px color-mix(in srgb, var(--agenthub-text) 5%, transparent),
+    0 0 34px color-mix(in srgb, var(--agenthub-accent) 34%, transparent);
+  animation: agenthub-loading-core 1300ms ease-in-out infinite;
+}
+.agenthub-workbench-loading-copy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.agenthub-workbench-loading-copy strong {
+  font-size: 17px;
+  line-height: 1.25;
+}
+.agenthub-workbench-loading-copy p {
+  max-width: 340px;
+  margin: 0;
+  color: var(--agenthub-text-muted);
+}
 .agenthub-toast-region {
   position: fixed;
   right: 18px;
@@ -990,6 +1088,21 @@ export const componentSystemCss = `
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+@keyframes agenthub-loading-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes agenthub-loading-core {
+  0%, 100% { opacity: .82; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes agenthub-workbench-loading-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(54px, 54px, 0); }
+}
+@keyframes agenthub-workbench-loading-sheen {
+  from { background-position: 0% 50%, 100% 50%; }
+  to { background-position: 100% 50%, 0% 50%; }
+}
 @keyframes agenthub-home-drift {
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(72px, 72px, 0); }
@@ -1009,6 +1122,10 @@ export const componentSystemCss = `
 @media (prefers-reduced-motion: reduce) {
   .agenthub-loading-spinner::before,
   .agenthub-loading-skeleton > span,
+  .agenthub-loading-orbit-ring,
+  .agenthub-loading-orbit-core,
+  .agenthub-workbench-loading-screen::before,
+  .agenthub-workbench-loading-screen::after,
   .agenthub-home-shell::before,
   .agenthub-home-motion {
     animation: none;
