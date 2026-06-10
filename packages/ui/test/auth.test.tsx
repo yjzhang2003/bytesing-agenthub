@@ -14,8 +14,14 @@ describe("AgentHubProductHomepage", () => {
     expect(html).toContain("GitHub");
     expect(html).toContain("https://github.com/yjzhang2003/bytesing-agenthub");
     expect(html).toContain("agenthub-home-github-icon");
+    expect(html).toContain('href="#product"');
+    expect(html).toContain('id="product"');
     expect(html).toContain("agenthub-ascii-text");
     expect(html).toContain("agenthub-pixel-blast");
+    expect(html).toContain("agenthub-home-chroma-grid");
+    expect(html).toContain("Runtime");
+    expect(html).toContain("Permissions");
+    expect(html).toContain("Artifacts");
     expect(html.match(/Get Started/g)).toHaveLength(1);
     expect(html).not.toContain("Use GitHub identity.");
     expect(html).not.toContain("AgentHub coordinates in the cloud while execution stays local.");
@@ -45,15 +51,16 @@ describe("AgentHubProductHomepage", () => {
     expect(html.match(/Get Started/g)).toHaveLength(1);
     expect(html).not.toContain("使用 GitHub 身份。");
     expect(html).not.toContain("AgentHub 负责协同，执行留在本地。");
-    expect(html).not.toContain("让智能体围绕本地项目协作");
+    expect(html).toContain("让智能体围绕本地项目协作");
     expect(html).not.toContain("登录</button>");
     expect(html).not.toContain("本地工作区");
     expect(html).not.toContain("正在审阅权限");
     expect(html).not.toContain("计划已更新");
     expect(html).not.toContain("diff 待查看");
     expect(html).not.toContain("查看流程");
-    expect(html).not.toContain("Permissions");
-    expect(html).not.toContain("Artifacts");
+    expect(html).toContain("权限");
+    expect(html).toContain("产物");
+    expect(html).toContain("agenthub-home-product-card");
   });
 
   it("includes restrained homepage motion styles with reduced-motion handling", () => {
@@ -62,6 +69,7 @@ describe("AgentHubProductHomepage", () => {
     );
 
     expect(html).toContain("agenthub-home-motion");
+    expect(html).toContain("agenthub-home-chroma-overlay");
     expect(html).toContain("@keyframes agenthub-home-drift");
     expect(html).toContain("prefers-reduced-motion: reduce");
     expect(html).toContain(".agenthub-home-shell::before");

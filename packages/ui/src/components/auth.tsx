@@ -1,4 +1,5 @@
 import React from "react";
+import type { gsap as GsapCore } from "gsap";
 import type { AuthFormMode, LoginSurfaceProps, ProductHomepageProps } from "../types.js";
 import { ASCIIText } from "./ascii-text.js";
 import { BorderGlow } from "./border-glow.js";
@@ -8,6 +9,15 @@ import { createAgentHubI18n, type AgentHubLocale } from "../i18n.js";
 import { AGENTHUB_LOGO_URL } from "../brand.js";
 
 const AGENTHUB_GITHUB_URL = "https://github.com/yjzhang2003/bytesing-agenthub";
+
+type ProductCard = {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly meta: string;
+  readonly borderColor: string;
+  readonly gradient: string;
+};
+type GsapApi = Pick<typeof GsapCore, "quickSetter" | "to">;
 
 function normalizeLoginLocale(locale: LoginSurfaceProps["locale"]): AgentHubLocale {
   return locale === "zh-CN" || locale === "zh" ? "zh-CN" : "en-US";
@@ -34,9 +44,155 @@ function GitHubIcon(): React.ReactElement {
   );
 }
 
+function AgentHubProductCards(props: {
+  readonly cards: readonly ProductCard[];
+  readonly title: string;
+}): React.ReactElement {
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const fadeRef = React.useRef<HTMLDivElement | null>(null);
+  const positionRef = React.useRef({ x: 0, y: 0 });
+  const setXRef = React.useRef<((value: number) => void) | null>(null);
+  const setYRef = React.useRef<((value: number) => void) | null>(null);
+  const gsapRef = React.useRef<GsapApi | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    void import("gsap").then((module) => {
+      const root = rootRef.current;
+      if (!mounted || !root) {
+        return;
+      }
+      const gsap = module.gsap;
+      gsapRef.current = gsap;
+      setXRef.current = gsap.quickSetter(root, "--x", "px") as (value: number) => void;
+      setYRef.current = gsap.quickSetter(root, "--y", "px") as (value: number) => void;
+      const { width, height } = root.getBoundingClientRect();
+      positionRef.current = { x: width / 2, y: height / 2 };
+      setXRef.current?.(positionRef.current.x);
+      setYRef.current?.(positionRef.current.y);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function moveSpotlight(x: number, y: number): void {
+    const gsap = gsapRef.current;
+    if (!gsap) {
+      setXRef.current?.(x);
+      setYRef.current?.(y);
+      return;
+    }
+    gsap.to(positionRef.current, {
+      duration: 0.45,
+      ease: "power3.out",
+      onUpdate: () => {
+        setXRef.current?.(positionRef.current.x);
+        setYRef.current?.(positionRef.current.y);
+      },
+      overwrite: true,
+      x,
+      y,
+    });
+  }
+
+  function handleGridMove(event: React.PointerEvent<HTMLDivElement>): void {
+    if (!rootRef.current) {
+      return;
+    }
+    const rect = rootRef.current.getBoundingClientRect();
+    moveSpotlight(event.clientX - rect.left, event.clientY - rect.top);
+    gsapRef.current?.to(fadeRef.current, { duration: 0.25, opacity: 0, overwrite: true });
+  }
+
+  function handleGridLeave(): void {
+    gsapRef.current?.to(fadeRef.current, { duration: 0.6, opacity: 1, overwrite: true });
+  }
+
+  function handleCardMove(event: React.PointerEvent<HTMLElement>): void {
+    const card = event.currentTarget;
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty("--mouse-x", `${event.clientX - rect.left}px`);
+    card.style.setProperty("--mouse-y", `${event.clientY - rect.top}px`);
+  }
+
+  return (
+    <section
+      aria-labelledby="agenthub-products-title"
+      className="agenthub-home-products"
+      id="product"
+    >
+      <h2 id="agenthub-products-title">{props.title}</h2>
+      <div
+        className="agenthub-home-chroma-grid"
+        onPointerLeave={handleGridLeave}
+        onPointerMove={handleGridMove}
+        ref={rootRef}
+      >
+        {props.cards.map((card) => (
+          <article
+            className="agenthub-home-product-card"
+            key={card.title}
+            onPointerMove={handleCardMove}
+            style={
+              {
+                "--card-border": card.borderColor,
+                "--card-gradient": card.gradient,
+              } as React.CSSProperties
+            }
+          >
+            <div className="agenthub-home-product-visual" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <footer className="agenthub-home-product-info">
+              <h3>{card.title}</h3>
+              <span>{card.meta}</span>
+              <p>{card.subtitle}</p>
+            </footer>
+          </article>
+        ))}
+        <div className="agenthub-home-chroma-overlay" aria-hidden="true" />
+        <div className="agenthub-home-chroma-fade" aria-hidden="true" ref={fadeRef} />
+      </div>
+    </section>
+  );
+}
+
 export function AgentHubProductHomepage(props: ProductHomepageProps): React.ReactElement {
   const i18n = createAgentHubI18n(normalizeLoginLocale(props.locale));
   const githubUrl = props.githubUrl ?? AGENTHUB_GITHUB_URL;
+  const productCards: readonly ProductCard[] = [
+    {
+      borderColor: "#7e6bc7",
+      gradient: "linear-gradient(145deg, #27232f, #090a0d)",
+      meta: i18n.t("homepage.runtimeCard"),
+      subtitle: i18n.t("homepage.runtimeCardDetail"),
+      title: i18n.t("homepage.featureRuntime"),
+    },
+    {
+      borderColor: "#55b8a7",
+      gradient: "linear-gradient(165deg, #193532, #090a0d)",
+      meta: i18n.t("homepage.permissionCard"),
+      subtitle: i18n.t("homepage.permissionCardDetail"),
+      title: i18n.t("homepage.featurePermissions"),
+    },
+    {
+      borderColor: "#d6a94d",
+      gradient: "linear-gradient(195deg, #3a2d15, #090a0d)",
+      meta: i18n.t("homepage.artifactCard"),
+      subtitle: i18n.t("homepage.artifactCardDetail"),
+      title: i18n.t("homepage.featureArtifacts"),
+    },
+    {
+      borderColor: "#c084fc",
+      gradient: "linear-gradient(225deg, #2e2240, #090a0d)",
+      meta: i18n.t("homepage.agentCard"),
+      subtitle: i18n.t("homepage.agentCardDetail"),
+      title: i18n.t("homepage.title"),
+    },
+  ];
 
   return (
     <AgentHubThemeProvider mode="light">
@@ -78,7 +234,7 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
           </div>
         </nav>
 
-        <section className="agenthub-home-hero" id="product">
+        <section className="agenthub-home-hero">
           <div className="agenthub-home-copy">
             <div className="agenthub-home-ascii-wrap">
               <ASCIIText text="AgentHub" />
@@ -92,6 +248,7 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
             </div>
           </div>
         </section>
+        <AgentHubProductCards cards={productCards} title={i18n.t("homepage.featuresTitle")} />
       </main>
     </AgentHubThemeProvider>
   );

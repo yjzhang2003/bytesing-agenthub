@@ -532,6 +532,141 @@ export const componentSystemCss = `
   align-items: center;
   gap: 14px;
 }
+.agenthub-home-products {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+  scroll-margin-top: 28px;
+}
+.agenthub-home-products h2 {
+  margin: 0;
+  color: var(--agenthub-text);
+  font-size: clamp(22px, 3vw, 32px);
+  line-height: 1.18;
+}
+.agenthub-home-chroma-grid {
+  --x: 50%;
+  --y: 50%;
+  --r: 280px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  isolation: isolate;
+}
+.agenthub-home-product-card {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-color: rgba(255, 255, 255, .28);
+  position: relative;
+  min-height: 258px;
+  display: grid;
+  grid-template-rows: minmax(112px, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(32, 36, 44, .18);
+  border-radius: 10px;
+  background: var(--card-gradient);
+  color: #fff;
+  box-shadow: 0 18px 42px rgba(23, 24, 23, .12);
+  transition:
+    border-color var(--agenthub-motion-medium),
+    transform var(--agenthub-motion-medium),
+    box-shadow var(--agenthub-motion-medium);
+}
+.agenthub-home-product-card:hover,
+.agenthub-home-product-card:focus-within {
+  border-color: var(--card-border);
+  box-shadow: 0 22px 54px rgba(23, 24, 23, .17);
+  transform: translateY(-2px);
+}
+.agenthub-home-product-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    var(--spotlight-color),
+    transparent 68%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--agenthub-motion-medium);
+}
+.agenthub-home-product-card:hover::before,
+.agenthub-home-product-card:focus-within::before {
+  opacity: 1;
+}
+.agenthub-home-product-visual {
+  position: relative;
+  z-index: 1;
+  min-height: 112px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr .72fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.agenthub-home-product-visual span {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04)),
+    radial-gradient(circle at 34% 24%, color-mix(in srgb, var(--card-border) 72%, transparent), transparent 46%);
+}
+.agenthub-home-product-visual span:first-child {
+  grid-row: 1 / 3;
+}
+.agenthub-home-product-info {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 10px;
+  padding: 14px;
+}
+.agenthub-home-product-info h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.28;
+}
+.agenthub-home-product-info span {
+  color: rgba(255, 255, 255, .68);
+  font-size: 11px;
+  font-weight: 700;
+}
+.agenthub-home-product-info p {
+  grid-column: 1 / 3;
+  margin: 0;
+  color: rgba(255, 255, 255, .72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.agenthub-home-chroma-overlay,
+.agenthub-home-chroma-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.agenthub-home-chroma-overlay {
+  background: rgba(255, 255, 255, .001);
+  backdrop-filter: grayscale(1) brightness(.78);
+  -webkit-backdrop-filter: grayscale(1) brightness(.78);
+  mask-image: radial-gradient(
+    circle var(--r) at var(--x) var(--y),
+    transparent 0%,
+    transparent 18%,
+    rgba(0, 0, 0, .18) 42%,
+    rgba(0, 0, 0, .48) 72%,
+    black 100%
+  );
+}
+.agenthub-home-chroma-fade {
+  background: rgba(247, 248, 250, .22);
+}
 .agenthub-home-features {
   width: min(1120px, 100%);
   margin: 0 auto;
@@ -582,6 +717,12 @@ export const componentSystemCss = `
   }
   .agenthub-home-hero {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-home-chroma-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agenthub-home-product-card {
+    min-height: 224px;
   }
   .agenthub-home-ascii-wrap {
     min-height: 116px;
