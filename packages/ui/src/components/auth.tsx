@@ -5,9 +5,9 @@ import { BorderGlow } from "./border-glow.js";
 import { PixelBlast } from "./pixel-blast.js";
 import { AgentHubButton, AgentHubThemeProvider } from "./system.js";
 import { createAgentHubI18n, type AgentHubLocale } from "../i18n.js";
+import { AGENTHUB_LOGO_URL } from "../brand.js";
 
 const AGENTHUB_GITHUB_URL = "https://github.com/yjzhang2003/bytesing-agenthub";
-const AGENTHUB_LOGO_URL = new URL("../assets/agenthub-logo-cutout.png", import.meta.url).href;
 
 function normalizeLoginLocale(locale: LoginSurfaceProps["locale"]): AgentHubLocale {
   return locale === "zh-CN" || locale === "zh" ? "zh-CN" : "en-US";

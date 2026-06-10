@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import {
+  AGENTHUB_LOGO_URL,
   AgentHubLoginPage,
   AgentHubProductHomepage,
   AgentHubWorkbench,
@@ -42,6 +43,22 @@ import React from "react";
 
 const CONNECTION_CHECK_POLL_INTERVAL_MS = 500;
 const CONNECTION_CHECK_MAX_POLLS = 20;
+
+function installAgentHubDocumentBranding(): void {
+  document.title = "AgentHub";
+  const existing = document.head.querySelector<HTMLLinkElement>(
+    'link[rel="icon"], link[rel="shortcut icon"]',
+  );
+  const icon = existing ?? document.createElement("link");
+  icon.rel = "icon";
+  icon.type = "image/png";
+  icon.href = AGENTHUB_LOGO_URL;
+  if (!existing) {
+    document.head.append(icon);
+  }
+}
+
+installAgentHubDocumentBranding();
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));

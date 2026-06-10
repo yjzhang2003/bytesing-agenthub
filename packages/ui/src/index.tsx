@@ -39,6 +39,7 @@ export {
 export type { AgentHubLocale, TranslationKey } from "./i18n.js";
 export { AgentHubWorkbench } from "./components/workbench.js";
 export { AgentHubLoginPage, AgentHubProductHomepage } from "./components/auth.js";
+export { AGENTHUB_LOGO_URL } from "./brand.js";
 export { AgentMentionComposer } from "./components/composer.js";
 export { ChatTimeline } from "./components/timeline.js";
 export { ConversationList, WorkspaceStatusSurface } from "./components/navigation.js";

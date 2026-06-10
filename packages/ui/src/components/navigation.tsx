@@ -3,6 +3,7 @@ import {
   Bot,
   Cable,
   ClipboardCheck,
+  LogOut,
   MessageSquare,
   Moon,
   PanelLeftClose,
@@ -119,6 +120,7 @@ export function LeftNavigation(props: {
   readonly compact?: boolean;
   readonly onToggleTheme: () => void;
   readonly theme: "light" | "dark";
+  readonly onSignOut?: (() => void) | undefined;
 }): React.ReactElement {
   const i18n = useAgentHubI18n();
   return (
@@ -226,6 +228,17 @@ export function LeftNavigation(props: {
           >
             <Icon icon={Settings} />
           </HoverButton>
+          {props.onSignOut ? (
+            <HoverButton
+              aria-label={i18n.t("auth.signOut")}
+              className="agenthub-rail-button agenthub-rail-sign-out"
+              onClick={props.onSignOut}
+              title={i18n.t("auth.signOut")}
+              type="button"
+            >
+              <Icon icon={LogOut} />
+            </HoverButton>
+          ) : null}
         </div>
       </div>
       {props.compact || props.collapsed ? null : props.agentsActive ? (

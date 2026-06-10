@@ -16,6 +16,7 @@ import {
   useAgentHubI18n,
   writeStoredAgentHubLocale,
 } from "../i18n.js";
+import { AGENTHUB_LOGO_URL } from "../brand.js";
 import type {
   ConnectionCheckTargetId,
   InspectorSelection,
@@ -34,6 +35,7 @@ import { AgentHubButton, AgentHubModal, AgentHubTextInput, AgentHubThemeProvider
 import { HoverButton, Icon, RuntimeStatusBadge } from "./primitives.js";
 import { SettingsPage, type SettingsCategoryId } from "./settings.js";
 import { ChatTimeline } from "./timeline.js";
+import { PixelBlast } from "./pixel-blast.js";
 
 type CenterView = "conversation" | "agents" | "connections" | "settings";
 const ENTER_TO_SEND_STORAGE_KEY = "agenthub.keyboard.enterToSend";
@@ -371,12 +373,12 @@ export function AgentHubWorkbench(props: {
   if (props.loading) {
     return (
       <AgentHubI18nProvider locale={activeLocale}>
-        <AgentHubThemeProvider mode={theme}>
+        <AgentHubThemeProvider mode="light">
           <main
             className="agenthub-workbench"
             data-layout={layoutMode}
             data-state="loading"
-            data-theme={theme}
+            data-theme="light"
           >
             <WorkbenchStyle />
             <section
@@ -384,10 +386,26 @@ export function AgentHubWorkbench(props: {
               className="agenthub-workbench-loading-screen"
               role="status"
             >
+              <PixelBlast
+                className="agenthub-auth-pixel-field"
+                color="#b497cf"
+                edgeFade={0.2}
+                patternDensity={1}
+                patternScale={2.7}
+                pixelSize={5}
+                pixelSizeJitter={0.36}
+                rippleIntensityScale={0.85}
+                rippleSpeed={0.22}
+                rippleThickness={0.12}
+                speed={0.24}
+                variant="circle"
+              />
               <div aria-hidden="true" className="agenthub-loading-orbit">
                 <span className="agenthub-loading-orbit-ring" />
                 <span className="agenthub-loading-orbit-ring" />
-                <span className="agenthub-loading-orbit-core" />
+                <span className="agenthub-loading-orbit-core">
+                  <img alt="" src={AGENTHUB_LOGO_URL} />
+                </span>
               </div>
               <div className="agenthub-workbench-loading-copy">
                 <strong>
@@ -509,6 +527,7 @@ export function AgentHubWorkbench(props: {
                     setMobileLeftOpen(false);
                     setLeftCollapsed((current) => !current);
                   }}
+                  onSignOut={props.onSignOut}
                 />
                 {!leftCollapsed && !compactLeftNavigation ? (
                   <div
@@ -605,6 +624,7 @@ export function AgentHubWorkbench(props: {
                       setMobileLeftOpen(false);
                       setLeftCollapsed((current) => !current);
                     }}
+                    onSignOut={props.onSignOut}
                   />
                 </motion.div>
               ) : null}

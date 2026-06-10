@@ -1118,6 +1118,8 @@ describe("@agenthub/ui components", () => {
     expect(navBottom.indexOf("Switch to light mode")).toBeLessThan(
       navBottom.indexOf('aria-label="Settings"'),
     );
+    expect(navBottom).toContain('aria-label="Sign out"');
+    expect(navBottom).toContain("agenthub-rail-sign-out");
     const renderedConversationHeaderStart = workbench.indexOf(
       '<header class="agenthub-conversation-header"',
     );

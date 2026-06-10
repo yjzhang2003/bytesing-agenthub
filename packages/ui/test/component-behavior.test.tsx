@@ -931,6 +931,15 @@ describe("AgentHub component behavior", () => {
       await settle();
     });
     expect(onSignOut).toHaveBeenCalledOnce();
+
+    const railSignOutButton = document.querySelector(
+      ".agenthub-rail-sign-out",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      railSignOutButton.click();
+      await settle();
+    });
+    expect(onSignOut).toHaveBeenCalledTimes(2);
   });
 
   it("requests connection checks and shows pending state", async () => {
