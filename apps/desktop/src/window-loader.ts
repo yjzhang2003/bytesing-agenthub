@@ -23,6 +23,10 @@ export async function loadDesktopWebUrl(
   config: DesktopShellConfig,
 ): Promise<void> {
   installDesktopLoadFailureHandler(window, config);
+  if (config.webFilePath && window.loadFile) {
+    await window.loadFile(config.webFilePath);
+    return;
+  }
   try {
     await window.loadURL(config.webUrl);
   } catch (error) {

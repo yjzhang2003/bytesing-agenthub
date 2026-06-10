@@ -24,6 +24,7 @@ import { ControlPlaneRegistry } from "./runtime-registry.js";
 export interface ControlPlaneServerOptions {
   readonly jwtSecret: string;
   readonly authMode?: AgentHubAuthMode;
+  readonly desktopLocalAuth?: boolean;
   readonly localAuthToken?: string;
   readonly localUserId?: string;
   readonly providerMode?: "smoke" | "claude-code";
@@ -72,7 +73,22 @@ async function authenticate(
       claims: { mode: "local-demo" },
     };
   }
-  return verifySupabaseJwt(token, { jwtSecret: options.jwtSecret });
+  if (options.desktopLocalAuth && token === (options.localAuthToken ?? agentHubLocalDefaults.authToken)) {
+    return {
+      userId: options.localUserId ?? agentHubLocalDefaults.userId,
+      token,
+      claims: { mode: "desktop-runtime" },
+    };
+  }
+  const auth = await verifySupabaseJwt(token, { jwtSecret: options.jwtSecret });
+  if (options.desktopLocalAuth) {
+    return {
+      ...auth,
+      userId: options.localUserId ?? agentHubLocalDefaults.userId,
+      claims: { ...auth.claims, agenthubDesktopLocalAuth: true },
+    };
+  }
+  return auth;
 }
 
 export function createControlPlaneServer(options: ControlPlaneServerOptions) {

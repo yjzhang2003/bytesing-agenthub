@@ -13,6 +13,10 @@ import {
   loadDesktopWebUrl,
 } from "../src/window-loader.js";
 import {
+  createDesktopServiceEnvironment,
+  resolveDesktopBundlePaths,
+} from "../src/local-services.js";
+import {
   cancelledResult,
   registerLocalProject,
   resolveDefaultProjectPath,
@@ -40,37 +44,22 @@ describe("desktop shell config", () => {
     });
   });
 
-  it("reads release endpoints from a packaged desktop release config", async () => {
+  it("reads a packaged local Web UI from desktop release config", async () => {
     const configDir = await mkdtemp(join(tmpdir(), "agenthub-release-config-"));
     const configPath = join(configDir, "release-config.json");
+    const webRoot = join(configDir, "bundle", "web");
     await writeFile(
       configPath,
       JSON.stringify({
-        controlPlaneUrl: "https://api.agenthub.example",
-        webUrl: "https://app.agenthub.example",
+        webRoot,
       }),
     );
 
     expect(readDesktopShellConfig({}, { releaseConfigPath: configPath })).toMatchObject({
-      controlPlaneUrl: "https://api.agenthub.example",
-      webUrl: "https://app.agenthub.example",
+      controlPlaneUrl: "http://127.0.0.1:5310",
+      startsRuntime: true,
+      webFilePath: join(webRoot, "index.html"),
     });
-  });
-
-  it("rejects localhost endpoints for packaged desktop release config", async () => {
-    const configDir = await mkdtemp(join(tmpdir(), "agenthub-release-config-"));
-    const configPath = join(configDir, "release-config.json");
-    await writeFile(
-      configPath,
-      JSON.stringify({
-        controlPlaneUrl: "http://127.0.0.1:5310",
-        webUrl: "https://app.agenthub.example",
-      }),
-    );
-
-    expect(() => readDesktopShellConfig({}, { releaseConfigPath: configPath })).toThrow(
-      "must not use localhost",
-    );
   });
 
   it("keeps the desktop window open with a diagnostic page when Web UI loading fails", async () => {
@@ -90,6 +79,56 @@ describe("desktop shell config", () => {
     expect(loaded[0]).toContain("AgentHub Web UI is not reachable");
     expect(loaded[0]).toContain("pnpm dev:web");
     expect(loaded[0]).toContain("ERR_CONNECTION_REFUSED");
+  });
+
+  it("loads packaged Web UI from file before falling back to a dev URL", async () => {
+    const loaded: string[] = [];
+    await loadDesktopWebUrl(
+      {
+        async loadURL(url) {
+          loaded.push(`url:${url}`);
+        },
+        async loadFile(path) {
+          loaded.push(`file:${path}`);
+        },
+      },
+      { ...defaultDesktopShellConfig, webFilePath: "/Applications/AgentHub.app/web/index.html" },
+    );
+
+    expect(loaded).toEqual(["file:/Applications/AgentHub.app/web/index.html"]);
+  });
+
+  it("resolves packaged desktop bundle entry points under Electron resources", () => {
+    const paths = resolveDesktopBundlePaths("/Applications/AgentHub.app/Contents/Resources");
+
+    expect(paths.webIndexPath).toBe(
+      "/Applications/AgentHub.app/Contents/Resources/bundle/web/index.html",
+    );
+    expect(paths.controlPlaneEntryPath).toBe(
+      "/Applications/AgentHub.app/Contents/Resources/bundle/services/control-plane/index.js",
+    );
+    expect(paths.runtimeEntryPath).toBe(
+      "/Applications/AgentHub.app/Contents/Resources/bundle/runtimes/desktop/index.js",
+    );
+  });
+
+  it("creates local desktop service environment without remote control-plane endpoints", () => {
+    expect(
+      createDesktopServiceEnvironment({
+        config: defaultDesktopShellConfig,
+        entry: "control-plane",
+        env: {
+          AGENTHUB_CONTROL_PLANE_URL: "https://api.agenthub.example",
+          AGENTHUB_WEB_URL: "https://app.agenthub.example",
+        },
+      }),
+    ).toMatchObject({
+      AGENTHUB_AUTH_MODE: "supabase",
+      AGENTHUB_DESKTOP_LOCAL_AUTH: "1",
+      AGENTHUB_CONTROL_PLANE_ENTRY: "1",
+      AGENTHUB_CONTROL_PLANE_URL: "http://127.0.0.1:5310",
+      ELECTRON_RUN_AS_NODE: "1",
+    });
   });
 
   it("escapes values in the desktop diagnostic page", () => {

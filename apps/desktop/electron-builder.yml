@@ -4,7 +4,11 @@ directories:
   output: release
 files:
   - dist/**
+  - "!dist/bundle/**"
   - package.json
+extraResources:
+  - from: dist/bundle
+    to: bundle
 mac:
   category: public.app-category.developer-tools
   hardenedRuntime: true

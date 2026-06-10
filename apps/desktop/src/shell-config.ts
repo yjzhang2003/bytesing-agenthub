@@ -5,11 +5,13 @@ import { fileURLToPath } from "node:url";
 export interface DesktopShellConfig {
   readonly controlPlaneUrl: string;
   readonly startsRuntime: boolean;
+  readonly webFilePath?: string;
   readonly webUrl: string;
 }
 
 interface DesktopReleaseConfig {
   readonly controlPlaneUrl?: string;
+  readonly webRoot?: string;
   readonly webUrl?: string;
 }
 
@@ -20,10 +22,12 @@ export function readDesktopShellConfig(
   const releaseConfig = readDesktopReleaseConfig(
     options.releaseConfigPath ?? join(dirname(fileURLToPath(import.meta.url)), "release-config.json"),
   );
+  const webFilePath = releaseConfig.webRoot ? join(releaseConfig.webRoot, "index.html") : undefined;
   return {
     controlPlaneUrl:
       env.AGENTHUB_CONTROL_PLANE_URL ?? releaseConfig.controlPlaneUrl ?? "http://127.0.0.1:5310",
     startsRuntime: true,
+    ...(webFilePath ? { webFilePath } : {}),
     webUrl: env.AGENTHUB_WEB_URL ?? releaseConfig.webUrl ?? "http://127.0.0.1:5173",
   };
 }
@@ -44,20 +48,5 @@ function readDesktopReleaseConfig(configPath: string): DesktopReleaseConfig {
     return {};
   }
   const parsed = JSON.parse(readFileSync(configPath, "utf8")) as DesktopReleaseConfig;
-  validateReleaseUrl("AGENTHUB_CONTROL_PLANE_URL", parsed.controlPlaneUrl);
-  validateReleaseUrl("AGENTHUB_WEB_URL", parsed.webUrl);
   return parsed;
-}
-
-function validateReleaseUrl(name: string, value: string | undefined): void {
-  if (!value) {
-    return;
-  }
-  const url = new URL(value);
-  if (["127.0.0.1", "localhost", "::1"].includes(url.hostname)) {
-    throw new Error(`${name} in packaged desktop release config must not use localhost.`);
-  }
-  if (url.protocol !== "https:") {
-    throw new Error(`${name} in packaged desktop release config must use https.`);
-  }
 }

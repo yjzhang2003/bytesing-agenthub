@@ -9,10 +9,11 @@ describe("readControlPlaneConfig", () => {
     expect(config.jwtSecret).toBe("dev-only-secret");
   });
 
-  it("requires SUPABASE_JWT_SECRET in Supabase mode", () => {
-    expect(() => readControlPlaneConfig({ AGENTHUB_AUTH_MODE: "supabase" })).toThrow(
-      "SUPABASE_JWT_SECRET is required",
-    );
+  it("allows Supabase mode without embedding a JWT secret", () => {
+    const config = readControlPlaneConfig({ AGENTHUB_AUTH_MODE: "supabase" });
+
+    expect(config.authMode).toBe("supabase");
+    expect(config.jwtSecret).toBe("");
   });
 
   it("accepts Supabase mode with a JWT secret", () => {

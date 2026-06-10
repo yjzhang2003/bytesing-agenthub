@@ -35,21 +35,15 @@ jobs:
       - name: Verify
         run: pnpm check
 
-      - name: Validate release endpoints
-        env:
-          AGENTHUB_CONTROL_PLANE_URL: ${{ vars.AGENTHUB_CONTROL_PLANE_URL }}
-          AGENTHUB_WEB_URL: ${{ vars.AGENTHUB_WEB_URL }}
-          AGENTHUB_REQUIRE_RELEASE_CONFIG: "1"
-        run: |
-          node scripts/write-desktop-release-config.mjs
-          curl --fail --silent --show-error --head "$AGENTHUB_WEB_URL" >/dev/null
-          curl --fail --silent --show-error "$AGENTHUB_CONTROL_PLANE_URL/health" >/dev/null
+      - name: Validate Desktop release configuration
+        run: pnpm check:desktop-release
 
       - name: Build Desktop package
         env:
-          AGENTHUB_CONTROL_PLANE_URL: ${{ vars.AGENTHUB_CONTROL_PLANE_URL }}
-          AGENTHUB_WEB_URL: ${{ vars.AGENTHUB_WEB_URL }}
-          AGENTHUB_REQUIRE_RELEASE_CONFIG: "1"
+          VITE_AGENTHUB_AUTH_MODE: supabase
+          VITE_CONTROL_PLANE_URL: http://127.0.0.1:5310
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}

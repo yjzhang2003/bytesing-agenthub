@@ -9,6 +9,7 @@ import {
 } from "./auth-ipc.js";
 import { registerProjectIpcHandlers } from "./project-ipc.js";
 import { defaultDesktopShellConfig, type DesktopShellConfig } from "./shell-config.js";
+import { resolveDesktopBundlePaths, startDesktopLocalServices } from "./local-services.js";
 import { loadDesktopWebUrl } from "./window-loader.js";
 
 export { defaultDesktopShellConfig, getRuntimeStartupSummary } from "./shell-config.js";
@@ -89,13 +90,22 @@ export async function startDesktopApp(): Promise<void> {
   }
   await app.whenReady();
   logDesktopInfo("[desktop] Electron app ready");
+  const shellConfig = createDesktopShellConfigForApp();
+  const localServices = await startDesktopLocalServices({
+    config: shellConfig,
+    requireBundle: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+  });
+  app.on("before-quit", () => {
+    localServices?.stop();
+  });
   await registerAuthIpcHandlers();
   await registerProjectIpcHandlers();
-  await createAgentHubWindow();
+  await createAgentHubWindow(shellConfig);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      void createAgentHubWindow();
+      void createAgentHubWindow(shellConfig);
     }
   });
 
@@ -104,6 +114,18 @@ export async function startDesktopApp(): Promise<void> {
       app.quit();
     }
   });
+}
+
+function createDesktopShellConfigForApp(): DesktopShellConfig {
+  if (!app.isPackaged) {
+    return defaultDesktopShellConfig;
+  }
+  return {
+    ...defaultDesktopShellConfig,
+    controlPlaneUrl: "http://127.0.0.1:5310",
+    webFilePath: resolveDesktopBundlePaths(process.resourcesPath).webIndexPath,
+    webUrl: "http://127.0.0.1:5173",
+  };
 }
 
 if (process.env.AGENTHUB_ELECTRON_ENTRY === "1") {

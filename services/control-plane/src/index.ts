@@ -34,8 +34,9 @@ if (process.env.AGENTHUB_CONTROL_PLANE_ENTRY === "1") {
   const { readControlPlaneConfig } = await import("./config.js");
   const config = readControlPlaneConfig();
   const server = createControlPlaneServer({
-    authMode: config.authMode,
-    jwtSecret: config.jwtSecret,
+        authMode: config.authMode,
+        desktopLocalAuth: config.desktopLocalAuth,
+        jwtSecret: config.jwtSecret,
     localAuthToken: config.localAuthToken,
     localUserId: config.localUserId,
     providerMode: config.providerMode,

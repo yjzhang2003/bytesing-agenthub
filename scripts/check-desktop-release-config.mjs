@@ -26,6 +26,9 @@ for (const token of forbiddenWorkflowTokens) {
 }
 
 const requiredBuilderTokens = [
+  "extraResources:",
+  "from: dist/bundle",
+  "to: bundle",
   "hardenedRuntime: true",
   "gatekeeperAssess: false",
   "notarize: true",
@@ -41,6 +44,19 @@ for (const token of requiredBuilderTokens) {
 
 if (/^\s*identity:\s*null\s*$/m.test(builder)) {
   throw new Error("Desktop electron-builder config disables signing with identity: null");
+}
+
+const requiredPackageTokens = [
+  "@agenthub/web build",
+  "@agenthub/control-plane build",
+  "@agenthub/desktop-runtime build",
+  "prepare-desktop-bundle.mjs",
+];
+const desktopPackage = await readFile("apps/desktop/package.json", "utf8");
+for (const token of requiredPackageTokens) {
+  if (!desktopPackage.includes(token)) {
+    throw new Error(`Desktop package scripts are missing ${token}`);
+  }
 }
 
 console.log("Desktop release signing and notarization config check passed.");

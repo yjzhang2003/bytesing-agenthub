@@ -1310,6 +1310,62 @@ describe("control plane HTTP local mode", () => {
     }
   });
 
+  it("allows the packaged Desktop runtime token alongside Supabase login tokens", async () => {
+    const registry = new ControlPlaneRegistry();
+    const server = createControlPlaneServer({
+      authMode: "supabase",
+      desktopLocalAuth: true,
+      jwtSecret: "test-secret",
+      localAuthToken: "local-token",
+      localUserId: "desktop-user",
+      registry,
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected TCP server address");
+    }
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    try {
+      const registrationResponse = await fetch(`${baseUrl}/runtime/register`, {
+        method: "POST",
+        headers: {
+          authorization: "Bearer local-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          deviceId: "runtime_desktop",
+          displayName: "AgentHub Desktop Runtime",
+          platform: "macos",
+          appVersion: "0.1.0",
+          capabilities: ["provider:smoke"],
+          workspace: {
+            workspaceId: "workspace_1",
+            displayName: "Project",
+            localPathLabel: "/tmp/project",
+            gitBranch: "main",
+            gitBaseCommit: "abc123",
+            dirty: false,
+            providerCapabilities: ["provider:smoke"],
+          },
+        }),
+      });
+      expect(registrationResponse.status).toBe(200);
+
+      const supabaseSnapshotResponse = await fetch(`${baseUrl}/workbench/snapshot`, {
+        headers: { authorization: `Bearer ${signTestJwt("github_user_1")}` },
+      });
+      expect(supabaseSnapshotResponse.status).toBe(200);
+      await expect(supabaseSnapshotResponse.json()).resolves.toMatchObject({
+        runtimeDevices: [{ id: "runtime_desktop", status: "online" }],
+        userId: "desktop-user",
+      });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("serves health, registration, snapshot, commands, and runtime events", async () => {
     const registry = new ControlPlaneRegistry();
     const server = createControlPlaneServer({
