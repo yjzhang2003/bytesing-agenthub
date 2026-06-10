@@ -2206,7 +2206,9 @@ describe("@agenthub/ui components", () => {
     const loading = renderToStaticMarkup(<AgentHubWorkbench loading />);
     expect(loading).toContain("Loading AgentHub");
     expect(loading).toContain("agenthub-workbench-loading-screen");
+    expect(loading).toContain("agenthub-auth-pixel-field");
     expect(loading).toContain("agenthub-loading-orbit");
+    expect(loading).toContain("agenthub-logo-cutout.png");
     expect(loading).toContain('role="status"');
   });
 
