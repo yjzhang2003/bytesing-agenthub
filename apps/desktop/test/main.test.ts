@@ -40,6 +40,39 @@ describe("desktop shell config", () => {
     });
   });
 
+  it("reads release endpoints from a packaged desktop release config", async () => {
+    const configDir = await mkdtemp(join(tmpdir(), "agenthub-release-config-"));
+    const configPath = join(configDir, "release-config.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        controlPlaneUrl: "https://api.agenthub.example",
+        webUrl: "https://app.agenthub.example",
+      }),
+    );
+
+    expect(readDesktopShellConfig({}, { releaseConfigPath: configPath })).toMatchObject({
+      controlPlaneUrl: "https://api.agenthub.example",
+      webUrl: "https://app.agenthub.example",
+    });
+  });
+
+  it("rejects localhost endpoints for packaged desktop release config", async () => {
+    const configDir = await mkdtemp(join(tmpdir(), "agenthub-release-config-"));
+    const configPath = join(configDir, "release-config.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        controlPlaneUrl: "http://127.0.0.1:5310",
+        webUrl: "https://app.agenthub.example",
+      }),
+    );
+
+    expect(() => readDesktopShellConfig({}, { releaseConfigPath: configPath })).toThrow(
+      "must not use localhost",
+    );
+  });
+
   it("keeps the desktop window open with a diagnostic page when Web UI loading fails", async () => {
     const loaded: string[] = [];
     await loadDesktopWebUrl(

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:ui-boundaries",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:ui-boundaries && pnpm check:desktop-release",
+    "check:desktop-release": "node scripts/check-desktop-release-config.mjs",
     "check:ui-boundaries": "node scripts/check-ui-vendor-boundaries.mjs",
     "commitlint": "node scripts/validate-commit-msg.mjs",
     "dev": "pnpm --filter @agenthub/web dev",

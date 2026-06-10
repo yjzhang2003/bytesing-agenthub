@@ -7,7 +7,11 @@ files:
   - package.json
 mac:
   category: public.app-category.developer-tools
-  identity: null
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
+  notarize: true
   target:
     - dmg
     - zip
