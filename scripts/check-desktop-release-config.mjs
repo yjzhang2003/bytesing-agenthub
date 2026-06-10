@@ -6,7 +6,7 @@ const builder = await readFile("apps/desktop/electron-builder.yml", "utf8");
 const requiredWorkflowTokens = [
   "CSC_LINK: ${{ secrets.MAC_CSC_LINK }}",
   "CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}",
-  'CSC_NAME: "Developer ID Application: YUJIAN ZHANG (FQNAJ6P6F6)"',
+  'CSC_NAME: "YUJIAN ZHANG (FQNAJ6P6F6)"',
   "APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}",
   "APPLE_API_KEY: ${{ env.APPLE_API_KEY_PATH }}",
   "APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}",
