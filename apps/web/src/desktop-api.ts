@@ -9,11 +9,14 @@ export interface AgentHubDesktopBridge {
   readonly getCapabilities: () => DesktopCapabilityBridgeInfo;
   readonly chooseProjectDirectory: () => Promise<DesktopProjectActionResult>;
   readonly createDefaultProject: (displayName: string) => Promise<DesktopProjectActionResult>;
+  readonly onAuthCallback?:
+    | ((handler: (callbackUrl: string) => void) => (() => void))
+    | undefined;
   readonly completeAuthCallback?:
     | ((callbackUrl: string) => Promise<DesktopAuthActionResult>)
     | undefined;
   readonly signOut?: (() => Promise<DesktopAuthActionResult>) | undefined;
-  readonly startGitHubLogin?: (() => Promise<DesktopAuthActionResult>) | undefined;
+  readonly startGitHubLogin?: ((authUrl: string) => Promise<DesktopAuthActionResult>) | undefined;
 }
 
 export interface AgentHubDesktopProjectActions {
@@ -23,7 +26,8 @@ export interface AgentHubDesktopProjectActions {
   readonly createDefaultProject?:
     | ((displayName: string) => Promise<DesktopProjectSelection | null>)
     | undefined;
-  readonly startGitHubLogin?: (() => Promise<void>) | undefined;
+  readonly onAuthCallback?: ((handler: (callbackUrl: string) => void) => (() => void)) | undefined;
+  readonly startGitHubLogin?: ((authUrl: string) => Promise<void>) | undefined;
 }
 
 type DesktopAuthActionResult =
@@ -87,7 +91,9 @@ export function createAgentHubDesktopProjectActions(): AgentHubDesktopProjectAct
       : {}),
     ...(hasCapability("auth.browser-login") && bridge.startGitHubLogin
       ? {
-          startGitHubLogin: () => resolveDesktopAuthAction(bridge.startGitHubLogin?.()),
+          ...(bridge.onAuthCallback ? { onAuthCallback: bridge.onAuthCallback } : {}),
+          startGitHubLogin: (authUrl: string) =>
+            resolveDesktopAuthAction(bridge.startGitHubLogin?.(authUrl)),
         }
       : {}),
   };

@@ -76,9 +76,18 @@ const bridge = {
       "agenthub:auth-complete-callback",
       callbackUrl,
     ) as Promise<DesktopAuthActionResult>,
+  onAuthCallback: (handler: (callbackUrl: string) => void) => {
+    const listener = (_event: unknown, callbackUrl: unknown): void => {
+      if (typeof callbackUrl === "string") {
+        handler(callbackUrl);
+      }
+    };
+    ipcRenderer.on("agenthub:auth-callback", listener);
+    return () => ipcRenderer.removeListener("agenthub:auth-callback", listener);
+  },
   signOut: () => ipcRenderer.invoke("agenthub:auth-sign-out") as Promise<DesktopAuthActionResult>,
-  startGitHubLogin: () =>
-    ipcRenderer.invoke("agenthub:auth-start-github") as Promise<DesktopAuthActionResult>,
+  startGitHubLogin: (authUrl: string) =>
+    ipcRenderer.invoke("agenthub:auth-start-github", authUrl) as Promise<DesktopAuthActionResult>,
 };
 
 contextBridge.exposeInMainWorld("agentHubDesktop", bridge);

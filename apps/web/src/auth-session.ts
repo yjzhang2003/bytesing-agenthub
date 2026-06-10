@@ -28,8 +28,14 @@ export interface WebSupabaseAuthClient {
   readonly auth: {
     readonly signInWithOAuth: (input: {
       readonly provider: "github";
-      readonly options: { readonly redirectTo: string };
-    }) => Promise<{ readonly error: { readonly message: string } | null }>;
+      readonly options: {
+        readonly redirectTo: string;
+        readonly skipBrowserRedirect?: boolean;
+      };
+    }) => Promise<{
+      readonly data?: { readonly url?: string | null | undefined } | null | undefined;
+      readonly error: { readonly message: string } | null;
+    }>;
     readonly signInWithPassword: (input: {
       readonly email: string;
       readonly password: string;
@@ -49,6 +55,13 @@ export interface WebSupabaseAuthClient {
     readonly updateUser: (input: {
       readonly password: string;
     }) => Promise<{ readonly error: { readonly message: string } | null }>;
+    readonly exchangeCodeForSession?: ((authCode: string) => Promise<{
+      readonly error: { readonly message: string } | null;
+    }>) | undefined;
+    readonly setSession?: ((input: {
+      readonly access_token: string;
+      readonly refresh_token: string;
+    }) => Promise<{ readonly error: { readonly message: string } | null }>) | undefined;
     readonly signOut: () => Promise<{ readonly error: { readonly message: string } | null }>;
   };
 }
@@ -123,6 +136,10 @@ export function defaultWebOAuthRedirectTo(
   return `${location.origin}/auth/callback`;
 }
 
+export function defaultDesktopOAuthRedirectTo(): string {
+  return "agenthub://auth/callback";
+}
+
 export function defaultWebEmailAuthRedirectTo(
   location: Pick<Location, "origin"> = window.location,
 ): string {
@@ -181,6 +198,72 @@ export async function signInWithGitHub(input: {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function createGitHubOAuthUrl(input: {
+  readonly redirectTo: string;
+  readonly supabase: { readonly auth: Pick<WebSupabaseAuthClient["auth"], "signInWithOAuth"> };
+}): Promise<string> {
+  const { data, error } = await input.supabase.auth.signInWithOAuth({
+    provider: "github",
+    options: { redirectTo: input.redirectTo, skipBrowserRedirect: true },
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data?.url) {
+    throw new Error("Supabase did not return a GitHub OAuth URL.");
+  }
+  return data.url;
+}
+
+export async function completeOAuthCallback(input: {
+  readonly callbackUrl: string;
+  readonly supabase: {
+    readonly auth: Pick<
+      WebSupabaseAuthClient["auth"],
+      "exchangeCodeForSession" | "setSession"
+    >;
+  };
+}): Promise<void> {
+  const url = new URL(input.callbackUrl);
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const searchParams = url.searchParams;
+  const errorDescription =
+    searchParams.get("error_description") ??
+    hashParams.get("error_description") ??
+    searchParams.get("error") ??
+    hashParams.get("error");
+  if (errorDescription) {
+    throw new Error(errorDescription);
+  }
+  const accessToken = hashParams.get("access_token") ?? searchParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
+  if (accessToken && refreshToken) {
+    if (!input.supabase.auth.setSession) {
+      throw new Error("Supabase setSession is unavailable.");
+    }
+    const { error } = await input.supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return;
+  }
+  const code = searchParams.get("code") ?? hashParams.get("code");
+  if (code) {
+    if (!input.supabase.auth.exchangeCodeForSession) {
+      throw new Error("Supabase code exchange is unavailable.");
+    }
+    const { error } = await input.supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return;
+  }
+  throw new Error("OAuth callback did not include a Supabase session.");
 }
 
 export async function signInWithEmailPassword(input: {

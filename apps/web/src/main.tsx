@@ -21,6 +21,9 @@ import {
   AuthenticationRequiredError,
   defaultWebEmailAuthRedirectTo,
   classifyWebAuthError,
+  completeOAuthCallback,
+  createGitHubOAuthUrl,
+  defaultDesktopOAuthRedirectTo,
   defaultWebOAuthRedirectTo,
   defaultWebPasswordResetRedirectTo,
   readWebAuthMode,
@@ -338,7 +341,11 @@ function AgentHubWebApp(): React.ReactElement {
     setError(null);
     try {
       if (desktopAuthActions.startGitHubLogin) {
-        await desktopAuthActions.startGitHubLogin();
+        const authUrl = await createGitHubOAuthUrl({
+          redirectTo: defaultDesktopOAuthRedirectTo(),
+          supabase,
+        });
+        await desktopAuthActions.startGitHubLogin(authUrl);
       } else {
         await signInWithGitHub({
           redirectTo: defaultWebOAuthRedirectTo(),
@@ -350,6 +357,22 @@ function AgentHubWebApp(): React.ReactElement {
       setAuthenticating(false);
     }
   }, [desktopAuthActions, supabase]);
+
+  React.useEffect(() => {
+    if (!desktopAuthActions.onAuthCallback || !supabase) {
+      return undefined;
+    }
+    return desktopAuthActions.onAuthCallback((callbackUrl) => {
+      setAuthenticating(true);
+      setError(null);
+      void completeOAuthCallback({ callbackUrl, supabase })
+        .then(() => initializeClient())
+        .catch((caught: unknown) => {
+          setError(caught instanceof Error ? caught.message : "GitHub sign-in could not be completed.");
+          setAuthenticating(false);
+        });
+    });
+  }, [desktopAuthActions, initializeClient, supabase]);
 
   const signInWithEmail = React.useCallback(
     async (input: { readonly email: string; readonly password: string }) => {

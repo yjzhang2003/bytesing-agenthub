@@ -2,7 +2,11 @@ import { app, BrowserWindow } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logDesktopError, logDesktopInfo } from "./desktop-log.js";
-import { registerAuthIpcHandlers } from "./auth-ipc.js";
+import {
+  flushPendingDesktopAuthCallbackUrls,
+  registerAuthIpcHandlers,
+  registerDesktopAuthCallbackHandlers,
+} from "./auth-ipc.js";
 import { registerProjectIpcHandlers } from "./project-ipc.js";
 import { defaultDesktopShellConfig, type DesktopShellConfig } from "./shell-config.js";
 import { loadDesktopWebUrl } from "./window-loader.js";
@@ -66,6 +70,7 @@ export async function createAgentHubWindow(
         const message = error instanceof Error ? error.message : String(error);
         logDesktopError(`[desktop] capability bridge check failed: ${message}`);
       });
+    flushPendingDesktopAuthCallbackUrls(window);
   });
 
   logDesktopInfo(`[desktop] loading ${config.webUrl}`);
@@ -79,6 +84,9 @@ export async function createAgentHubWindow(
 
 export async function startDesktopApp(): Promise<void> {
   logDesktopInfo("[desktop] waiting for Electron app readiness");
+  if (!registerDesktopAuthCallbackHandlers({ app, BrowserWindow })) {
+    return;
+  }
   await app.whenReady();
   logDesktopInfo("[desktop] Electron app ready");
   await registerAuthIpcHandlers();

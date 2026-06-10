@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createDesktopGitHubOAuthUrl,
   createDesktopOAuthStateStore,
+  extractDesktopAuthCallbackUrl,
+  forwardDesktopAuthCallbackUrl,
   validateDesktopOAuthCallback,
 } from "../src/auth-ipc.js";
 
@@ -39,5 +41,33 @@ describe("desktop auth ipc", () => {
     expect(() =>
       validateDesktopOAuthCallback("agenthub://auth/callback?state=wrong&code=abc", store),
     ).toThrow("OAuth callback state does not match");
+  });
+
+  it("extracts Desktop OAuth callback URLs from second-instance arguments", () => {
+    expect(
+      extractDesktopAuthCallbackUrl([
+        "/Applications/AgentHub.app/Contents/MacOS/AgentHub",
+        "agenthub://auth/callback#access_token=jwt-token&refresh_token=refresh-token",
+      ]),
+    ).toBe("agenthub://auth/callback#access_token=jwt-token&refresh_token=refresh-token");
+    expect(extractDesktopAuthCallbackUrl(["--flag", "https://example.com"])).toBeNull();
+  });
+
+  it("forwards Desktop OAuth callback URLs to renderer windows", () => {
+    const send = vi.fn();
+    const show = vi.fn();
+    const focus = vi.fn();
+    const window = {
+      focus,
+      isDestroyed: () => false,
+      show,
+      webContents: { send },
+    };
+
+    forwardDesktopAuthCallbackUrl("agenthub://auth/callback?code=abc", [window]);
+
+    expect(send).toHaveBeenCalledWith("agenthub:auth-callback", "agenthub://auth/callback?code=abc");
+    expect(show).toHaveBeenCalled();
+    expect(focus).toHaveBeenCalled();
   });
 });

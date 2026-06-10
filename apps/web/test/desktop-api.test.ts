@@ -128,6 +128,7 @@ describe("desktop bridge detection", () => {
   });
 
   it("creates Desktop auth actions when browser-login capability exists", async () => {
+    const unsubscribe = vi.fn();
     const bridge: AgentHubDesktopBridge = {
       getCapabilities: () => ({
         version: "1.0.0",
@@ -136,6 +137,7 @@ describe("desktop bridge detection", () => {
       chooseProjectDirectory: async () => ({ status: "cancelled" }),
       createDefaultProject: async () => ({ status: "cancelled" }),
       startGitHubLogin: vi.fn(async () => ({ status: "started" })),
+      onAuthCallback: vi.fn(() => unsubscribe),
       completeAuthCallback: async () => ({
         status: "completed",
         callback: { code: "abc", state: "state_123" },
@@ -150,7 +152,12 @@ describe("desktop bridge detection", () => {
 
     const actions = createAgentHubDesktopProjectActions();
 
-    await expect(actions.startGitHubLogin?.()).resolves.toBeUndefined();
-    expect(bridge.startGitHubLogin).toHaveBeenCalled();
+    await expect(
+      actions.startGitHubLogin?.("https://example.supabase.co/auth/v1/authorize?provider=github"),
+    ).resolves.toBeUndefined();
+    expect(bridge.startGitHubLogin).toHaveBeenCalledWith(
+      "https://example.supabase.co/auth/v1/authorize?provider=github",
+    );
+    expect(actions.onAuthCallback?.(() => undefined)).toBe(unsubscribe);
   });
 });

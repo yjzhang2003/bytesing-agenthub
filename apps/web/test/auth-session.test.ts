@@ -3,6 +3,9 @@ import { agentHubLocalDefaults } from "@agenthub/contracts";
 import type { Session } from "@supabase/supabase-js";
 import {
   AuthenticationRequiredError,
+  completeOAuthCallback,
+  createGitHubOAuthUrl,
+  defaultDesktopOAuthRedirectTo,
   defaultWebEmailAuthRedirectTo,
   defaultWebPasswordResetRedirectTo,
   requestEmailPasswordReset,
@@ -76,6 +79,50 @@ describe("web auth session", () => {
     expect(signInWithOAuth).toHaveBeenCalledWith({
       provider: "github",
       options: { redirectTo: "agenthub://auth/callback" },
+    });
+  });
+
+  it("creates a Desktop GitHub OAuth URL without redirecting the Electron renderer", async () => {
+    const signInWithOAuth = vi.fn(async () => ({
+      data: { url: "https://example.supabase.co/auth/v1/authorize?provider=github" },
+      error: null,
+    }));
+
+    await expect(
+      createGitHubOAuthUrl({
+        redirectTo: defaultDesktopOAuthRedirectTo(),
+        supabase: { auth: { signInWithOAuth } },
+      }),
+    ).resolves.toBe("https://example.supabase.co/auth/v1/authorize?provider=github");
+
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: "github",
+      options: {
+        redirectTo: "agenthub://auth/callback",
+        skipBrowserRedirect: true,
+      },
+    });
+  });
+
+  it("completes a Desktop OAuth callback from access and refresh tokens", async () => {
+    const setSession = vi.fn(async () => ({
+      data: {
+        session: {
+          access_token: "jwt-token",
+          user: { id: "user_123" },
+        } as unknown as Session,
+      },
+      error: null,
+    }));
+
+    await completeOAuthCallback({
+      callbackUrl: "agenthub://auth/callback#access_token=jwt-token&refresh_token=refresh-token",
+      supabase: { auth: { setSession } },
+    });
+
+    expect(setSession).toHaveBeenCalledWith({
+      access_token: "jwt-token",
+      refresh_token: "refresh-token",
     });
   });
 

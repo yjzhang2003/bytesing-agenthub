@@ -1,6 +1,19 @@
 import { randomUUID } from "node:crypto";
-import type { shell, ipcMain } from "electron";
-import { readDesktopAuthConfig } from "./auth-config.js";
+import type { app, BrowserWindow, shell, ipcMain } from "electron";
+
+const DESKTOP_AUTH_CALLBACK_PROTOCOL = "agenthub:";
+const DESKTOP_AUTH_CALLBACK_CHANNEL = "agenthub:auth-callback";
+
+interface DesktopAuthCallbackWindow {
+  readonly isDestroyed: () => boolean;
+  readonly show: () => void;
+  readonly focus: () => void;
+  readonly webContents: {
+    readonly send: (channel: string, callbackUrl: string) => void;
+  };
+}
+
+const pendingDesktopAuthCallbackUrls: string[] = [];
 
 export interface DesktopOAuthStateStore {
   readonly current: () => string | null;
@@ -51,6 +64,74 @@ export function validateDesktopOAuthCallback(
   return { code, state };
 }
 
+export function isDesktopAuthCallbackUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === DESKTOP_AUTH_CALLBACK_PROTOCOL && url.hostname === "auth";
+  } catch {
+    return false;
+  }
+}
+
+export function extractDesktopAuthCallbackUrl(argv: readonly string[]): string | null {
+  return argv.find((value) => isDesktopAuthCallbackUrl(value)) ?? null;
+}
+
+export function forwardDesktopAuthCallbackUrl(
+  callbackUrl: string,
+  windows: readonly DesktopAuthCallbackWindow[],
+): void {
+  const activeWindows = windows.filter((window) => !window.isDestroyed());
+  if (activeWindows.length === 0) {
+    pendingDesktopAuthCallbackUrls.push(callbackUrl);
+    return;
+  }
+  for (const window of activeWindows) {
+    window.webContents.send(DESKTOP_AUTH_CALLBACK_CHANNEL, callbackUrl);
+    window.show();
+    window.focus();
+  }
+}
+
+export function flushPendingDesktopAuthCallbackUrls(window: DesktopAuthCallbackWindow): void {
+  const pending = pendingDesktopAuthCallbackUrls.splice(0);
+  for (const callbackUrl of pending) {
+    forwardDesktopAuthCallbackUrl(callbackUrl, [window]);
+  }
+}
+
+export function registerDesktopAuthCallbackHandlers(input: {
+  readonly app: Pick<
+    typeof app,
+    "on" | "quit" | "requestSingleInstanceLock" | "setAsDefaultProtocolClient"
+  >;
+  readonly BrowserWindow: Pick<typeof BrowserWindow, "getAllWindows">;
+}): boolean {
+  const hasLock = input.app.requestSingleInstanceLock();
+  if (!hasLock) {
+    input.app.quit();
+    return false;
+  }
+  input.app.setAsDefaultProtocolClient("agenthub");
+  input.app.on("open-url", (event, callbackUrl) => {
+    if (isDesktopAuthCallbackUrl(callbackUrl)) {
+      event.preventDefault();
+      forwardDesktopAuthCallbackUrl(callbackUrl, input.BrowserWindow.getAllWindows());
+    }
+  });
+  input.app.on("second-instance", (_event, argv) => {
+    const callbackUrl = extractDesktopAuthCallbackUrl(argv);
+    if (callbackUrl) {
+      forwardDesktopAuthCallbackUrl(callbackUrl, input.BrowserWindow.getAllWindows());
+      return;
+    }
+    const [window] = input.BrowserWindow.getAllWindows().filter((candidate) => !candidate.isDestroyed());
+    window?.show();
+    window?.focus();
+  });
+  return true;
+}
+
 async function loadElectronAuthIpc(): Promise<{
   readonly ipcMain: typeof ipcMain;
   readonly shell: typeof shell;
@@ -63,19 +144,20 @@ export async function registerAuthIpcHandlers(
   stateStore = createDesktopOAuthStateStore(),
 ): Promise<void> {
   const { ipcMain, shell } = await loadElectronAuthIpc();
-  ipcMain.handle("agenthub:auth-start-github", async () => {
-    const config = readDesktopAuthConfig();
-    if (!config.supabaseUrl) {
-      return { status: "error", message: "VITE_SUPABASE_URL is required" };
+  ipcMain.handle("agenthub:auth-start-github", async (_event, authUrl: unknown) => {
+    try {
+      if (typeof authUrl !== "string") {
+        throw new Error("GitHub OAuth URL is required");
+      }
+      const url = new URL(authUrl);
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        throw new Error("GitHub OAuth URL must be an HTTP URL");
+      }
+      await shell.openExternal(url.toString());
+      return { status: "started" };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
-    const state = stateStore.start();
-    const url = createDesktopGitHubOAuthUrl({
-      redirectTo: process.env.AGENTHUB_DESKTOP_AUTH_CALLBACK_URL ?? "agenthub://auth/callback",
-      state,
-      supabaseUrl: config.supabaseUrl,
-    });
-    await shell.openExternal(url.toString());
-    return { status: "started" };
   });
   ipcMain.handle("agenthub:auth-complete-callback", async (_event, callbackUrl: unknown) => {
     try {
