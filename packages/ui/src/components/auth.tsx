@@ -141,11 +141,6 @@ function AgentHubProductCards(props: {
               } as React.CSSProperties
             }
           >
-            <div className="agenthub-home-product-visual" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
             <footer className="agenthub-home-product-info">
               <h3>{card.title}</h3>
               <span>{card.meta}</span>
@@ -219,7 +214,6 @@ export function AgentHubProductHomepage(props: ProductHomepageProps): React.Reac
           </div>
           <div className="agenthub-home-nav-links">
             <a href="#product">{i18n.t("homepage.navProduct")}</a>
-            <a href="#control">{i18n.t("homepage.navSecurity")}</a>
           </div>
           <div className="agenthub-home-nav-actions">
             <a

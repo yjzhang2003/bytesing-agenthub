@@ -536,7 +536,7 @@ export const componentSystemCss = `
   width: min(1120px, 100%);
   margin: 0 auto;
   display: grid;
-  gap: 18px;
+  gap: 20px;
   scroll-margin-top: 28px;
 }
 .agenthub-home-products h2 {
@@ -560,9 +560,9 @@ export const componentSystemCss = `
   --mouse-y: 50%;
   --spotlight-color: rgba(255, 255, 255, .28);
   position: relative;
-  min-height: 258px;
+  min-height: 184px;
   display: grid;
-  grid-template-rows: minmax(112px, 1fr) auto;
+  align-content: end;
   overflow: hidden;
   border: 1px solid rgba(32, 36, 44, .18);
   border-radius: 10px;
@@ -579,6 +579,16 @@ export const componentSystemCss = `
   border-color: var(--card-border);
   box-shadow: 0 22px 54px rgba(23, 24, 23, .17);
   transform: translateY(-2px);
+}
+.agenthub-home-product-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--card-border), transparent);
+  opacity: .72;
 }
 .agenthub-home-product-card::before {
   content: "";
@@ -598,51 +608,40 @@ export const componentSystemCss = `
 .agenthub-home-product-card:focus-within::before {
   opacity: 1;
 }
-.agenthub-home-product-visual {
-  position: relative;
-  z-index: 1;
-  min-height: 112px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 1fr .72fr;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.agenthub-home-product-visual span {
-  min-width: 0;
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04)),
-    radial-gradient(circle at 34% 24%, color-mix(in srgb, var(--card-border) 72%, transparent), transparent 46%);
-}
-.agenthub-home-product-visual span:first-child {
-  grid-row: 1 / 3;
-}
 .agenthub-home-product-info {
   position: relative;
   z-index: 1;
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 5px 10px;
-  padding: 14px;
+  align-items: start;
+  gap: 10px 12px;
+  padding: 18px;
 }
 .agenthub-home-product-info h3 {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.28;
+  font-size: 17px;
+  line-height: 1.32;
 }
 .agenthub-home-product-info span {
-  color: rgba(255, 255, 255, .68);
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .76);
   font-size: 11px;
   font-weight: 700;
+  padding: 0 9px;
+  white-space: nowrap;
 }
 .agenthub-home-product-info p {
   grid-column: 1 / 3;
   margin: 0;
-  color: rgba(255, 255, 255, .72);
-  font-size: 12px;
-  line-height: 1.45;
+  color: rgba(255, 255, 255, .70);
+  font-size: 13px;
+  line-height: 1.5;
 }
 .agenthub-home-chroma-overlay,
 .agenthub-home-chroma-fade {
@@ -722,7 +721,7 @@ export const componentSystemCss = `
     grid-template-columns: minmax(0, 1fr);
   }
   .agenthub-home-product-card {
-    min-height: 224px;
+    min-height: 164px;
   }
   .agenthub-home-ascii-wrap {
     min-height: 116px;

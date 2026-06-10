@@ -16,9 +16,11 @@ describe("AgentHubProductHomepage", () => {
     expect(html).toContain("agenthub-home-github-icon");
     expect(html).toContain('href="#product"');
     expect(html).toContain('id="product"');
+    expect(html).not.toContain('href="#control"');
     expect(html).toContain("agenthub-ascii-text");
     expect(html).toContain("agenthub-pixel-blast");
     expect(html).toContain("agenthub-home-chroma-grid");
+    expect(html).not.toContain("agenthub-home-product-visual");
     expect(html).toContain("Runtime");
     expect(html).toContain("Permissions");
     expect(html).toContain("Artifacts");
